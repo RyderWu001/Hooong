@@ -10,6 +10,9 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   MedicineBoxOutlined,
+  ShopOutlined,
+  TruckOutlined,
+  WarningOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
@@ -46,6 +49,21 @@ export default function AppLayout() {
       key: '/formulas',
       icon: <MedicineBoxOutlined />,
       label: '配方管理',
+    },
+    {
+      key: '/materials',
+      icon: <ShopOutlined />,
+      label: '原物料管理',
+    },
+    {
+      key: '/suppliers',
+      icon: <TruckOutlined />,
+      label: '供應商管理',
+    },
+    {
+      key: '/risks',
+      icon: <WarningOutlined />,
+      label: '風險管理',
     },
     {
       key: '/experiments',

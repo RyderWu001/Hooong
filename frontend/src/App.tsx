@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider, App as AntApp } from 'antd'
+import { ConfigProvider } from 'antd'
 import zhTW from 'antd/locale/zh_TW'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-tw'
@@ -8,7 +8,6 @@ import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import LoginPage from './pages/auth/LoginPage'
-import RegisterPage from './pages/auth/RegisterPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 
 import FormulaListPage from './pages/formulas/FormulaListPage'
@@ -24,17 +23,18 @@ import ResultDetailPage from './pages/results/ResultDetailPage'
 
 import ReportsPage from './pages/reports/ReportsPage'
 import UserManagementPage from './pages/users/UserManagementPage'
+import MaterialsPage from './pages/materials/MaterialsPage'
+import SuppliersPage from './pages/suppliers/SuppliersPage'
+import RisksPage from './pages/risks/RisksPage'
 
 dayjs.locale('zh-tw')
 
 export default function App() {
   return (
     <ConfigProvider locale={zhTW} theme={{ token: { colorPrimary: '#1677ff' } }}>
-      <AntApp>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           <Route
@@ -58,6 +58,10 @@ export default function App() {
 
             <Route path="results" element={<ResultListPage />} />
 
+            <Route path="materials" element={<MaterialsPage />} />
+            <Route path="suppliers" element={<SuppliersPage />} />
+            <Route path="risks" element={<RisksPage />} />
+
             <Route path="reports" element={<ReportsPage />} />
 
             <Route
@@ -73,7 +77,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-      </AntApp>
     </ConfigProvider>
   )
 }

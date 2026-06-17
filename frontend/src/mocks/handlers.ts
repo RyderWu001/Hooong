@@ -1,6 +1,9 @@
 import {
   mockUsers, mockIngredients, mockFormulas, mockExperiments,
   mockResults, mockFormulaVersions, mockResultSummary, mockFormulaUsage,
+  mockInventory, mockTransactions,
+  mockSuppliers, mockEvaluations, mockPurchaseRecords,
+  mockFormulaRisks, mockIngredientRisks, mockAbnormalEvents,
 } from './data'
 
 function paginate<T>(arr: T[], page = 1, limit = 20) {
@@ -24,7 +27,7 @@ const HANDLERS: [RegExp, Handler][] = [
   [/\/users$/, (_, p) => paginate(mockUsers, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
 
   // Ingredients
-  [/\/ingredients$/, (_, p) => ok(mockIngredients)],
+  [/\/ingredients$/, () => ok(mockIngredients)],
   [/\/ingredients\/(\d+)$/, (url) => {
     const id = Number(url.match(/\/ingredients\/(\d+)/)?.[1])
     return ok(mockIngredients.find((i) => i.id === id) ?? mockIngredients[0])
@@ -77,118 +80,139 @@ const HANDLERS: [RegExp, Handler][] = [
   }],
 
   // Results
-  [/\/results$/, (_, p) => {
-    let list = [...mockResults]
-    const experimentCode = p.get('experimentCode')
-    const formulaName = p.get('formulaName')
-    const experimenterId = p.get('experimenterId')
-    const status = p.get('status')
-    const dateFrom = p.get('dateFrom')
-    const dateTo = p.get('dateTo')
-    if (experimentCode) list = list.filter((r) => r.experimentCode?.includes(experimentCode))
-    if (formulaName) list = list.filter((r) => r.formulaName?.includes(formulaName))
-    if (experimenterId) list = list.filter((r) => {
-      const exp = mockExperiments.find((e) => e.id === r.experimentId)
-      return exp?.experimenterId === Number(experimenterId)
-    })
+  [/\/results$/, (_, p) => paginate(mockResults, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
+
+  // Materials - inventory
+  [/\/materials\/inventory\/(\d+)$/, (url) => {
+    const id = Number(url.match(/\/materials\/inventory\/(\d+)/)?.[1])
+    return ok(mockInventory.find((i) => i.id === id) ?? mockInventory[0])
+  }],
+  [/\/materials\/inventory$/, (_, p) => {
+    const ingredientId = p.get('ingredientId')
+    const list = ingredientId ? mockInventory.filter((i) => i.ingredientId === Number(ingredientId)) : mockInventory
+    return ok(list)
+  }],
+  // Materials - transactions
+  [/\/materials\/transactions$/, (_, p) => {
+    const ingredientId = p.get('ingredientId')
+    const list = ingredientId ? mockTransactions.filter((t) => t.ingredientId === Number(ingredientId)) : mockTransactions
+    return ok([...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+  }],
+  // Materials - traceability
+  [/\/materials\/traceability\/(\d+)$/, (url) => {
+    const id = Number(url.match(/\/materials\/traceability\/(\d+)/)?.[1])
+    const ingredient = mockIngredients.find((i) => i.id === id)
+    const usedInFormulas = mockFormulas
+      .filter((f) => f.ingredients.some((i) => i.ingredientId === id))
+      .map((f) => {
+        const ing = f.ingredients.find((i) => i.ingredientId === id)!
+        return { formulaId: f.id, formulaCode: f.code, formulaName: f.name, ratio: ing.ratio, unit: ing.unit }
+      })
+    const formulaIds = usedInFormulas.map((f) => f.formulaId)
+    const usedInExperiments = mockExperiments
+      .filter((e) => formulaIds.includes(e.formulaId))
+      .map((e) => ({ experimentId: e.id, experimentCode: e.code, formulaName: e.formulaName ?? '', experimentDate: e.experimentDate }))
+    return ok({ ingredientId: id, ingredientName: ingredient?.name ?? '', usedInFormulas, usedInExperiments })
+  }],
+
+  // Suppliers
+  [/\/suppliers\/(\d+)\/evaluations$/, (url) => {
+    const id = Number(url.match(/\/suppliers\/(\d+)/)?.[1])
+    return ok(mockEvaluations.filter((e) => e.supplierId === id))
+  }],
+  [/\/suppliers\/(\d+)$/, (url) => {
+    const id = Number(url.match(/\/suppliers\/(\d+)/)?.[1])
+    return ok(mockSuppliers.find((s) => s.id === id) ?? mockSuppliers[0])
+  }],
+  [/\/suppliers$/, (_, p) => {
+    let list = [...mockSuppliers]
+    const name = p.get('name'); const status = p.get('status')
+    if (name) list = list.filter((s) => s.name.includes(name))
+    if (status) list = list.filter((s) => s.status === status)
+    return paginate(list, Number(p.get('page') || 1), Number(p.get('limit') || 20))
+  }],
+  [/\/evaluations\/(\d+)$/, (url) => {
+    const id = Number(url.match(/\/evaluations\/(\d+)/)?.[1])
+    return ok(mockEvaluations.find((e) => e.id === id) ?? mockEvaluations[0])
+  }],
+  [/\/evaluations$/, (_, p) => {
+    let list = [...mockEvaluations]
+    const supplierId = p.get('supplierId')
+    if (supplierId) list = list.filter((e) => e.supplierId === Number(supplierId))
+    return ok([...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+  }],
+  [/\/purchases\/(\d+)$/, (url) => {
+    const id = Number(url.match(/\/purchases\/(\d+)/)?.[1])
+    return ok(mockPurchaseRecords.find((r) => r.id === id) ?? mockPurchaseRecords[0])
+  }],
+  [/\/purchases$/, (_, p) => {
+    let list = [...mockPurchaseRecords]
+    const supplierId = p.get('supplierId'); const status = p.get('status')
+    const ingredientName = p.get('ingredientName')
+    const dateFrom = p.get('dateFrom'); const dateTo = p.get('dateTo')
+    if (supplierId) list = list.filter((r) => r.supplierId === Number(supplierId))
     if (status) list = list.filter((r) => r.status === status)
-    if (dateFrom) list = list.filter((r) => r.createdAt >= dateFrom)
-    if (dateTo) list = list.filter((r) => r.createdAt <= dateTo + 'T23:59:59Z')
+    if (ingredientName) list = list.filter((r) => r.ingredientName.includes(ingredientName))
+    if (dateFrom) list = list.filter((r) => r.purchaseDate >= dateFrom)
+    if (dateTo) list = list.filter((r) => r.purchaseDate <= dateTo)
     return paginate(list, Number(p.get('page') || 1), Number(p.get('limit') || 20))
   }],
 
-  // Reports — 4.1 實驗紀錄報表
-  [/\/reports\/experiments$/, (_, p) => {
-    let list = [...mockExperiments]
-    const formulaId = p.get('formulaId')
-    const experimenterId = p.get('experimenterId')
-    const dateFrom = p.get('dateFrom')
-    const dateTo = p.get('dateTo')
-    if (formulaId) list = list.filter((e) => e.formulaId === Number(formulaId))
-    if (experimenterId) list = list.filter((e) => e.experimenterId === Number(experimenterId))
-    if (dateFrom) list = list.filter((e) => e.experimentDate >= dateFrom)
-    if (dateTo) list = list.filter((e) => e.experimentDate <= dateTo + 'T23:59:59Z')
-    return paginate(list, Number(p.get('page') || 1), Number(p.get('limit') || 999))
+  // Risks
+  [/\/risks\/formulas\/(\d+)$/, (url) => {
+    const id = Number(url.match(/\/risks\/formulas\/(\d+)/)?.[1])
+    return ok(mockFormulaRisks.find((r) => r.id === id) ?? mockFormulaRisks[0])
   }],
-
-  // Reports — 4.2 配方使用報表
-  [/\/reports\/formulas\/usage$/, (_, p) => {
-    let list = [...mockFormulaUsage]
-    const productType = p.get('productType')
-    const formulaId = p.get('formulaId')
-    if (productType) list = list.filter((f) => f.productType === productType)
-    if (formulaId) list = list.filter((f) => f.formulaId === Number(formulaId))
+  [/\/risks\/formulas$/, (_, p) => {
+    let list = [...mockFormulaRisks]
+    const level = p.get('riskLevel')
+    if (level) list = list.filter((r) => r.riskLevel === level)
     return ok(list)
   }],
-
-  // Reports — 4.3 實驗結果統計
-  [/\/reports\/results\/summary$/, (_, p) => {
-    let list = [...mockResults]
-    const status = p.get('status')
-    const formulaName = p.get('formulaName')
-    const experimenterId = p.get('experimenterId')
-    const dateFrom = p.get('dateFrom')
-    const dateTo = p.get('dateTo')
-    if (status) list = list.filter((r) => r.status === status)
-    if (formulaName) list = list.filter((r) => r.formulaName?.includes(formulaName))
-    if (experimenterId) list = list.filter((r) => {
-      const exp = mockExperiments.find((e) => e.id === r.experimentId)
-      return exp?.experimenterId === Number(experimenterId)
-    })
-    if (dateFrom) list = list.filter((r) => r.createdAt >= dateFrom)
-    if (dateTo) list = list.filter((r) => r.createdAt <= dateTo + 'T23:59:59Z')
+  [/\/risks\/ingredients\/(\d+)$/, (url) => {
+    const id = Number(url.match(/\/risks\/ingredients\/(\d+)/)?.[1])
+    return ok(mockIngredientRisks.find((r) => r.id === id) ?? mockIngredientRisks[0])
+  }],
+  [/\/risks\/ingredients$/, (_, p) => {
+    let list = [...mockIngredientRisks]
+    const level = p.get('riskLevel')
+    if (level) list = list.filter((r) => r.riskLevel === level)
+    return ok(list)
+  }],
+  [/\/risks\/events\/(\d+)$/, (url) => {
+    const id = Number(url.match(/\/risks\/events\/(\d+)/)?.[1])
+    return ok(mockAbnormalEvents.find((e) => e.id === id) ?? mockAbnormalEvents[0])
+  }],
+  [/\/risks\/events$/, (_, p) => {
+    let list = [...mockAbnormalEvents]
+    const status = p.get('status'); const severity = p.get('severity'); const type = p.get('eventType')
+    if (status) list = list.filter((e) => e.status === status)
+    if (severity) list = list.filter((e) => e.severity === severity)
+    if (type) list = list.filter((e) => e.eventType === type)
+    return paginate(list, Number(p.get('page') || 1), Number(p.get('limit') || 20))
+  }],
+  [/\/risks\/report$/, () => {
+    const allEvents = mockAbnormalEvents
+    const formulaRiskDist = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 }
+    mockFormulaRisks.forEach((r) => { formulaRiskDist[r.riskLevel]++ })
+    const ingRiskDist = { LOW: 0, MEDIUM: 0, HIGH: 0, CRITICAL: 0 }
+    mockIngredientRisks.forEach((r) => { ingRiskDist[r.riskLevel]++ })
     return ok({
-      total: list.length,
-      successCount: list.filter((r) => r.status === 'SUCCESS').length,
-      failedCount: list.filter((r) => r.status === 'FAILED').length,
-      observingCount: list.filter((r) => r.status === 'OBSERVING').length,
-      needsAdjustCount: list.filter((r) => r.status === 'NEEDS_ADJUST').length,
-      successRate: list.length
-        ? `${Math.round((list.filter((r) => r.status === 'SUCCESS').length / list.length) * 100)}%`
-        : '0%',
-      detail: list,
+      formulaRiskDist, ingRiskDist,
+      eventTotal: allEvents.length,
+      eventOpen: allEvents.filter((e) => e.status === 'OPEN').length,
+      eventInvestigating: allEvents.filter((e) => e.status === 'INVESTIGATING').length,
+      eventResolved: allEvents.filter((e) => e.status === 'RESOLVED').length,
+      eventClosed: allEvents.filter((e) => e.status === 'CLOSED').length,
+      recentEvents: [...allEvents].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)).slice(0, 5),
     })
   }],
 
-  // Reports — 4.4 條件式查詢
-  [/\/reports\/custom$/, (_, p) => {
-    const type = p.get('type') ?? 'experiment'
-    const formulaId = p.get('formulaId')
-    const experimenterId = p.get('experimenterId')
-    const status = p.get('status')
-    const dateFrom = p.get('dateFrom')
-    const dateTo = p.get('dateTo')
-
-    if (type === 'formula') {
-      let list = [...mockFormulaUsage]
-      if (formulaId) list = list.filter((f) => f.formulaId === Number(formulaId))
-      return ok(list)
-    }
-
-    if (type === 'result') {
-      let list = [...mockResults]
-      if (status) list = list.filter((r) => r.status === status)
-      if (experimenterId) list = list.filter((r) => {
-        const exp = mockExperiments.find((e) => e.id === r.experimentId)
-        return exp?.experimenterId === Number(experimenterId)
-      })
-      if (formulaId) list = list.filter((r) => {
-        const exp = mockExperiments.find((e) => e.id === r.experimentId)
-        return exp?.formulaId === Number(formulaId)
-      })
-      if (dateFrom) list = list.filter((r) => r.createdAt >= dateFrom)
-      if (dateTo) list = list.filter((r) => r.createdAt <= dateTo + 'T23:59:59Z')
-      return ok(list)
-    }
-
-    // default: experiment
-    let list = [...mockExperiments]
-    if (formulaId) list = list.filter((e) => e.formulaId === Number(formulaId))
-    if (experimenterId) list = list.filter((e) => e.experimenterId === Number(experimenterId))
-    if (dateFrom) list = list.filter((e) => e.experimentDate >= dateFrom)
-    if (dateTo) list = list.filter((e) => e.experimentDate <= dateTo + 'T23:59:59Z')
-    return ok(list)
-  }],
+  // Reports
+  [/\/reports\/results\/summary$/, () => ok(mockResultSummary)],
+  [/\/reports\/formulas\/usage$/, () => ok(mockFormulaUsage)],
+  [/\/reports\/experiments$/, (_, p) => paginate(mockExperiments, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
+  [/\/reports\/custom$/, (_, p) => paginate(mockExperiments, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
 ]
 
 export function resolveMock(fullUrl: string): unknown | null {
@@ -198,4 +222,232 @@ export function resolveMock(fullUrl: string): unknown | null {
     if (pattern.test(path)) return handler(path, params)
   }
   return null
+}
+
+export function resolveWriteMock(url: string, method: string, body: unknown): unknown {
+  const m = method.toUpperCase()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data = body as any
+
+  // Ingredients
+  if (m === 'POST' && /\/ingredients$/.test(url)) {
+    const newId = Math.max(0, ...mockIngredients.map((i) => i.id)) + 1
+    const item = { id: newId, ...data }
+    mockIngredients.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/ingredients\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/ingredients\/(\d+)/)?.[1])
+    const idx = mockIngredients.findIndex((i) => i.id === id)
+    if (idx !== -1) { Object.assign(mockIngredients[idx], data); return ok(mockIngredients[idx]) }
+  }
+  if (m === 'DELETE' && /\/ingredients\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/ingredients\/(\d+)/)?.[1])
+    const idx = mockIngredients.findIndex((i) => i.id === id)
+    if (idx !== -1) mockIngredients.splice(idx, 1)
+    return ok({})
+  }
+
+  // Formulas
+  if (m === 'POST' && /\/formulas$/.test(url)) {
+    const newId = Math.max(0, ...mockFormulas.map((f) => f.id)) + 1
+    const now = new Date().toISOString()
+    const item = { id: newId, status: 'ACTIVE', currentVersion: 1, createdAt: now, updatedAt: now, ...data }
+    mockFormulas.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/formulas\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/formulas\/(\d+)/)?.[1])
+    const idx = mockFormulas.findIndex((f) => f.id === id)
+    if (idx !== -1) {
+      Object.assign(mockFormulas[idx], data, { updatedAt: new Date().toISOString(), currentVersion: mockFormulas[idx].currentVersion + 1 })
+      return ok(mockFormulas[idx])
+    }
+  }
+  if (m === 'DELETE' && /\/formulas\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/formulas\/(\d+)/)?.[1])
+    const idx = mockFormulas.findIndex((f) => f.id === id)
+    if (idx !== -1) mockFormulas.splice(idx, 1)
+    return ok({})
+  }
+
+  // Experiments
+  if (m === 'POST' && /\/experiments$/.test(url)) {
+    const newId = Math.max(0, ...mockExperiments.map((e) => e.id)) + 1
+    const formula = mockFormulas.find((f) => f.id === data.formulaId)
+    const now = new Date().toISOString()
+    const item = { id: newId, formulaName: formula?.name ?? '', experimenterName: mockUsers[0].username, steps: [], attachments: [], samples: [], createdAt: now, ...data }
+    mockExperiments.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/experiments\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/experiments\/(\d+)/)?.[1])
+    const idx = mockExperiments.findIndex((e) => e.id === id)
+    if (idx !== -1) { Object.assign(mockExperiments[idx], data); return ok(mockExperiments[idx]) }
+  }
+  if (m === 'DELETE' && /\/experiments\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/experiments\/(\d+)/)?.[1])
+    const idx = mockExperiments.findIndex((e) => e.id === id)
+    if (idx !== -1) mockExperiments.splice(idx, 1)
+    return ok({})
+  }
+
+  // Materials inventory write
+  if (m === 'POST' && /\/materials\/inventory$/.test(url)) {
+    const newId = Math.max(0, ...mockInventory.map((i) => i.id)) + 1
+    const ingredient = mockIngredients.find((i) => i.id === data.ingredientId)
+    const item = { id: newId, ingredientName: ingredient?.name ?? '', unit: ingredient?.unit ?? '', lastUpdated: new Date().toISOString(), ...data }
+    mockInventory.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/materials\/inventory\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/materials\/inventory\/(\d+)/)?.[1])
+    const idx = mockInventory.findIndex((i) => i.id === id)
+    if (idx !== -1) {
+      Object.assign(mockInventory[idx], data, { lastUpdated: new Date().toISOString() })
+      return ok(mockInventory[idx])
+    }
+  }
+  if (m === 'DELETE' && /\/materials\/inventory\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/materials\/inventory\/(\d+)/)?.[1])
+    const idx = mockInventory.findIndex((i) => i.id === id)
+    if (idx !== -1) mockInventory.splice(idx, 1)
+    return ok({})
+  }
+  if (m === 'POST' && /\/materials\/inventory\/(\d+)\/adjust$/.test(url)) {
+    const id = Number(url.match(/\/materials\/inventory\/(\d+)/)?.[1])
+    const inv = mockInventory.find((i) => i.id === id)
+    if (inv) {
+      const qty = Number(data.quantity)
+      if (data.transactionType === 'IN') inv.currentStock += qty
+      else if (data.transactionType === 'OUT') inv.currentStock = Math.max(0, inv.currentStock - qty)
+      else inv.currentStock = qty
+      inv.lastUpdated = new Date().toISOString()
+      const newTxId = Math.max(0, ...mockTransactions.map((t) => t.id)) + 1
+      const tx = { id: newTxId, ingredientId: inv.ingredientId, ingredientName: inv.ingredientName, unit: inv.unit, operator: mockUsers[0].username, createdAt: new Date().toISOString(), ...data }
+      mockTransactions.push(tx)
+      return ok(inv)
+    }
+  }
+
+  // Suppliers
+  if (m === 'POST' && /\/suppliers$/.test(url)) {
+    const newId = Math.max(0, ...mockSuppliers.map((s) => s.id)) + 1
+    const now = new Date().toISOString()
+    const item = { id: newId, status: 'ACTIVE', createdAt: now, updatedAt: now, ...data }
+    mockSuppliers.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/suppliers\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/suppliers\/(\d+)/)?.[1])
+    const idx = mockSuppliers.findIndex((s) => s.id === id)
+    if (idx !== -1) { Object.assign(mockSuppliers[idx], data, { updatedAt: new Date().toISOString() }); return ok(mockSuppliers[idx]) }
+  }
+  if (m === 'DELETE' && /\/suppliers\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/suppliers\/(\d+)/)?.[1])
+    const idx = mockSuppliers.findIndex((s) => s.id === id)
+    if (idx !== -1) mockSuppliers.splice(idx, 1)
+    return ok({})
+  }
+  if (m === 'POST' && /\/evaluations$/.test(url)) {
+    const newId = Math.max(0, ...mockEvaluations.map((e) => e.id)) + 1
+    const supplier = mockSuppliers.find((s) => s.id === data.supplierId)
+    const total = Math.round((data.qualityScore + data.deliveryScore + data.priceScore + data.serviceScore) / 4)
+    const level = total >= 85 ? 'A' : total >= 70 ? 'B' : total >= 55 ? 'C' : 'D'
+    const item = { id: newId, supplierName: supplier?.name ?? '', totalScore: total, level, evaluator: mockUsers[0].username, createdAt: new Date().toISOString(), ...data }
+    mockEvaluations.push(item)
+    return ok(item)
+  }
+  if (m === 'POST' && /\/purchases$/.test(url)) {
+    const newId = Math.max(0, ...mockPurchaseRecords.map((r) => r.id)) + 1
+    const supplier = mockSuppliers.find((s) => s.id === data.supplierId)
+    const ingredient = mockIngredients.find((i) => i.id === data.ingredientId)
+    const total = Number((data.quantity * data.unitPrice).toFixed(2))
+    const item = { id: newId, supplierName: supplier?.name ?? '', ingredientName: ingredient?.name ?? '', unit: ingredient?.unit ?? '', totalAmount: total, status: 'PENDING', createdAt: new Date().toISOString(), ...data }
+    mockPurchaseRecords.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/purchases\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/purchases\/(\d+)/)?.[1])
+    const idx = mockPurchaseRecords.findIndex((r) => r.id === id)
+    if (idx !== -1) { Object.assign(mockPurchaseRecords[idx], data); return ok(mockPurchaseRecords[idx]) }
+  }
+
+  // Risks
+  if (m === 'POST' && /\/risks\/formulas$/.test(url)) {
+    const newId = Math.max(0, ...mockFormulaRisks.map((r) => r.id)) + 1
+    const formula = mockFormulas.find((f) => f.id === data.formulaId)
+    const item = { id: newId, formulaCode: formula?.code ?? '', formulaName: formula?.name ?? '', assessedBy: mockUsers[0].username, assessedAt: new Date().toISOString(), ...data }
+    mockFormulaRisks.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/risks\/formulas\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/risks\/formulas\/(\d+)/)?.[1])
+    const idx = mockFormulaRisks.findIndex((r) => r.id === id)
+    if (idx !== -1) { Object.assign(mockFormulaRisks[idx], data); return ok(mockFormulaRisks[idx]) }
+  }
+  if (m === 'DELETE' && /\/risks\/formulas\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/risks\/formulas\/(\d+)/)?.[1])
+    const idx = mockFormulaRisks.findIndex((r) => r.id === id)
+    if (idx !== -1) mockFormulaRisks.splice(idx, 1)
+    return ok({})
+  }
+  if (m === 'POST' && /\/risks\/ingredients$/.test(url)) {
+    const newId = Math.max(0, ...mockIngredientRisks.map((r) => r.id)) + 1
+    const ingredient = mockIngredients.find((i) => i.id === data.ingredientId)
+    const item = { id: newId, ingredientName: ingredient?.name ?? '', assessedBy: mockUsers[0].username, assessedAt: new Date().toISOString(), ...data }
+    mockIngredientRisks.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/risks\/ingredients\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/risks\/ingredients\/(\d+)/)?.[1])
+    const idx = mockIngredientRisks.findIndex((r) => r.id === id)
+    if (idx !== -1) { Object.assign(mockIngredientRisks[idx], data); return ok(mockIngredientRisks[idx]) }
+  }
+  if (m === 'DELETE' && /\/risks\/ingredients\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/risks\/ingredients\/(\d+)/)?.[1])
+    const idx = mockIngredientRisks.findIndex((r) => r.id === id)
+    if (idx !== -1) mockIngredientRisks.splice(idx, 1)
+    return ok({})
+  }
+  if (m === 'POST' && /\/risks\/events$/.test(url)) {
+    const newId = Math.max(0, ...mockAbnormalEvents.map((e) => e.id)) + 1
+    const eventCode = `EVT-${new Date().getFullYear()}-${String(newId).padStart(3, '0')}`
+    const item = { id: newId, eventCode, status: 'OPEN', reportedBy: mockUsers[0].username, createdAt: new Date().toISOString(), ...data }
+    mockAbnormalEvents.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/risks\/events\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/risks\/events\/(\d+)/)?.[1])
+    const idx = mockAbnormalEvents.findIndex((e) => e.id === id)
+    if (idx !== -1) {
+      if (data.status === 'RESOLVED' && !mockAbnormalEvents[idx].resolvedAt) data.resolvedAt = new Date().toISOString()
+      Object.assign(mockAbnormalEvents[idx], data)
+      return ok(mockAbnormalEvents[idx])
+    }
+  }
+  if (m === 'DELETE' && /\/risks\/events\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/risks\/events\/(\d+)/)?.[1])
+    const idx = mockAbnormalEvents.findIndex((e) => e.id === id)
+    if (idx !== -1) mockAbnormalEvents.splice(idx, 1)
+    return ok({})
+  }
+
+  // Experiment results
+  if ((m === 'POST' || m === 'PUT') && /\/experiments\/(\d+)\/result$/.test(url)) {
+    const expId = Number(url.match(/\/experiments\/(\d+)/)?.[1])
+    const exp = mockExperiments.find((e) => e.id === expId)
+    const now = new Date().toISOString()
+    const existing = mockResults.findIndex((r) => r.experimentId === expId)
+    if (existing !== -1) {
+      Object.assign(mockResults[existing], data, { updatedAt: now })
+      return ok(mockResults[existing])
+    }
+    const newId = Math.max(0, ...mockResults.map((r) => r.id)) + 1
+    const item = { id: newId, experimentId: expId, experimentCode: exp?.code ?? '', attachments: [], createdAt: now, updatedAt: now, ...data }
+    mockResults.push(item)
+    return ok(item)
+  }
+
+  return ok({})
 }

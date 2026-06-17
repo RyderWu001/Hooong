@@ -1,25 +1,20 @@
 import { useEffect, useState } from 'react'
 import {
-  Card, Table, Button, Tag, Select, Switch, Modal,
-  Form, Input, Space, Popconfirm, App,
+  Card, Table, Button, Select, Switch, Modal,
+  Form, Input, Space, message, Popconfirm,
 } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
-import { getUsers, updateUser, adminRegister } from '../../api/auth'
+import { getUsers, updateUser, register } from '../../api/auth'
 import type { User, Role } from '../../types'
 
-const ROLE_COLOR: Record<Role, string> = {
-  ADMIN: 'red', LAB_STAFF: 'green', MANAGER: 'blue',
-}
 const ROLE_LABEL: Record<Role, string> = {
   ADMIN: '管理員', LAB_STAFF: '實驗室人員', MANAGER: '經理',
 }
 
 export default function UserManagementPage() {
-  const { message } = App.useApp()
   const [data, setData] = useState<User[]>([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
   const [form] = Form.useForm()
 
   const fetchData = async () => {
@@ -49,7 +44,7 @@ export default function UserManagementPage() {
   const handleActiveChange = async (id: number, isActive: boolean) => {
     try {
       await updateUser(id, { isActive })
-      message.success(isActive ? '帳號已啟用' : '帳號已停用')
+      message.success('狀態已更新')
       fetchData()
     } catch {
       message.error('更新失敗')
@@ -59,33 +54,20 @@ export default function UserManagementPage() {
   const handleRegister = async (values: {
     username: string; email: string; password: string; role: Role
   }) => {
-    setSubmitting(true)
     try {
-      await adminRegister(values)
-      message.success(`已建立帳號：${values.username}`)
+      await register(values)
+      message.success('使用者已建立')
       setModalOpen(false)
       form.resetFields()
       fetchData()
-    } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status
-      if (status === 409) {
-        message.error('此 Email 已被使用')
-      } else {
-        message.error('建立失敗，請稍後再試')
-      }
-    } finally {
-      setSubmitting(false)
+    } catch {
+      message.error('建立失敗，Email 可能已存在')
     }
-  }
-
-  const handleCancel = () => {
-    setModalOpen(false)
-    form.resetFields()
   }
 
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: '帳號名稱', dataIndex: 'username', key: 'username' },
+    { title: '帳號', dataIndex: 'username', key: 'username' },
     { title: 'Email', dataIndex: 'email', key: 'email' },
     {
       title: '角色',
@@ -102,23 +84,15 @@ export default function UserManagementPage() {
       ),
     },
     {
-      title: '角色標籤',
-      key: 'roleTag',
-      dataIndex: 'role',
-      render: (role: Role) => <Tag color={ROLE_COLOR[role]}>{ROLE_LABEL[role]}</Tag>,
-    },
-    {
-      title: '帳號狀態',
+      title: '狀態',
       dataIndex: 'isActive',
       key: 'isActive',
       render: (active: boolean, record: User) => (
         <Popconfirm
-          title={`確定${active ? '停用' : '啟用'}「${record.username}」的帳號？`}
+          title={`確定${active ? '停用' : '啟用'}此帳號？`}
           onConfirm={() => handleActiveChange(record.id, !active)}
-          okText="確定"
-          cancelText="取消"
         >
-          <Switch checked={active} checkedChildren="啟用" unCheckedChildren="停用" />
+          <Switch checked={active} />
         </Popconfirm>
       ),
     },
@@ -133,64 +107,25 @@ export default function UserManagementPage() {
         </Button>
       }
     >
-      <Table rowKey="id" loading={loading} columns={columns} dataSource={data}
-        pagination={{ showTotal: (t) => `共 ${t} 位使用者` }} />
+      <Table rowKey="id" loading={loading} columns={columns} dataSource={data} />
 
-      <Modal
-        title="新增使用者"
-        open={modalOpen}
-        onCancel={handleCancel}
-        footer={null}
-        destroyOnClose
-      >
-        <Form form={form} layout="vertical" onFinish={handleRegister} style={{ marginTop: 16 }}>
-          <Form.Item name="username" label="帳號名稱" rules={[{ required: true, message: '請輸入帳號名稱' }]}>
-            <Input placeholder="例：王大明" />
+      <Modal title="新增使用者" open={modalOpen} onCancel={() => setModalOpen(false)} footer={null}>
+        <Form form={form} layout="vertical" onFinish={handleRegister}>
+          <Form.Item name="username" label="帳號名稱" rules={[{ required: true }]}>
+            <Input />
           </Form.Item>
-
-          <Form.Item
-            name="email"
-            label="Email"
-            rules={[{ required: true, type: 'email', message: '請輸入有效的 Email' }]}
-          >
-            <Input placeholder="example@company.com" />
+          <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
+            <Input />
           </Form.Item>
-
-          <Form.Item
-            name="password"
-            label="初始密碼"
-            rules={[{ required: true, min: 8, message: '密碼至少 8 個字元' }]}
-          >
-            <Input.Password placeholder="至少 8 個字元" />
+          <Form.Item name="password" label="初始密碼" rules={[{ required: true, min: 8 }]}>
+            <Input.Password />
           </Form.Item>
-
-          <Form.Item
-            name="confirmPassword"
-            label="確認密碼"
-            dependencies={['password']}
-            rules={[
-              { required: true, message: '請再次輸入密碼' },
-              ({ getFieldValue }) => ({
-                validator(_, value) {
-                  if (!value || getFieldValue('password') === value) return Promise.resolve()
-                  return Promise.reject(new Error('兩次密碼不一致'))
-                },
-              }),
-            ]}
-          >
-            <Input.Password placeholder="再次輸入密碼" />
+          <Form.Item name="role" label="角色" rules={[{ required: true }]}>
+            <Select options={Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }))} />
           </Form.Item>
-
-          <Form.Item name="role" label="角色" rules={[{ required: true, message: '請選擇角色' }]}>
-            <Select
-              placeholder="請選擇角色"
-              options={Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }))}
-            />
-          </Form.Item>
-
-          <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-            <Button onClick={handleCancel}>取消</Button>
-            <Button type="primary" htmlType="submit" loading={submitting}>建立帳號</Button>
+          <Space>
+            <Button type="primary" htmlType="submit">建立</Button>
+            <Button onClick={() => setModalOpen(false)}>取消</Button>
           </Space>
         </Form>
       </Modal>
