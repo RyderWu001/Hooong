@@ -3,23 +3,7 @@ import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate, Link } from 'react-router-dom'
 import { login } from '../../api/auth'
 import { useAuthStore } from '../../stores/authStore'
-import type { User } from '../../types'
 import styles from './LoginPage.module.css'
-
-const MOCK_ACCOUNTS: Record<string, { password: string; user: User }> = {
-  'admin@test.com': {
-    password: 'admin123',
-    user: { id: 1, username: '管理員', email: 'admin@test.com', role: 'ADMIN', isActive: true },
-  },
-  'lab@test.com': {
-    password: 'lab123',
-    user: { id: 2, username: '實驗員', email: 'lab@test.com', role: 'LAB_STAFF', isActive: true },
-  },
-  'manager@test.com': {
-    password: 'manager123',
-    user: { id: 3, username: '經理', email: 'manager@test.com', role: 'MANAGER', isActive: true },
-  },
-}
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -27,12 +11,6 @@ export default function LoginPage() {
   const [form] = Form.useForm()
 
   const handleSubmit = async (values: { email: string; password: string }) => {
-    const mock = MOCK_ACCOUNTS[values.email]
-    if (mock && mock.password === values.password) {
-      setAuth('mock-token', mock.user)
-      navigate('/')
-      return
-    }
     try {
       const res = await login(values.email, values.password)
       const { token, user } = res.data.data
@@ -70,11 +48,8 @@ export default function LoginPage() {
           </div>
         </Form>
 
-        <Divider plain>測試帳號</Divider>
-        <div className={styles.mockHint}>
-          <div>管理員：admin@test.com / admin123</div>
-          <div>實驗室人員：lab@test.com / lab123</div>
-          <div>經理：manager@test.com / manager123</div>
+        <div className={styles.registerLink}>
+          還沒有帳號？<Link to="/register">立即註冊</Link>
         </div>
       </Card>
     </div>

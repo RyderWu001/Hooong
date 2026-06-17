@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import path from 'path'
 import express from 'express'
 import cors from 'cors'
 import authRouter from './routes/auth'
@@ -8,12 +9,16 @@ import formulasRouter from './routes/formulas'
 import experimentsRouter from './routes/experiments'
 import resultsRouter from './routes/results'
 import reportsRouter from './routes/reports'
+import materialsRouter from './routes/materials'
+import { suppliersRouter, evaluationsRouter, purchasesRouter } from './routes/suppliers'
+import risksRouter from './routes/risks'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 3000)
 
 app.use(cors())
 app.use(express.json())
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')))
 
 app.use('/api/v1/auth', authRouter)
 app.use('/api/v1/users', usersRouter)
@@ -22,8 +27,28 @@ app.use('/api/v1/formulas', formulasRouter)
 app.use('/api/v1/experiments', experimentsRouter)
 app.use('/api/v1/results', resultsRouter)
 app.use('/api/v1/reports', reportsRouter)
+app.use('/api/v1/materials', materialsRouter)
+app.use('/api/v1/suppliers', suppliersRouter)
+app.use('/api/v1/evaluations', evaluationsRouter)
+app.use('/api/v1/purchases', purchasesRouter)
+app.use('/api/v1/risks', risksRouter)
 
 app.get('/api/v1/health', (_, res) => res.json({ status: 'ok' }))
+
+// 全域錯誤處理
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const e = err as { code?: string; message?: string }
+  if (e.code === 'P2003' || e.code === 'P2014') {
+    res.status(409).json({ success: false, error: { code: 'FOREIGN_KEY', message: '此資料仍被其他紀錄引用，無法刪除' } })
+    return
+  }
+  if (e.code === 'P2025') {
+    res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到資料' } })
+    return
+  }
+  console.error(err)
+  res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: '伺服器錯誤' } })
+})
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`)

@@ -40,6 +40,17 @@ router.put('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
   res.json({ success: true, data: user })
 })
 
+// PATCH /users/:id
+router.patch('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+  const { username, role, isActive } = req.body
+  const user = await prisma.user.update({
+    where: { id: Number(req.params.id) },
+    data: { username, role, isActive },
+    select: { id: true, username: true, email: true, role: true, isActive: true },
+  })
+  res.json({ success: true, data: user })
+})
+
 // PUT /users/:id/password
 router.put('/:id/password', requireAuth, async (req: AuthRequest, res) => {
   const targetId = Number(req.params.id)

@@ -9,24 +9,34 @@ datasource db {
 }
 
 model User {
-  id          Int          @id @default(autoincrement())
-  username    String
-  email       String       @unique
-  password    String
-  role        String       @default("LAB_STAFF")
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  experiments Experiment[] @relation("ExperimenterRelation")
-  versions    FormulaVersion[]
+  id                  Int                  @id @default(autoincrement())
+  username            String
+  email               String               @unique
+  password            String
+  role                String               @default("LAB_STAFF")
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  experiments         Experiment[]         @relation("ExperimenterRelation")
+  versions            FormulaVersion[]
+  transactions        MaterialTransaction[]
+  evaluations         SupplierEvaluation[]
+  formulaRisks        FormulaRisk[]
+  ingredientRisks     IngredientRisk[]
+  reportedEvents      AbnormalEvent[]      @relation("AbnormalEventReporter")
+  resolvedEvents      AbnormalEvent[]      @relation("AbnormalEventResolver")
 }
 
 model Ingredient {
-  id          Int                  @id @default(autoincrement())
-  name        String
-  unit        String
-  description String               @default("")
-  createdAt   DateTime             @default(now())
-  formulaUses FormulaIngredient[]
+  id              Int                  @id @default(autoincrement())
+  name            String
+  unit            String
+  description     String               @default("")
+  createdAt       DateTime             @default(now())
+  formulaUses     FormulaIngredient[]
+  inventory       MaterialInventory?
+  purchases       PurchaseRecord[]
+  ingredientRisks IngredientRisk[]
+  abnormalEvents  AbnormalEvent[]
 }
 
 model Formula {
@@ -42,6 +52,8 @@ model Formula {
   ingredients    FormulaIngredient[]
   versions       FormulaVersion[]
   experiments    Experiment[]
+  risks          FormulaRisk[]
+  abnormalEvents AbnormalEvent[]
 }
 
 model FormulaIngredient {
@@ -81,6 +93,7 @@ model Experiment {
   attachments    Attachment[]
   samples        Sample[]
   result         ExperimentResult?
+  transactions   MaterialTransaction[]
 }
 
 model ExperimentStep {
@@ -130,4 +143,136 @@ model ExperimentResult {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   attachments    Attachment[]
+}
+
+// ── 原物料管理 ────────────────────────────────────────────────
+
+model MaterialInventory {
+  id           Int                   @id @default(autoincrement())
+  ingredient   Ingredient            @relation(fields: [ingredientId], references: [id])
+  ingredientId Int                   @unique
+  currentStock Float                 @default(0)
+  safetyStock  Float                 @default(0)
+  supplier     String                @default("")
+  expiryDate   DateTime?
+  lastUpdated  DateTime              @default(now()) @updatedAt
+  transactions MaterialTransaction[]
+}
+
+model MaterialTransaction {
+  id                    Int               @id @default(autoincrement())
+  inventory             MaterialInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  inventoryId           Int
+  transactionType       String
+  quantity              Float
+  relatedExperiment     Experiment?       @relation(fields: [relatedExperimentId], references: [id])
+  relatedExperimentId   Int?
+  operator              User              @relation(fields: [operatorId], references: [id])
+  operatorId            Int
+  note                  String            @default("")
+  createdAt             DateTime          @default(now())
+}
+
+// ── 供應商管理 ────────────────────────────────────────────────
+
+model Supplier {
+  id            Int                  @id @default(autoincrement())
+  code          String               @unique
+  name          String
+  contactPerson String               @default("")
+  phone         String               @default("")
+  email         String               @default("")
+  address       String               @default("")
+  supplyItems   String               @default("")
+  status        String               @default("ACTIVE")
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  evaluations   SupplierEvaluation[]
+  purchases     PurchaseRecord[]
+}
+
+model SupplierEvaluation {
+  id             Int      @id @default(autoincrement())
+  supplier       Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId     Int
+  evaluationDate DateTime
+  qualityScore   Float
+  deliveryScore  Float
+  priceScore     Float
+  serviceScore   Float
+  totalScore     Float
+  level          String
+  notes          String   @default("")
+  evaluator      User     @relation(fields: [evaluatorId], references: [id])
+  evaluatorId    Int
+  createdAt      DateTime @default(now())
+}
+
+model PurchaseRecord {
+  id           Int       @id @default(autoincrement())
+  supplier     Supplier  @relation(fields: [supplierId], references: [id])
+  supplierId   Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId Int
+  quantity     Float
+  unitPrice    Float
+  totalAmount  Float
+  purchaseDate DateTime
+  deliveryDate DateTime?
+  status       String    @default("PENDING")
+  notes        String    @default("")
+  createdAt    DateTime  @default(now())
+}
+
+// ── 風險管理 ──────────────────────────────────────────────────
+
+model FormulaRisk {
+  id          Int      @id @default(autoincrement())
+  formula     Formula  @relation(fields: [formulaId], references: [id])
+  formulaId   Int
+  riskLevel   String
+  riskType    String
+  description String   @default("")
+  mitigation  String   @default("")
+  assessedBy  User     @relation(fields: [assessedById], references: [id])
+  assessedById Int
+  assessedAt  DateTime @default(now())
+  nextReviewAt DateTime
+}
+
+model IngredientRisk {
+  id                  Int        @id @default(autoincrement())
+  ingredient          Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId        Int
+  riskLevel           String
+  riskType            String
+  hazardDescription   String     @default("")
+  safeHandling        String     @default("")
+  storageRequirements String     @default("")
+  assessedBy          User       @relation(fields: [assessedById], references: [id])
+  assessedById        Int
+  assessedAt          DateTime   @default(now())
+}
+
+model AbnormalEvent {
+  id                  Int        @id @default(autoincrement())
+  eventCode           String     @unique
+  title               String
+  description         String     @default("")
+  eventType           String
+  severity            String
+  status              String     @default("OPEN")
+  relatedFormula      Formula?   @relation(fields: [relatedFormulaId], references: [id])
+  relatedFormulaId    Int?
+  relatedIngredient   Ingredient? @relation(fields: [relatedIngredientId], references: [id])
+  relatedIngredientId Int?
+  occurredAt          DateTime
+  reportedBy          User       @relation("AbnormalEventReporter", fields: [reportedById], references: [id])
+  reportedById        Int
+  resolution          String     @default("")
+  resolvedAt          DateTime?
+  resolvedBy          User?      @relation("AbnormalEventResolver", fields: [resolvedById], references: [id])
+  resolvedById        Int?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 }

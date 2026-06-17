@@ -1,8 +1,23 @@
 import { Router } from 'express'
+import path from 'path'
+import fs from 'fs'
+import multer from 'multer'
 import prisma from '../db/client'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 
 const router = Router()
+
+const uploadsDir = path.join(__dirname, '../../../uploads')
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname)
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`)
+  },
+})
+const upload = multer({ storage })
 
 const expInclude = {
   formula: { select: { name: true } },
@@ -75,6 +90,14 @@ router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, r
   res.json({ success: true, data: formatExp(e) })
 })
 
+// PATCH /experiments/:id — Bug 3 fix: frontend uses PATCH for partial update
+router.patch('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+  const id = Number(req.params.id)
+  const { temperature, humidity, notes } = req.body
+  const e = await prisma.experiment.update({ where: { id }, data: { temperature, humidity, notes }, include: expInclude })
+  res.json({ success: true, data: formatExp(e) })
+})
+
 // DELETE /experiments/:id
 router.delete('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
   await prisma.experiment.delete({ where: { id: Number(req.params.id) } })
@@ -89,12 +112,25 @@ router.get('/:id/steps', requireAuth, async (req, res) => {
   res.json({ success: true, data: steps })
 })
 
+// POST /:id/steps — Bug 4 fix: accepts { steps: [...] } batch format
 router.post('/:id/steps', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
-  const { stepOrder, description } = req.body
-  const step = await prisma.experimentStep.create({ data: { experimentId: Number(req.params.id), stepOrder, description } })
-  res.status(201).json({ success: true, data: step })
+  const experimentId = Number(req.params.id)
+  const { steps, stepOrder, description } = req.body
+
+  if (Array.isArray(steps)) {
+    const created = await Promise.all(
+      steps.map((s: { stepOrder: number; description: string }) =>
+        prisma.experimentStep.create({ data: { experimentId, stepOrder: s.stepOrder, description: s.description } })
+      )
+    )
+    res.status(201).json({ success: true, data: created })
+  } else {
+    const step = await prisma.experimentStep.create({ data: { experimentId, stepOrder, description } })
+    res.status(201).json({ success: true, data: step })
+  }
 })
 
+// PUT /:id/steps — bulk update all steps
 router.put('/:id/steps', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const experimentId = Number(req.params.id)
   const steps: { id: number; stepOrder: number; description: string }[] = req.body.steps
@@ -103,15 +139,67 @@ router.put('/:id/steps', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (
   res.json({ success: true, data: updated })
 })
 
+// PATCH /:id/steps/:stepId — Bug 5 fix: update individual step
+router.patch('/:id/steps/:stepId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+  const { description } = req.body
+  const step = await prisma.experimentStep.update({
+    where: { id: Number(req.params.stepId) },
+    data: { description },
+  })
+  res.json({ success: true, data: step })
+})
+
 router.delete('/:id/steps/:stepId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   await prisma.experimentStep.delete({ where: { id: Number(req.params.stepId) } })
   res.json({ success: true, message: '已刪除' })
 })
 
-// ── Samples ──────────────────────────────────────────────────
+// ── Samples ── Bug 5 fix: full CRUD ─────────────────────────
 router.get('/:id/samples', requireAuth, async (req, res) => {
   const samples = await prisma.sample.findMany({ where: { experimentId: Number(req.params.id) } })
   res.json({ success: true, data: samples })
+})
+
+router.get('/:id/samples/:sampleId', requireAuth, async (req, res) => {
+  const s = await prisma.sample.findUnique({ where: { id: Number(req.params.sampleId) } })
+  if (!s) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到樣品' } }); return }
+  res.json({ success: true, data: s })
+})
+
+router.post('/:id/samples', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+  const { sampleCode, clientName, label, targetItem, sampleDate, notes } = req.body
+  const s = await prisma.sample.create({
+    data: {
+      experimentId: Number(req.params.id),
+      sampleCode, clientName: clientName ?? '', label: label ?? '',
+      targetItem: targetItem ?? '', sampleDate: new Date(sampleDate), notes: notes ?? '',
+    },
+  })
+  res.status(201).json({ success: true, data: s })
+})
+
+router.patch('/:id/samples/:sampleId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+  const { clientName, label, targetItem, notes } = req.body
+  const s = await prisma.sample.update({
+    where: { id: Number(req.params.sampleId) },
+    data: { clientName, label, targetItem, notes },
+  })
+  res.json({ success: true, data: s })
+})
+
+router.post('/:id/samples/:sampleId/photo', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+  if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
+  const photoUrl = `/uploads/${req.file.filename}`
+  const s = await prisma.sample.update({
+    where: { id: Number(req.params.sampleId) },
+    data: { photoUrl },
+  })
+  res.json({ success: true, data: s })
+})
+
+router.delete('/:id/samples/:sampleId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+  await prisma.sample.delete({ where: { id: Number(req.params.sampleId) } })
+  res.json({ success: true, message: '已刪除' })
 })
 
 // ── Result ───────────────────────────────────────────────────
@@ -144,10 +232,29 @@ router.put('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async 
   res.json({ success: true, data: r })
 })
 
-// ── Attachments ──────────────────────────────────────────────
+// ── Attachments ── Bug 5 fix: upload endpoints ────────────────
 router.get('/:id/attachments', requireAuth, async (req, res) => {
   const attachments = await prisma.attachment.findMany({ where: { experimentId: Number(req.params.id) } })
   res.json({ success: true, data: attachments })
+})
+
+router.post('/:id/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+  if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
+  const { fileType } = req.body
+  const a = await prisma.attachment.create({
+    data: {
+      experimentId: Number(req.params.id),
+      fileUrl: `/uploads/${req.file.filename}`,
+      fileType: fileType ?? 'image',
+      fileName: req.file.originalname,
+    },
+  })
+  res.status(201).json({ success: true, data: a })
+})
+
+router.delete('/:id/attachments/:attachmentId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+  await prisma.attachment.delete({ where: { id: Number(req.params.attachmentId) } })
+  res.json({ success: true, message: '已刪除' })
 })
 
 router.get('/:id/result/attachments', requireAuth, async (req, res) => {
@@ -155,6 +262,27 @@ router.get('/:id/result/attachments', requireAuth, async (req, res) => {
   if (!result) { res.json({ success: true, data: [] }); return }
   const attachments = await prisma.attachment.findMany({ where: { resultId: result.id } })
   res.json({ success: true, data: attachments })
+})
+
+router.post('/:id/result/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+  const result = await prisma.experimentResult.findUnique({ where: { experimentId: Number(req.params.id) } })
+  if (!result) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '尚未建立結果' } }); return }
+  if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
+  const { fileType } = req.body
+  const a = await prisma.attachment.create({
+    data: {
+      resultId: result.id,
+      fileUrl: `/uploads/${req.file.filename}`,
+      fileType: fileType ?? 'image',
+      fileName: req.file.originalname,
+    },
+  })
+  res.status(201).json({ success: true, data: a })
+})
+
+router.delete('/:id/result/attachments/:attachmentId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+  await prisma.attachment.delete({ where: { id: Number(req.params.attachmentId) } })
+  res.json({ success: true, message: '已刪除' })
 })
 
 export default router

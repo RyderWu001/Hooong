@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, NextFunction, Request, Response } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole } from '../middleware/auth'
 
@@ -32,9 +32,13 @@ router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, r
   res.json({ success: true, data: item })
 })
 
-router.delete('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
-  await prisma.ingredient.delete({ where: { id: Number(req.params.id) } })
-  res.json({ success: true, message: '已刪除' })
+router.delete('/:id', requireAuth, requireRole('ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await prisma.ingredient.delete({ where: { id: Number(req.params.id) } })
+    res.json({ success: true, message: '已刪除' })
+  } catch (err) {
+    next(err)
+  }
 })
 
 export default router

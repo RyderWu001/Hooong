@@ -24,8 +24,7 @@ router.post('/login', async (req, res) => {
   const token = signToken({ id: user.id, role: user.role, email: user.email })
   res.json({
     success: true,
-    token,
-    user: { id: user.id, username: user.username, email: user.email, role: user.role },
+    data: { token, user: { id: user.id, username: user.username, email: user.email, role: user.role } },
   })
 })
 
@@ -63,8 +62,7 @@ router.post('/register', async (req, res) => {
   const token = signToken({ id: user.id, role: user.role, email: user.email })
   res.status(201).json({
     success: true,
-    token,
-    user: { id: user.id, username: user.username, email: user.email, role: user.role },
+    data: { token, user: { id: user.id, username: user.username, email: user.email, role: user.role } },
   })
 })
 

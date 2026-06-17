@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Form, Input, Button, Card, Typography, App } from 'antd'
+import { Form, Input, Button, Card, Typography, message } from 'antd'
 import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
 import { useNavigate, Link } from 'react-router-dom'
 import { register } from '../../api/auth'
@@ -9,7 +9,6 @@ import styles from './LoginPage.module.css'
 export default function RegisterPage() {
   const navigate = useNavigate()
   const { setAuth } = useAuthStore()
-  const { message } = App.useApp()
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
 
@@ -17,7 +16,7 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       const res = await register(values)
-      const { token, user } = res.data
+      const { token, user } = res.data.data
       setAuth(token, user)
       message.success(`歡迎加入，${user.username}！`)
       navigate('/')

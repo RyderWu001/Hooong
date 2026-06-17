@@ -6,8 +6,11 @@ export const login = (email: string, password: string) =>
 
 export const logout = () => client.post('/auth/logout')
 
-export const register = (data: { username: string; email: string; password: string; role: Role }) =>
-  client.post('/auth/register', data)
+export const register = (data: { username: string; email: string; password: string }) =>
+  client.post<{ data: { token: string; user: User } }>('/auth/register', data)
+
+export const adminRegister = (data: { username: string; email: string; password: string; role: Role }) =>
+  client.post('/auth/admin/register', data)
 
 export const forgotPassword = (email: string) =>
   client.post('/auth/forgot-password', { email })

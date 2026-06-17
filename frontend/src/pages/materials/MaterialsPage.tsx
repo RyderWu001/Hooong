@@ -71,8 +71,9 @@ function IngredientTab() {
       await deleteIngredient(id)
       message.success('已刪除')
       load()
-    } catch {
-      message.error('刪除失敗')
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+      message.error(msg ?? '刪除失敗，此原料可能仍被配方或庫存引用')
     }
   }
 
@@ -218,7 +219,12 @@ function InventoryTab() {
           <Button size="small" icon={<InboxOutlined />} onClick={() => setAdjustTarget(row)}>調整</Button>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>
           <Popconfirm title="確定刪除？" onConfirm={async () => {
-            await deleteInventory(row.id); message.success('已刪除'); load()
+            try {
+              await deleteInventory(row.id); message.success('已刪除'); load()
+            } catch (err: unknown) {
+              const msg = (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message
+              message.error(msg ?? '刪除失敗')
+            }
           }}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>

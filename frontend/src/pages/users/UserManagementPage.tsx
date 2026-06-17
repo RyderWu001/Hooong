@@ -4,7 +4,7 @@ import {
   Form, Input, Space, message, Popconfirm,
 } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
-import { getUsers, updateUser, register } from '../../api/auth'
+import { getUsers, updateUser, adminRegister } from '../../api/auth'
 import type { User, Role } from '../../types'
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -55,7 +55,7 @@ export default function UserManagementPage() {
     username: string; email: string; password: string; role: Role
   }) => {
     try {
-      await register(values)
+      await adminRegister(values)
       message.success('使用者已建立')
       setModalOpen(false)
       form.resetFields()
