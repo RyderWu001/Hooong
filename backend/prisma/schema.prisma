@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int          @id @default(autoincrement())
+  username    String
+  email       String       @unique
+  password    String
+  role        String       @default("LAB_STAFF")
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  experiments Experiment[] @relation("ExperimenterRelation")
+  versions    FormulaVersion[]
+}
+
+model Ingredient {
+  id          Int                  @id @default(autoincrement())
+  name        String
+  unit        String
+  description String               @default("")
+  createdAt   DateTime             @default(now())
+  formulaUses FormulaIngredient[]
+}
+
+model Formula {
+  id             Int                 @id @default(autoincrement())
+  code           String              @unique
+  name           String
+  productType    String
+  description    String              @default("")
+  status         String              @default("ACTIVE")
+  currentVersion Int                 @default(1)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  ingredients    FormulaIngredient[]
+  versions       FormulaVersion[]
+  experiments    Experiment[]
+}
+
+model FormulaIngredient {
+  id           Int        @id @default(autoincrement())
+  formula      Formula    @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  formulaId    Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId Int
+  ratio        Float
+  unit         String
+}
+
+model FormulaVersion {
+  id         Int      @id @default(autoincrement())
+  formula    Formula  @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  formulaId  Int
+  version    Int
+  changeNote String   @default("")
+  createdAt  DateTime @default(now())
+  createdBy  User     @relation(fields: [userId], references: [id])
+  userId     Int
+}
+
+model Experiment {
+  id             Int              @id @default(autoincrement())
+  code           String           @unique
+  formula        Formula          @relation(fields: [formulaId], references: [id])
+  formulaId      Int
+  experimenter   User             @relation("ExperimenterRelation", fields: [experimenterId], references: [id])
+  experimenterId Int
+  experimentDate DateTime
+  temperature    Float            @default(25.0)
+  humidity       Float            @default(60.0)
+  notes          String           @default("")
+  createdAt      DateTime         @default(now())
+  steps          ExperimentStep[]
+  attachments    Attachment[]
+  samples        Sample[]
+  result         ExperimentResult?
+}
+
+model ExperimentStep {
+  id           Int        @id @default(autoincrement())
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId Int
+  stepOrder    Int
+  description  String
+}
+
+model Sample {
+  id           Int        @id @default(autoincrement())
+  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId Int
+  sampleCode   String
+  clientName   String     @default("")
+  label        String     @default("")
+  targetItem   String     @default("")
+  sampleDate   DateTime
+  notes        String     @default("")
+  photoUrl     String?
+}
+
+model Attachment {
+  id               Int               @id @default(autoincrement())
+  fileUrl          String
+  fileType         String
+  fileName         String
+  createdAt        DateTime          @default(now())
+  experiment       Experiment?       @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId     Int?
+  result           ExperimentResult? @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  resultId         Int?
+}
+
+model ExperimentResult {
+  id             Int          @id @default(autoincrement())
+  experiment     Experiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId   Int          @unique
+  status         String       @default("OBSERVING")
+  description    String       @default("")
+  reflection     String       @default("")
+  issueRecord    String       @default("")
+  improvement    String       @default("")
+  clientFeedback String       @default("")
+  notes          String       @default("")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  attachments    Attachment[]
+}
