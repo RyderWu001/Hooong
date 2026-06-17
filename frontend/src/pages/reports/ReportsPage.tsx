@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { Card, Tabs, Button, DatePicker, Space, Statistic, Row, Col, Table, Select, message } from 'antd'
 import { DownloadOutlined } from '@ant-design/icons'
 import {
-  getFormulaUsageReport, getResultSummaryReport,
-  getExperimentReport, exportExcel, exportPdf,
+  getFormulaUsageReport, getResultSummaryReport, getExperimentReport,
 } from '../../api/reports'
-import type { FormulaUsageReport, ResultSummaryReport } from '../../types'
-import { downloadBlob } from '../../utils/download'
+import type { FormulaUsageReport, ResultSummaryReport, Experiment } from '../../types'
+import { exportToExcel } from '../../utils/exportExcel'
+import { exportToPdf } from '../../utils/exportPdf'
 import dayjs from 'dayjs'
 
 const { RangePicker } = DatePicker
@@ -16,15 +16,17 @@ interface DateFilter {
   dateTo?: string
 }
 
+type ExportType = 'experiment' | 'formula' | 'result'
+
 export default function ReportsPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>({})
   const [summaryData, setSummaryData] = useState<ResultSummaryReport | null>(null)
   const [usageData, setUsageData] = useState<FormulaUsageReport[]>([])
-  const [expData, setExpData] = useState<unknown[]>([])
+  const [expData, setExpData] = useState<Experiment[]>([])
   const [loadingSummary, setLoadingSummary] = useState(false)
   const [loadingUsage, setLoadingUsage] = useState(false)
   const [loadingExp, setLoadingExp] = useState(false)
-  const [exportType, setExportType] = useState<'experiment' | 'formula' | 'result'>('experiment')
+  const [exportType, setExportType] = useState<ExportType>('experiment')
 
   const handleDateChange = (dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) => {
     setDateFilter({
@@ -69,12 +71,70 @@ export default function ReportsPage() {
     }
   }
 
+  // 取得各報表的欄位與資料
+  const getExportPayload = async (type: ExportType) => {
+    if (type === 'experiment') {
+      const res = await getExperimentReport(dateFilter)
+      const rows = (res.data.data as Experiment[]).map((e) => [
+        e.code,
+        e.formulaName ?? '',
+        e.experimenterName ?? '',
+        dayjs(e.experimentDate).format('YYYY-MM-DD'),
+        e.temperature,
+        e.humidity,
+        e.notes,
+      ])
+      return {
+        title: '實驗紀錄報表',
+        headers: ['實驗編號', '配方', '實驗人員', '日期', '溫度(°C)', '濕度(%)', '備註'],
+        rows,
+      }
+    }
+
+    if (type === 'formula') {
+      const res = await getFormulaUsageReport(dateFilter)
+      const rows = (res.data.data as FormulaUsageReport[]).map((f) => [
+        f.formulaCode,
+        f.formulaName,
+        f.productType,
+        f.usageCount,
+        f.successCount,
+        f.failedCount,
+        f.observingCount,
+      ])
+      return {
+        title: '配方使用報表',
+        headers: ['配方編號', '配方名稱', '產品類型', '使用次數', '成功', '失敗', '待觀察'],
+        rows,
+      }
+    }
+
+    // result
+    const res = await getResultSummaryReport(dateFilter)
+    const d = res.data.data as ResultSummaryReport
+    return {
+      title: '實驗結果統計報表',
+      headers: ['項目', '數量'],
+      rows: [
+        ['總計', d.total],
+        ['成功', d.successCount],
+        ['失敗', d.failedCount],
+        ['待觀察', d.observingCount],
+        ['需調整', d.needsAdjustCount],
+        ['成功率', d.successRate],
+      ],
+    }
+  }
+
   const handleExport = async (format: 'excel' | 'pdf') => {
     try {
-      const params = { ...dateFilter, type: exportType }
-      const res = format === 'excel' ? await exportExcel(params) : await exportPdf(params)
-      const ext = format === 'excel' ? 'xlsx' : 'pdf'
-      downloadBlob(res.data, `report_${exportType}_${dayjs().format('YYYYMMDD')}.${ext}`)
+      const payload = await getExportPayload(exportType)
+      const filename = `report_${exportType}_${dayjs().format('YYYYMMDD_HHmm')}`
+      if (format === 'excel') {
+        exportToExcel([{ name: payload.title, headers: payload.headers, rows: payload.rows }], `${filename}.xlsx`)
+      } else {
+        exportToPdf([payload], `${filename}.pdf`)
+      }
       message.success('匯出成功')
     } catch {
       message.error('匯出失敗')
@@ -146,7 +206,7 @@ export default function ReportsPage() {
                 <Table
                   rowKey="id"
                   loading={loadingExp}
-                  dataSource={expData as Record<string, unknown>[]}
+                  dataSource={expData}
                   columns={[
                     { title: '實驗編號', dataIndex: 'code', key: 'code' },
                     { title: '配方', dataIndex: 'formulaName', key: 'formulaName' },
@@ -156,6 +216,18 @@ export default function ReportsPage() {
                       dataIndex: 'experimentDate',
                       key: 'experimentDate',
                       render: (v: string) => dayjs(v).format('YYYY-MM-DD'),
+                    },
+                    {
+                      title: '溫度',
+                      dataIndex: 'temperature',
+                      key: 'temperature',
+                      render: (v: number) => `${v} °C`,
+                    },
+                    {
+                      title: '濕度',
+                      dataIndex: 'humidity',
+                      key: 'humidity',
+                      render: (v: number) => `${v} %`,
                     },
                   ]}
                   pagination={false}
@@ -167,7 +239,7 @@ export default function ReportsPage() {
             key: 'export',
             label: '匯出報表',
             children: (
-              <Space direction="vertical">
+              <Space direction="vertical" size="large">
                 <Space>
                   <RangePicker onChange={(dates) => handleDateChange(dates as [dayjs.Dayjs | null, dayjs.Dayjs | null] | null)} />
                   <Select
@@ -177,15 +249,22 @@ export default function ReportsPage() {
                     options={[
                       { value: 'experiment', label: '實驗紀錄' },
                       { value: 'formula', label: '配方使用' },
-                      { value: 'result', label: '實驗結果' },
+                      { value: 'result', label: '實驗結果統計' },
                     ]}
                   />
                 </Space>
                 <Space>
-                  <Button icon={<DownloadOutlined />} onClick={() => handleExport('excel')}>
+                  <Button
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    onClick={() => handleExport('excel')}
+                  >
                     匯出 Excel
                   </Button>
-                  <Button icon={<DownloadOutlined />} onClick={() => handleExport('pdf')}>
+                  <Button
+                    icon={<DownloadOutlined />}
+                    onClick={() => handleExport('pdf')}
+                  >
                     匯出 PDF
                   </Button>
                 </Space>
