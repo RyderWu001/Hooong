@@ -24,4 +24,4 @@ export const getUsers = (params?: { role?: Role; isActive?: boolean; page?: numb
   client.get('/users', { params })
 
 export const updateUser = (id: number, data: { role?: Role; isActive?: boolean }) =>
-  client.patch(`/users/${id}`, data)
+  client.put(`/users/${id}`, data)
