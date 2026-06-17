@@ -1,0 +1,15 @@
+.dragHandle {
+  cursor: grab;
+  color: #bbb;
+  touch-action: none;
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.stepHint {
+  color: #999;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
