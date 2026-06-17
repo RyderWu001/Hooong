@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
+import styles from './ReportsPage.module.css'
 import {
   Card, Tabs, Button, DatePicker, Space, Statistic, Row, Col,
-  Table, Select, Tag, Divider, message,
+  Table, Select, Tag, Divider, message, Spin,
 } from 'antd'
-import { DownloadOutlined, SearchOutlined } from '@ant-design/icons'
+import { DownloadOutlined, SearchOutlined, DatabaseOutlined } from '@ant-design/icons'
 import {
   getFormulaUsageReport, getResultSummaryReport, getExperimentReport, getCustomReport,
 } from '../../api/reports'
@@ -94,11 +95,16 @@ export default function ReportsPage() {
   const [resultSummary, setResultSummary] = useState<ResultSummaryReport | null>(null)
   const [resultLoading, setResultLoading] = useState(false)
 
-  // 4.4 條件式查詢
+  // 條件式查詢
   const [customType, setCustomType] = useState<'experiment' | 'formula' | 'result'>('experiment')
   const [customFilters, setCustomFilters] = useState<CommonFilter>({})
   const [customData, setCustomData] = useState<unknown[]>([])
   const [customLoading, setCustomLoading] = useState(false)
+
+  // 全部匯出
+  const [allDateFrom, setAllDateFrom] = useState<string | undefined>()
+  const [allDateTo, setAllDateTo] = useState<string | undefined>()
+  const [allLoading, setAllLoading] = useState(false)
 
   useEffect(() => {
     getFormulas({ status: 'ACTIVE', limit: 200 }).then((r) => setFormulas(r.data.data ?? []))
@@ -151,6 +157,73 @@ export default function ReportsPage() {
       setCustomData(res.data.data ?? [])
     } catch { message.error('載入失敗') }
     finally { setCustomLoading(false) }
+  }
+
+  // ─── 全部匯出 ────────────────────────────────────────────
+  const handleAllExport = async (format: 'excel' | 'pdf') => {
+    setAllLoading(true)
+    try {
+      const params = { dateFrom: allDateFrom, dateTo: allDateTo }
+      const [expRes, usageRes, resultRes] = await Promise.all([
+        getExperimentReport(params),
+        getFormulaUsageReport(params),
+        getResultSummaryReport(params),
+      ])
+      const exps: Experiment[] = expRes.data.data ?? []
+      const usages: FormulaUsageReport[] = usageRes.data.data ?? []
+      const results: ExperimentResult[] = (resultRes.data.data as ResultSummaryReport)?.detail ?? []
+
+      const filename = `完整報表_${dayjs().format('YYYYMMDD_HHmm')}`
+
+      if (format === 'excel') {
+        exportToExcel([
+          {
+            name: '實驗紀錄',
+            headers: ['實驗編號', '配方', '實驗人員', '日期', '溫度(°C)', '濕度(%)', '備註'],
+            rows: exps.map((e) => [e.code, e.formulaName ?? '', e.experimenterName ?? '',
+              dayjs(e.experimentDate).format('YYYY-MM-DD'), e.temperature, e.humidity, e.notes]),
+          },
+          {
+            name: '配方使用',
+            headers: ['配方編號', '配方名稱', '產品類型', '使用次數', '成功', '失敗', '待觀察'],
+            rows: usages.map((f) => [f.formulaCode, f.formulaName, f.productType,
+              f.usageCount, f.successCount, f.failedCount, f.observingCount]),
+          },
+          {
+            name: '實驗結果',
+            headers: ['實驗編號', '配方', '實驗人員', '狀態', '結果說明', '建立日期'],
+            rows: results.map((r) => [r.experimentCode ?? '', r.formulaName ?? '', r.experimenterName ?? '',
+              STATUS_LABEL[r.status], r.description, dayjs(r.createdAt).format('YYYY-MM-DD')]),
+          },
+        ], `${filename}.xlsx`)
+      } else {
+        exportToPdf([
+          {
+            title: '實驗紀錄',
+            headers: ['實驗編號', '配方', '實驗人員', '日期', '溫度', '濕度', '備註'],
+            rows: exps.map((e) => [e.code, e.formulaName ?? '', e.experimenterName ?? '',
+              dayjs(e.experimentDate).format('YYYY-MM-DD'), `${e.temperature}°C`, `${e.humidity}%`, e.notes]),
+          },
+          {
+            title: '配方使用',
+            headers: ['配方編號', '配方名稱', '產品類型', '使用次數', '成功', '失敗', '待觀察'],
+            rows: usages.map((f) => [f.formulaCode, f.formulaName, f.productType,
+              f.usageCount, f.successCount, f.failedCount, f.observingCount]),
+          },
+          {
+            title: '實驗結果',
+            headers: ['實驗編號', '配方', '實驗人員', '狀態', '結果說明', '建立日期'],
+            rows: results.map((r) => [r.experimentCode ?? '', r.formulaName ?? '', r.experimenterName ?? '',
+              STATUS_LABEL[r.status], r.description, dayjs(r.createdAt).format('YYYY-MM-DD')]),
+          },
+        ], `${filename}.pdf`)
+      }
+      message.success('匯出成功')
+    } catch {
+      message.error('匯出失敗')
+    } finally {
+      setAllLoading(false)
+    }
   }
 
   // ─── 匯出通用 ────────────────────────────────────────────
@@ -260,10 +333,10 @@ export default function ReportsPage() {
     <Card title="報表">
       <Tabs
         items={[
-          // ──────────────────── 4.1 實驗紀錄 ───────────────────
+          // ──────────────────── 實驗紀錄 ───────────────────
           {
             key: 'exp',
-            label: '4.1 實驗紀錄',
+            label: '實驗紀錄',
             children: (
               <Space direction="vertical" style={{ width: '100%' }}>
                 <FilterBar
@@ -298,10 +371,10 @@ export default function ReportsPage() {
             ),
           },
 
-          // ──────────────────── 4.2 配方使用 ───────────────────
+          // ──────────────────── 配方使用 ───────────────────
           {
             key: 'usage',
-            label: '4.2 配方使用',
+            label: '配方使用',
             children: (
               <Space direction="vertical" style={{ width: '100%' }}>
                 <FilterBar
@@ -336,10 +409,10 @@ export default function ReportsPage() {
             ),
           },
 
-          // ──────────────────── 4.3 實驗結果 ───────────────────
+          // ──────────────────── 實驗結果 ───────────────────
           {
             key: 'result',
-            label: '4.3 實驗結果',
+            label: '實驗結果',
             children: (
               <Space direction="vertical" style={{ width: '100%' }}>
                 <FilterBar
@@ -409,10 +482,10 @@ export default function ReportsPage() {
             ),
           },
 
-          // ──────────────────── 4.4 條件式查詢 ─────────────────
+          // ──────────────────── 條件式查詢 ─────────────────
           {
             key: 'custom',
-            label: '4.4 條件式查詢',
+            label: '條件式查詢',
             children: (
               <Space direction="vertical" style={{ width: '100%' }}>
                 <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
@@ -477,6 +550,79 @@ export default function ReportsPage() {
                   <Table rowKey="id" loading={customLoading} dataSource={customData as ExperimentResult[]}
                     columns={resultDetailColumns} pagination={{ showTotal: (t) => `共 ${t} 筆` }} />
                 )}
+              </Space>
+            ),
+          },
+          // ──────────────────── 全部匯出 ───────────────────
+          {
+            key: 'all',
+            label: (
+              <span>
+                <DatabaseOutlined style={{ marginRight: 4 }} />
+                全部匯出
+              </span>
+            ),
+            children: (
+              <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Row gutter={[12, 12]} align="middle">
+                  <Col xs={24} sm={12} md={8}>
+                    <RangePicker
+                      style={{ width: '100%' }}
+                      placeholder={['開始日期', '結束日期']}
+                      onChange={(dates) => {
+                        setAllDateFrom(dates?.[0]?.format('YYYY-MM-DD') ?? undefined)
+                        setAllDateTo(dates?.[1]?.format('YYYY-MM-DD') ?? undefined)
+                      }}
+                    />
+                  </Col>
+                  <Col>
+                    <Space>
+                      <Button
+                        type="primary"
+                        size="large"
+                        icon={<DownloadOutlined />}
+                        loading={allLoading}
+                        onClick={() => handleAllExport('excel')}
+                      >
+                        匯出 Excel（三張工作表）
+                      </Button>
+                      <Button
+                        size="large"
+                        icon={<DownloadOutlined />}
+                        loading={allLoading}
+                        onClick={() => handleAllExport('pdf')}
+                      >
+                        匯出 PDF
+                      </Button>
+                    </Space>
+                  </Col>
+                </Row>
+
+                {allLoading && <Spin tip="正在整合所有資料…" />}
+
+                <Divider orientation="left">匯出內容說明</Divider>
+                <Row gutter={[16, 16]}>
+                  {[
+                    {
+                      title: '實驗紀錄',
+                      desc: '實驗編號、配方、實驗人員、日期、溫濕度、備註',
+                    },
+                    {
+                      title: '配方使用',
+                      desc: '配方編號、名稱、產品類型、使用次數、成功 / 失敗 / 待觀察 統計',
+                    },
+                    {
+                      title: '實驗結果',
+                      desc: '實驗編號、配方、實驗人員、結果狀態、結果說明、建立日期',
+                    },
+                  ].map((item) => (
+                    <Col key={item.title} xs={24} sm={8}>
+                      <Card size="small" title={item.title} variant="outlined">
+                        <p className={styles.exportCardDesc}>{item.desc}</p>
+                      </Card>
+                    </Col>
+                  ))}
+                </Row>
               </Space>
             ),
           },
