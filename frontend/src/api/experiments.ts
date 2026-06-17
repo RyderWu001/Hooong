@@ -1,6 +1,7 @@
 import client from './client'
 
 export const getExperiments = (params?: {
+  code?: string
   formulaId?: number
   experimenterId?: number
   dateFrom?: string

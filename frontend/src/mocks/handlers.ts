@@ -61,7 +61,20 @@ const HANDLERS: [RegExp, Handler][] = [
     const id = Number(url.match(/\/experiments\/(\d+)/)?.[1])
     return ok(mockExperiments.find((e) => e.id === id) ?? mockExperiments[0])
   }],
-  [/\/experiments$/, (_, p) => paginate(mockExperiments, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
+  [/\/experiments$/, (_, p) => {
+    let list = [...mockExperiments]
+    const code = p.get('code')
+    const formulaId = p.get('formulaId')
+    const experimenterId = p.get('experimenterId')
+    const dateFrom = p.get('dateFrom')
+    const dateTo = p.get('dateTo')
+    if (code) list = list.filter((e) => e.code.includes(code))
+    if (formulaId) list = list.filter((e) => e.formulaId === Number(formulaId))
+    if (experimenterId) list = list.filter((e) => e.experimenterId === Number(experimenterId))
+    if (dateFrom) list = list.filter((e) => e.experimentDate >= dateFrom)
+    if (dateTo) list = list.filter((e) => e.experimentDate <= dateTo + 'T23:59:59Z')
+    return paginate(list, Number(p.get('page') || 1), Number(p.get('limit') || 20))
+  }],
 
   // Results
   [/\/results$/, (_, p) => paginate(mockResults, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
