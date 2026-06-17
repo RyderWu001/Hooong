@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Table, Button, Input, Space, Card, DatePicker, Select, Form, Row, Col, message } from 'antd'
+import { useEffect, useState, useRef } from 'react'
+import { Table, Button, Input, Space, Card, DatePicker, Select, Row, Col, message } from 'antd'
 import { PlusOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { getExperiments } from '../../api/experiments'
@@ -21,58 +21,58 @@ interface Filters {
   limit: number
 }
 
+const INIT_FILTERS: Filters = { page: 1, limit: 20 }
+
 export default function ExperimentListPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const [form] = Form.useForm()
   const [data, setData] = useState<Experiment[]>([])
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState(0)
-  const [filters, setFilters] = useState<Filters>({ page: 1, limit: 20 })
+  const [filters, setFilters] = useState<Filters>(INIT_FILTERS)
   const [formulas, setFormulas] = useState<Formula[]>([])
   const [users, setUsers] = useState<User[]>([])
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     getFormulas({ status: 'ACTIVE', limit: 200 }).then((r) => setFormulas(r.data.data ?? []))
     getUsers({ limit: 200 }).then((r) => setUsers(r.data.data ?? []))
   }, [])
 
-  const fetchData = async (f: Filters) => {
+  useEffect(() => {
     setLoading(true)
-    try {
-      const res = await getExperiments(f)
-      setData(res.data.data)
-      setTotal(res.data.pagination?.total ?? 0)
-    } catch {
-      message.error('載入失敗')
-    } finally {
-      setLoading(false)
-    }
+    getExperiments(filters)
+      .then((res) => {
+        setData(res.data.data)
+        setTotal(res.data.pagination?.total ?? 0)
+      })
+      .catch(() => message.error('載入失敗'))
+      .finally(() => setLoading(false))
+  }, [filters])
+
+  // 文字輸入防抖 300ms
+  const setCode = (val: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setFilters((f) => ({ ...f, code: val || undefined, page: 1 }))
+    }, 300)
   }
 
-  useEffect(() => { fetchData(filters) }, [filters])
+  const setFormulaId = (val: number | undefined) =>
+    setFilters((f) => ({ ...f, formulaId: val, page: 1 }))
 
-  const handleSearch = (values: {
-    code?: string
-    formulaId?: number
-    experimenterId?: number
-    dateRange?: [dayjs.Dayjs, dayjs.Dayjs]
-  }) => {
-    setFilters({
-      code: values.code || undefined,
-      formulaId: values.formulaId,
-      experimenterId: values.experimenterId,
-      dateFrom: values.dateRange?.[0]?.format('YYYY-MM-DD'),
-      dateTo: values.dateRange?.[1]?.format('YYYY-MM-DD'),
+  const setExperimenterId = (val: number | undefined) =>
+    setFilters((f) => ({ ...f, experimenterId: val, page: 1 }))
+
+  const setDateRange = (dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) =>
+    setFilters((f) => ({
+      ...f,
+      dateFrom: dates?.[0]?.format('YYYY-MM-DD') ?? undefined,
+      dateTo: dates?.[1]?.format('YYYY-MM-DD') ?? undefined,
       page: 1,
-      limit: filters.limit,
-    })
-  }
+    }))
 
-  const handleReset = () => {
-    form.resetFields()
-    setFilters({ page: 1, limit: 20 })
-  }
+  const handleReset = () => setFilters(INIT_FILTERS)
 
   const canCreate = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
 
@@ -123,54 +123,50 @@ export default function ExperimentListPage() {
         )
       }
     >
-      <Form form={form} onFinish={handleSearch} style={{ marginBottom: 16 }}>
-        <Row gutter={[12, 8]}>
-          <Col xs={24} sm={12} md={6}>
-            <Form.Item name="code" style={{ marginBottom: 0 }}>
-              <Input prefix={<SearchOutlined />} placeholder="實驗編號" allowClear />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Form.Item name="formulaId" style={{ marginBottom: 0 }}>
-              <Select
-                placeholder="配方"
-                allowClear
-                showSearch
-                options={formulaOptions}
-                filterOption={(input, option) =>
-                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-                }
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Form.Item name="experimenterId" style={{ marginBottom: 0 }}>
-              <Select
-                placeholder="實驗人員"
-                allowClear
-                options={staffOptions}
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12} md={6}>
-            <Form.Item name="dateRange" style={{ marginBottom: 0 }}>
-              <RangePicker style={{ width: '100%' }} placeholder={['開始日期', '結束日期']} />
-            </Form.Item>
-          </Col>
-        </Row>
-        <Row style={{ marginTop: 8 }}>
-          <Col>
-            <Space>
-              <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>
-                查詢
-              </Button>
-              <Button icon={<ClearOutlined />} onClick={handleReset}>
-                清除
-              </Button>
-            </Space>
-          </Col>
-        </Row>
-      </Form>
+      <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={12} md={6}>
+          <Input
+            prefix={<SearchOutlined />}
+            placeholder="實驗編號"
+            allowClear
+            onChange={(e) => setCode(e.target.value)}
+          />
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="配方"
+            allowClear
+            showSearch
+            options={formulaOptions}
+            onChange={setFormulaId}
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+          />
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="實驗人員"
+            allowClear
+            options={staffOptions}
+            onChange={setExperimenterId}
+          />
+        </Col>
+        <Col xs={24} sm={12} md={6}>
+          <RangePicker
+            style={{ width: '100%' }}
+            placeholder={['開始日期', '結束日期']}
+            onChange={setDateRange}
+          />
+        </Col>
+        <Col>
+          <Space>
+            <Button icon={<ClearOutlined />} onClick={handleReset}>清除篩選</Button>
+          </Space>
+        </Col>
+      </Row>
 
       <Table
         rowKey="id"
