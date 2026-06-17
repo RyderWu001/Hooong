@@ -134,6 +134,7 @@ export interface ResultSummaryReport {
   observingCount: number
   needsAdjustCount: number
   successRate: string
+  detail?: ExperimentResult[]
 }
 
 // Pagination

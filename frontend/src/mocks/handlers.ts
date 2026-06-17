@@ -97,11 +97,98 @@ const HANDLERS: [RegExp, Handler][] = [
     return paginate(list, Number(p.get('page') || 1), Number(p.get('limit') || 20))
   }],
 
-  // Reports
-  [/\/reports\/results\/summary$/, () => ok(mockResultSummary)],
-  [/\/reports\/formulas\/usage$/, () => ok(mockFormulaUsage)],
-  [/\/reports\/experiments$/, (_, p) => paginate(mockExperiments, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
-  [/\/reports\/custom$/, (_, p) => paginate(mockExperiments, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
+  // Reports — 4.1 實驗紀錄報表
+  [/\/reports\/experiments$/, (_, p) => {
+    let list = [...mockExperiments]
+    const formulaId = p.get('formulaId')
+    const experimenterId = p.get('experimenterId')
+    const dateFrom = p.get('dateFrom')
+    const dateTo = p.get('dateTo')
+    if (formulaId) list = list.filter((e) => e.formulaId === Number(formulaId))
+    if (experimenterId) list = list.filter((e) => e.experimenterId === Number(experimenterId))
+    if (dateFrom) list = list.filter((e) => e.experimentDate >= dateFrom)
+    if (dateTo) list = list.filter((e) => e.experimentDate <= dateTo + 'T23:59:59Z')
+    return paginate(list, Number(p.get('page') || 1), Number(p.get('limit') || 999))
+  }],
+
+  // Reports — 4.2 配方使用報表
+  [/\/reports\/formulas\/usage$/, (_, p) => {
+    let list = [...mockFormulaUsage]
+    const productType = p.get('productType')
+    const formulaId = p.get('formulaId')
+    if (productType) list = list.filter((f) => f.productType === productType)
+    if (formulaId) list = list.filter((f) => f.formulaId === Number(formulaId))
+    return ok(list)
+  }],
+
+  // Reports — 4.3 實驗結果統計
+  [/\/reports\/results\/summary$/, (_, p) => {
+    let list = [...mockResults]
+    const status = p.get('status')
+    const formulaName = p.get('formulaName')
+    const experimenterId = p.get('experimenterId')
+    const dateFrom = p.get('dateFrom')
+    const dateTo = p.get('dateTo')
+    if (status) list = list.filter((r) => r.status === status)
+    if (formulaName) list = list.filter((r) => r.formulaName?.includes(formulaName))
+    if (experimenterId) list = list.filter((r) => {
+      const exp = mockExperiments.find((e) => e.id === r.experimentId)
+      return exp?.experimenterId === Number(experimenterId)
+    })
+    if (dateFrom) list = list.filter((r) => r.createdAt >= dateFrom)
+    if (dateTo) list = list.filter((r) => r.createdAt <= dateTo + 'T23:59:59Z')
+    return ok({
+      total: list.length,
+      successCount: list.filter((r) => r.status === 'SUCCESS').length,
+      failedCount: list.filter((r) => r.status === 'FAILED').length,
+      observingCount: list.filter((r) => r.status === 'OBSERVING').length,
+      needsAdjustCount: list.filter((r) => r.status === 'NEEDS_ADJUST').length,
+      successRate: list.length
+        ? `${Math.round((list.filter((r) => r.status === 'SUCCESS').length / list.length) * 100)}%`
+        : '0%',
+      detail: list,
+    })
+  }],
+
+  // Reports — 4.4 條件式查詢
+  [/\/reports\/custom$/, (_, p) => {
+    const type = p.get('type') ?? 'experiment'
+    const formulaId = p.get('formulaId')
+    const experimenterId = p.get('experimenterId')
+    const status = p.get('status')
+    const dateFrom = p.get('dateFrom')
+    const dateTo = p.get('dateTo')
+
+    if (type === 'formula') {
+      let list = [...mockFormulaUsage]
+      if (formulaId) list = list.filter((f) => f.formulaId === Number(formulaId))
+      return ok(list)
+    }
+
+    if (type === 'result') {
+      let list = [...mockResults]
+      if (status) list = list.filter((r) => r.status === status)
+      if (experimenterId) list = list.filter((r) => {
+        const exp = mockExperiments.find((e) => e.id === r.experimentId)
+        return exp?.experimenterId === Number(experimenterId)
+      })
+      if (formulaId) list = list.filter((r) => {
+        const exp = mockExperiments.find((e) => e.id === r.experimentId)
+        return exp?.formulaId === Number(formulaId)
+      })
+      if (dateFrom) list = list.filter((r) => r.createdAt >= dateFrom)
+      if (dateTo) list = list.filter((r) => r.createdAt <= dateTo + 'T23:59:59Z')
+      return ok(list)
+    }
+
+    // default: experiment
+    let list = [...mockExperiments]
+    if (formulaId) list = list.filter((e) => e.formulaId === Number(formulaId))
+    if (experimenterId) list = list.filter((e) => e.experimenterId === Number(experimenterId))
+    if (dateFrom) list = list.filter((e) => e.experimentDate >= dateFrom)
+    if (dateTo) list = list.filter((e) => e.experimentDate <= dateTo + 'T23:59:59Z')
+    return ok(list)
+  }],
 ]
 
 export function resolveMock(fullUrl: string): unknown | null {
