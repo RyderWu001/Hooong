@@ -100,6 +100,7 @@ export const mockExperiments: Experiment[] = [
 export const mockResults: ExperimentResult[] = [
   {
     id: 1, experimentId: 1, experimentCode: 'EXP-2024-001',
+    formulaName: '保濕乳液基底', experimenterName: '王實驗',
     status: 'SUCCESS',
     description: '乳化穩定，質地均勻，無分層現象',
     reflection: '甘油比例適中，觸感良好',
@@ -113,6 +114,7 @@ export const mockResults: ExperimentResult[] = [
   },
   {
     id: 2, experimentId: 2, experimentCode: 'EXP-2024-002',
+    formulaName: '潔顏皂配方', experimenterName: '王實驗',
     status: 'NEEDS_ADJUST',
     description: '皂化完成，但硬度不足',
     reflection: 'NaOH 用量偏低，導致皂化不完全',

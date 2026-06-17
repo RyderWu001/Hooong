@@ -101,6 +101,8 @@ export interface ExperimentResult {
   id: number
   experimentId: number
   experimentCode?: string
+  formulaName?: string
+  experimenterName?: string
   status: ResultStatus
   description: string
   reflection: string

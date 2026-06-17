@@ -77,7 +77,25 @@ const HANDLERS: [RegExp, Handler][] = [
   }],
 
   // Results
-  [/\/results$/, (_, p) => paginate(mockResults, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
+  [/\/results$/, (_, p) => {
+    let list = [...mockResults]
+    const experimentCode = p.get('experimentCode')
+    const formulaName = p.get('formulaName')
+    const experimenterId = p.get('experimenterId')
+    const status = p.get('status')
+    const dateFrom = p.get('dateFrom')
+    const dateTo = p.get('dateTo')
+    if (experimentCode) list = list.filter((r) => r.experimentCode?.includes(experimentCode))
+    if (formulaName) list = list.filter((r) => r.formulaName?.includes(formulaName))
+    if (experimenterId) list = list.filter((r) => {
+      const exp = mockExperiments.find((e) => e.id === r.experimentId)
+      return exp?.experimenterId === Number(experimenterId)
+    })
+    if (status) list = list.filter((r) => r.status === status)
+    if (dateFrom) list = list.filter((r) => r.createdAt >= dateFrom)
+    if (dateTo) list = list.filter((r) => r.createdAt <= dateTo + 'T23:59:59Z')
+    return paginate(list, Number(p.get('page') || 1), Number(p.get('limit') || 20))
+  }],
 
   // Reports
   [/\/reports\/results\/summary$/, () => ok(mockResultSummary)],
