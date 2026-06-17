@@ -2,7 +2,7 @@ import client from './client'
 import type { User, Role } from '../types'
 
 export const login = (email: string, password: string) =>
-  client.post<{ data: { token: string; user: User } }>('/auth/login', { email, password })
+  client.post<{ success: boolean; token: string; user: User }>('/auth/login', { email, password })
 
 export const logout = () => client.post('/auth/logout')
 
