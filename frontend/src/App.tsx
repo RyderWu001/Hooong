@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { ConfigProvider } from 'antd'
+import { ConfigProvider, App as AntApp } from 'antd'
 import zhTW from 'antd/locale/zh_TW'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-tw'
@@ -29,6 +29,7 @@ dayjs.locale('zh-tw')
 export default function App() {
   return (
     <ConfigProvider locale={zhTW} theme={{ token: { colorPrimary: '#1677ff' } }}>
+      <AntApp>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -70,6 +71,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      </AntApp>
     </ConfigProvider>
   )
 }
