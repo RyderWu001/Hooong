@@ -8,6 +8,7 @@ import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 
 import LoginPage from './pages/auth/LoginPage'
+import RegisterPage from './pages/auth/RegisterPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 
 import FormulaListPage from './pages/formulas/FormulaListPage'
@@ -33,6 +34,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
           <Route

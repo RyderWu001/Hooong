@@ -6,8 +6,13 @@ export const login = (email: string, password: string) =>
 
 export const logout = () => client.post('/auth/logout')
 
-export const register = (data: { username: string; email: string; password: string; role: Role }) =>
-  client.post('/auth/register', data)
+// 公開自行註冊（固定 LAB_STAFF，回傳 token）
+export const register = (data: { username: string; email: string; password: string }) =>
+  client.post<{ success: boolean; token: string; user: User }>('/auth/register', data)
+
+// 管理員新增帳號（可指定角色）
+export const adminRegister = (data: { username: string; email: string; password: string; role: Role }) =>
+  client.post('/auth/admin/register', data)
 
 export const forgotPassword = (email: string) =>
   client.post('/auth/forgot-password', { email })

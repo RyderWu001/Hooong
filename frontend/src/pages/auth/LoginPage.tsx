@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Form, Input, Button, Card, Typography, Divider, App } from 'antd'
+import { Form, Input, Button, Card, Typography, App } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate, Link } from 'react-router-dom'
 import { login } from '../../api/auth'
@@ -63,11 +63,8 @@ export default function LoginPage() {
           </div>
         </Form>
 
-        <Divider plain>測試帳號</Divider>
-        <div className={styles.mockHint}>
-          <div>管理員：admin@test.com / admin123</div>
-          <div>實驗室人員：lab@test.com / lab123</div>
-          <div>經理：manager@test.com / manager123</div>
+        <div className={styles.registerLink}>
+          還沒有帳號？<Link to="/register">立即註冊</Link>
         </div>
       </Card>
     </div>

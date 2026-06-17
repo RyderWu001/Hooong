@@ -41,8 +41,35 @@ router.get('/me', requireAuth, async (req: AuthRequest, res) => {
   res.json({ success: true, data: { id: user.id, username: user.username, email: user.email, role: user.role, isActive: user.isActive } })
 })
 
-// POST /auth/register (ADMIN only)
-router.post('/register', requireAuth, requireRole('ADMIN'), async (req, res) => {
+// POST /auth/register — 公開，自行註冊（固定 LAB_STAFF）
+router.post('/register', async (req, res) => {
+  const { username, email, password } = req.body
+  if (!username || !email || !password) {
+    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '缺少必填欄位' } })
+    return
+  }
+  if (password.length < 8) {
+    res.status(400).json({ success: false, error: { code: 'PASSWORD_TOO_SHORT', message: '密碼至少 8 個字元' } })
+    return
+  }
+  const exists = await prisma.user.findUnique({ where: { email } })
+  if (exists) {
+    res.status(409).json({ success: false, error: { code: 'EMAIL_EXISTS', message: '此 Email 已被使用' } })
+    return
+  }
+  const user = await prisma.user.create({
+    data: { username, email, password: bcrypt.hashSync(password, 10), role: 'LAB_STAFF' },
+  })
+  const token = signToken({ id: user.id, role: user.role, email: user.email })
+  res.status(201).json({
+    success: true,
+    token,
+    user: { id: user.id, username: user.username, email: user.email, role: user.role },
+  })
+})
+
+// POST /auth/admin/register — 需要 ADMIN，可指定角色
+router.post('/admin/register', requireAuth, requireRole('ADMIN'), async (req, res) => {
   const { username, email, password, role } = req.body
   if (!username || !email || !password) {
     res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '缺少必填欄位' } })
@@ -50,7 +77,7 @@ router.post('/register', requireAuth, requireRole('ADMIN'), async (req, res) => 
   }
   const exists = await prisma.user.findUnique({ where: { email } })
   if (exists) {
-    res.status(409).json({ success: false, error: { code: 'EMAIL_EXISTS', message: 'Email 已被使用' } })
+    res.status(409).json({ success: false, error: { code: 'EMAIL_EXISTS', message: '此 Email 已被使用' } })
     return
   }
   const user = await prisma.user.create({

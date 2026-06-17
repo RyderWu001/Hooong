@@ -4,7 +4,7 @@ import {
   Form, Input, Space, Popconfirm, App,
 } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
-import { getUsers, updateUser, register } from '../../api/auth'
+import { getUsers, updateUser, adminRegister } from '../../api/auth'
 import type { User, Role } from '../../types'
 
 const ROLE_COLOR: Record<Role, string> = {
@@ -61,7 +61,7 @@ export default function UserManagementPage() {
   }) => {
     setSubmitting(true)
     try {
-      await register(values)
+      await adminRegister(values)
       message.success(`已建立帳號：${values.username}`)
       setModalOpen(false)
       form.resetFields()
