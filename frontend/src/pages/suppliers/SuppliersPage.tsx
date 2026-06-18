@@ -23,7 +23,7 @@ const PURCHASE_STATUS_LABEL = { PENDING: '待交貨', DELIVERED: '已到貨', CA
 
 function SupplierTab() {
   const { user } = useAuthStore()
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const canEdit = user?.role === 'ADMIN'
   const [data, setData] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
