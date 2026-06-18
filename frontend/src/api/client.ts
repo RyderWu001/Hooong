@@ -17,11 +17,9 @@ client.interceptors.request.use((config) => {
 client.interceptors.response.use(
   (res) => res,
   (error) => {
-    // 後端不存在（502 / 網路錯誤）或使用 mock token 遇到 401 時，回傳 mock 資料
-    const isMockToken = localStorage.getItem('token') === 'mock-token'
+    // 後端不存在（502 / 網路錯誤）時回傳 mock 資料
     const isProxyError =
-      error.response?.status === 502 || error.response?.status === 503 || !error.response ||
-      (error.response?.status === 401 && isMockToken)
+      error.response?.status === 502 || error.response?.status === 503 || !error.response
 
     if (isProxyError) {
       const url = error.config?.url ?? ''
