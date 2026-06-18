@@ -101,6 +101,7 @@ function FormulaRiskTab() {
       render: (v: RiskLevel) => <Tag color={RISK_COLOR[v]}>{RISK_LABEL[v]}</Tag> },
     { title: '風險類型', dataIndex: 'riskType', key: 'riskType', width: 120 },
     { title: '風險描述', dataIndex: 'description', key: 'description', ellipsis: true },
+    { title: '評估人員', dataIndex: 'assessedBy', key: 'assessedBy', width: 100 },
     { title: '下次審查', dataIndex: 'nextReviewAt', key: 'nextReviewAt', width: 110,
       render: (v) => dayjs(v).format('YYYY-MM-DD') },
     ...(canEdit ? [{

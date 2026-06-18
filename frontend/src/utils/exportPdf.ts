@@ -1,5 +1,3 @@
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 import dayjs from 'dayjs'
 
 interface TableConfig {
@@ -9,29 +7,61 @@ interface TableConfig {
 }
 
 export function exportToPdf(tables: TableConfig[], filename?: string) {
-  const doc = new jsPDF({ orientation: 'landscape' })
-  let isFirst = true
+  const title = tables[0]?.title ?? '報表'
 
-  for (const table of tables) {
-    if (!isFirst) doc.addPage()
-    isFirst = false
+  const tablesHtml = tables
+    .map(
+      (t) => `
+      <h2>${t.title}</h2>
+      <table>
+        <thead><tr>${t.headers.map((h) => `<th>${h}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${t.rows
+            .map((row) => `<tr>${row.map((cell) => `<td>${cell ?? ''}</td>`).join('')}</tr>`)
+            .join('')}
+        </tbody>
+      </table>`,
+    )
+    .join('<br/>')
 
-    // 標題
-    doc.setFontSize(14)
-    doc.text(table.title, 14, 18)
-    doc.setFontSize(10)
-    doc.text(`匯出時間：${dayjs().format('YYYY-MM-DD HH:mm')}`, 14, 26)
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8" />
+  <title>${title}</title>
+  <style>
+    body {
+      font-family: 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif;
+      font-size: 12px;
+      color: #111;
+      padding: 24px;
+    }
+    h1 { font-size: 18px; margin-bottom: 4px; }
+    h2 { font-size: 15px; margin: 20px 0 8px; }
+    .meta { color: #555; font-size: 11px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    th, td { border: 1px solid #ccc; padding: 5px 8px; text-align: left; white-space: nowrap; }
+    th { background: #1677ff; color: #fff; font-weight: 600; }
+    tr:nth-child(even) td { background: #f5f5f5; }
+    @media print {
+      @page { size: A4 landscape; margin: 15mm; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <h1>${title}</h1>
+  <p class="meta">匯出時間：${dayjs().format('YYYY-MM-DD HH:mm')}${filename ? `　檔名：${filename}` : ''}</p>
+  ${tablesHtml}
+  <script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`
 
-    autoTable(doc, {
-      startY: 32,
-      head: [table.headers],
-      body: table.rows.map((r) => r.map(String)),
-      styles: { font: 'helvetica', fontSize: 9 },
-      headStyles: { fillColor: [22, 119, 255], textColor: 255 },
-      alternateRowStyles: { fillColor: [245, 245, 245] },
-    })
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const win = window.open(url, '_blank')
+  if (!win) {
+    alert('請允許瀏覽器開啟彈出視窗，再重試匯出 PDF')
   }
-
-  const name = filename ?? `report_${dayjs().format('YYYYMMDD_HHmm')}.pdf`
-  doc.save(name)
+  setTimeout(() => URL.revokeObjectURL(url), 30000)
 }
