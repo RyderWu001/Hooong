@@ -256,17 +256,26 @@ export default function ExperimentDetailPage() {
     try {
       const res = await createSample(expId, values)
       const newSampleId = res.data.data.id
+      let attachFailed = false
       for (const uf of pendingAttachFiles) {
         const file = uf.originFileObj as File
         if (file) {
-          await uploadSampleAttachment(expId, newSampleId, file, getAttachmentType(file))
+          try {
+            await uploadSampleAttachment(expId, newSampleId, file, getAttachmentType(file))
+          } catch {
+            attachFailed = true
+          }
         }
       }
-      message.success('樣品已新增')
       setSampleModalOpen(false)
       sampleForm.resetFields()
       setPendingAttachFiles([])
       reload()
+      if (attachFailed) {
+        message.warning('樣品已新增，但附件上傳失敗（儲存服務尚未設定）')
+      } else {
+        message.success('樣品已新增')
+      }
     } catch {
       message.error('新增失敗')
     }

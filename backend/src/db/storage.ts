@@ -29,6 +29,9 @@ export async function uploadToStorage(
   originalName: string,
   mimetype: string
 ): Promise<string> {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    throw new Error('儲存服務未設定（SUPABASE_URL / SUPABASE_SERVICE_KEY 缺少）')
+  }
   const storage = getStorage()
   const ext = path.extname(originalName)
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
