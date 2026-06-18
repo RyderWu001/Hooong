@@ -27,7 +27,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  getExperiment, addSteps, deleteStep, updateExperiment,
+  getExperiment, addSteps, deleteStep, reorderSteps, updateExperiment,
   uploadAttachment, deleteAttachment,
   getSamples, getSample, createSample, updateSample, deleteSample, uploadSamplePhoto,
   getSampleAttachments, uploadSampleAttachment, deleteSampleAttachment,
@@ -140,16 +140,19 @@ export default function ExperimentDetailPage() {
 
   useEffect(() => { reload() }, [id])
 
-  // 拖曳結束後重新排序
+  // 拖曳結束後重新排序並儲存到資料庫
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    setSteps((prev) => {
-      const oldIndex = prev.findIndex((s) => s.id === active.id)
-      const newIndex = prev.findIndex((s) => s.id === over.id)
-      const reordered = arrayMove(prev, oldIndex, newIndex)
-      return reordered.map((s, i) => ({ ...s, stepOrder: i + 1 }))
+    const oldIndex = steps.findIndex((s) => s.id === active.id)
+    const newIndex = steps.findIndex((s) => s.id === over.id)
+    const updated = arrayMove(steps, oldIndex, newIndex).map((s, i) => ({ ...s, stepOrder: i + 1 }))
+
+    setSteps(updated)
+    reorderSteps(expId, updated).catch(() => {
+      message.error('排序儲存失敗')
+      reload()
     })
   }
 

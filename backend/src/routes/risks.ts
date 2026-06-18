@@ -135,12 +135,55 @@ router.delete('/events/:id', requireAuth, requireRole('ADMIN'), async (req, res)
 
 // ── Risk Report ────────────────────────────────────────────────
 router.get('/report', requireAuth, async (req, res) => {
-  const [formulaRisks, ingredientRisks, openEvents] = await Promise.all([
-    prisma.formulaRisk.groupBy({ by: ['riskLevel'], _count: true }),
-    prisma.ingredientRisk.groupBy({ by: ['riskLevel'], _count: true }),
-    prisma.abnormalEvent.count({ where: { status: { in: ['OPEN', 'INVESTIGATING'] } } }),
+  const LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
+
+  const [formulaRisks, ingredientRisks, eventCounts, eventTotal, recentEvents] = await Promise.all([
+    prisma.formulaRisk.groupBy({ by: ['riskLevel'], _count: { _all: true } }),
+    prisma.ingredientRisk.groupBy({ by: ['riskLevel'], _count: { _all: true } }),
+    prisma.abnormalEvent.groupBy({ by: ['status'], _count: { _all: true } }),
+    prisma.abnormalEvent.count(),
+    prisma.abnormalEvent.findMany({
+      take: 10,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        reportedBy: { select: { username: true } },
+        resolvedBy: { select: { username: true } },
+        relatedFormula: { select: { name: true } },
+        relatedIngredient: { select: { name: true } },
+      },
+    }),
   ])
-  res.json({ success: true, data: { formulaRisks, ingredientRisks, openEvents } })
+
+  const toDict = (arr: { riskLevel: string; _count: { _all: number } }[]) =>
+    LEVELS.reduce<Record<string, number>>((acc, level) => {
+      acc[level] = arr.find((r) => r.riskLevel === level)?._count._all ?? 0
+      return acc
+    }, {})
+
+  const countByStatus = (status: string) =>
+    eventCounts.find((e) => e.status === status)?._count._all ?? 0
+
+  res.json({
+    success: true,
+    data: {
+      formulaRiskDist: toDict(formulaRisks),
+      ingRiskDist: toDict(ingredientRisks),
+      eventTotal,
+      eventOpen: countByStatus('OPEN'),
+      eventInvestigating: countByStatus('INVESTIGATING'),
+      eventResolved: countByStatus('RESOLVED'),
+      eventClosed: countByStatus('CLOSED'),
+      recentEvents: recentEvents.map((e) => ({
+        ...e,
+        reportedBy: e.reportedBy.username,
+        resolvedBy: e.resolvedBy?.username,
+        relatedFormulaName: e.relatedFormula?.name,
+        relatedIngredientName: e.relatedIngredient?.name,
+        relatedFormula: undefined,
+        relatedIngredient: undefined,
+      })),
+    },
+  })
 })
 
 export default router

@@ -38,6 +38,11 @@ export const updateStep = (experimentId: number, stepId: number, data: { descrip
 export const deleteStep = (experimentId: number, stepId: number) =>
   client.delete(`/experiments/${experimentId}/steps/${stepId}`)
 
+export const reorderSteps = (
+  experimentId: number,
+  steps: { id: number; stepOrder: number; description: string }[]
+) => client.put(`/experiments/${experimentId}/steps`, { steps })
+
 // Attachments
 export const uploadAttachment = (id: number, file: File, fileType: 'image' | 'video' | 'pdf' | 'excel') => {
   const form = new FormData()
