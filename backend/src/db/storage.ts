@@ -1,17 +1,20 @@
 import { StorageClient } from '@supabase/storage-js'
 import path from 'path'
 
-const storageUrl = `${process.env.SUPABASE_URL}/storage/v1`
-const serviceKey = process.env.SUPABASE_SERVICE_KEY!
-
-const storage = new StorageClient(storageUrl, {
-  apikey: serviceKey,
-  Authorization: `Bearer ${serviceKey}`,
-})
+function getStorage() {
+  const storageUrl = `${process.env.SUPABASE_URL}/storage/v1`
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY ?? ''
+  return new StorageClient(storageUrl, {
+    apikey: serviceKey,
+    Authorization: `Bearer ${serviceKey}`,
+  })
+}
 
 const BUCKET = 'uploads'
 
 export async function ensureBucket() {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) return
+  const storage = getStorage()
   const { data: buckets, error } = await storage.listBuckets()
   if (error) throw error
   const exists = buckets?.some((b) => b.name === BUCKET)
@@ -26,6 +29,7 @@ export async function uploadToStorage(
   originalName: string,
   mimetype: string
 ): Promise<string> {
+  const storage = getStorage()
   const ext = path.extname(originalName)
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
 
