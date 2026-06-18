@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Input, Space, Card, DatePicker, Select, Form, Row, Col, message } from 'antd'
+import { Table, Button, Input, Space, Card, DatePicker, Select, Form, Row, Col, message, Badge, Typography } from 'antd'
 import { PlusOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { getExperiments } from '../../api/experiments'
@@ -102,6 +102,14 @@ export default function ExperimentListPage() {
       dataIndex: 'humidity',
       key: 'humidity',
       render: (v: number) => `${v} %`,
+    },
+    {
+      title: '附件',
+      key: 'attachments',
+      render: (_: unknown, record: Experiment) =>
+        record.attachments?.length > 0
+          ? <Badge count={record.attachments.length} color="blue" />
+          : <Typography.Text type="secondary">—</Typography.Text>,
     },
     {
       title: '操作',

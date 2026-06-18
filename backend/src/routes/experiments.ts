@@ -7,6 +7,9 @@ import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage() })
 
+// multer reads Content-Disposition filenames as Latin-1; re-decode as UTF-8 to preserve Chinese characters
+const decodeFilename = (raw: string) => Buffer.from(raw, 'latin1').toString('utf8')
+
 const expInclude = {
   formula: { select: { name: true } },
   experimenter: { select: { username: true } },
@@ -190,6 +193,32 @@ router.delete('/:id/samples/:sampleId', requireAuth, requireRole('ADMIN', 'LAB_S
   res.json({ success: true, message: '已刪除' })
 })
 
+// ── Sample Attachments ────────────────────────────────────────
+router.get('/:id/samples/:sampleId/attachments', requireAuth, async (req, res) => {
+  const attachments = await prisma.attachment.findMany({ where: { sampleId: Number(req.params.sampleId) } })
+  res.json({ success: true, data: attachments })
+})
+
+router.post('/:id/samples/:sampleId/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+  if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
+  const { fileType } = req.body
+  const fileUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
+  const a = await prisma.attachment.create({
+    data: {
+      sampleId: Number(req.params.sampleId),
+      fileUrl,
+      fileType: fileType ?? 'image',
+      fileName: decodeFilename(req.file.originalname),
+    },
+  })
+  res.status(201).json({ success: true, data: a })
+})
+
+router.delete('/:id/samples/:sampleId/attachments/:attachmentId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+  await prisma.attachment.delete({ where: { id: Number(req.params.attachmentId) } })
+  res.json({ success: true, message: '已刪除' })
+})
+
 // ── Result ───────────────────────────────────────────────────
 router.get('/:id/result', requireAuth, async (req, res) => {
   const r = await prisma.experimentResult.findUnique({
@@ -235,7 +264,7 @@ router.post('/:id/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), 
       experimentId: Number(req.params.id),
       fileUrl,
       fileType: fileType ?? 'image',
-      fileName: req.file.originalname,
+      fileName: decodeFilename(req.file.originalname),
     },
   })
   res.status(201).json({ success: true, data: a })
@@ -264,7 +293,7 @@ router.post('/:id/result/attachments', requireAuth, requireRole('ADMIN', 'LAB_ST
       resultId: result.id,
       fileUrl,
       fileType: fileType ?? 'image',
-      fileName: req.file.originalname,
+      fileName: decodeFilename(req.file.originalname),
     },
   })
   res.status(201).json({ success: true, data: a })

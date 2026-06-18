@@ -13,3 +13,77 @@
   font-size: 12px;
   margin-bottom: 4px;
 }
+
+.sortableItem {
+  border-radius: 6px;
+}
+
+.sortableItemDragging {
+  opacity: 0.5;
+  background: #f0f5ff;
+  border-radius: 6px;
+}
+
+.attachmentDownloadBtn {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+}
+
+.attachmentDeleteBtn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.sampleListItem {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.sampleListItem:hover {
+  background: #fafafa;
+}
+
+.drawerBody {
+  width: 100%;
+}
+
+.attachmentWrap {
+  position: relative;
+}
+
+.attachmentImg {
+  object-fit: cover;
+}
+
+.attachmentIconBox {
+  width: 120px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.iconPdf {
+  font-size: 40px;
+  color: #ff4d4f;
+}
+
+.iconExcel {
+  font-size: 40px;
+  color: #52c41a;
+}
+
+.iconVideo {
+  font-size: 40px;
+  color: #1677ff;
+}
+
+.iconFile {
+  font-size: 40px;
+}

@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Card, Descriptions, Tabs, Button, Space, Form, Input, Upload,
   Image, message, Spin, List, Avatar, Popconfirm, Tag, Modal,
-  InputNumber, DatePicker,
+  InputNumber, DatePicker, Tooltip, Drawer, Divider, Typography,
 } from 'antd'
+import type { UploadFile } from 'antd'
 import {
   PlusOutlined, DeleteOutlined, FileTextOutlined,
-  UploadOutlined, PictureOutlined, EditOutlined, HolderOutlined,
+  UploadOutlined, PictureOutlined, EditOutlined, HolderOutlined, DownloadOutlined,
+  FilePdfOutlined, FileExcelOutlined, VideoCameraOutlined,
 } from '@ant-design/icons'
 import {
   DndContext,
@@ -27,10 +29,12 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   getExperiment, addSteps, deleteStep, updateExperiment,
   uploadAttachment, deleteAttachment,
-  getSamples, createSample, deleteSample, uploadSamplePhoto,
+  getSamples, getSample, createSample, updateSample, deleteSample, uploadSamplePhoto,
+  getSampleAttachments, uploadSampleAttachment, deleteSampleAttachment,
 } from '../../api/experiments'
 import type { Experiment, ExperimentStep, Attachment, Sample } from '../../types'
 import { useAuthStore } from '../../stores/authStore'
+import { downloadBlob } from '../../utils/download'
 import dayjs from 'dayjs'
 import styles from './ExperimentDetailPage.module.css'
 
@@ -47,16 +51,20 @@ function SortableStep({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: step.id })
 
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    background: isDragging ? '#f0f5ff' : 'transparent',
-    borderRadius: 6,
-  }
+  const itemRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (itemRef.current) {
+      itemRef.current.style.transform = CSS.Transform.toString(transform) ?? ''
+      itemRef.current.style.transition = transition ?? ''
+    }
+  }, [transform, transition])
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div
+      ref={(node) => { setNodeRef(node); itemRef.current = node }}
+      className={isDragging ? styles.sortableItemDragging : styles.sortableItem}
+    >
       <List.Item
         actions={
           canEdit
@@ -104,6 +112,12 @@ export default function ExperimentDetailPage() {
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [editForm] = Form.useForm()
   const [saving, setSaving] = useState(false)
+  const [drawerSample, setDrawerSample] = useState<Sample | null>(null)
+  const [drawerEditing, setDrawerEditing] = useState(false)
+  const [drawerSaving, setDrawerSaving] = useState(false)
+  const [drawerForm] = Form.useForm()
+  const [sampleAttachments, setSampleAttachments] = useState<Attachment[]>([])
+  const [pendingAttachFiles, setPendingAttachFiles] = useState<UploadFile[]>([])
 
   const expId = Number(id)
   const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
@@ -194,8 +208,15 @@ export default function ExperimentDetailPage() {
     }
   }
 
+  const getAttachmentType = (file: File): 'image' | 'video' | 'pdf' | 'excel' => {
+    if (file.type.startsWith('image/')) return 'image'
+    if (file.type.startsWith('video/')) return 'video'
+    if (file.type === 'application/pdf') return 'pdf'
+    return 'excel'
+  }
+
   const handleUploadAttachment = async (file: File) => {
-    const type = file.type.startsWith('video') ? 'video' : 'image'
+    const type = getAttachmentType(file)
     try {
       await uploadAttachment(expId, file, type)
       message.success('上傳成功')
@@ -215,15 +236,33 @@ export default function ExperimentDetailPage() {
     }
   }
 
+  const handleDownloadAttachment = async (a: Attachment) => {
+    try {
+      const res = await fetch(a.fileUrl)
+      const blob = await res.blob()
+      downloadBlob(blob, a.fileName)
+    } catch {
+      message.error('下載失敗')
+    }
+  }
+
   const handleCreateSample = async (values: {
     sampleCode: string; clientName: string; label: string
     targetItem: string; sampleDate: string; notes: string
   }) => {
     try {
-      await createSample(expId, values)
+      const res = await createSample(expId, values)
+      const newSampleId = res.data.data.id
+      for (const uf of pendingAttachFiles) {
+        const file = uf.originFileObj as File
+        if (file) {
+          await uploadSampleAttachment(expId, newSampleId, file, getAttachmentType(file))
+        }
+      }
       message.success('樣品已新增')
       setSampleModalOpen(false)
       sampleForm.resetFields()
+      setPendingAttachFiles([])
       reload()
     } catch {
       message.error('新增失敗')
@@ -235,6 +274,10 @@ export default function ExperimentDetailPage() {
       await uploadSamplePhoto(expId, sampleId, file)
       message.success('照片已上傳')
       reload()
+      if (drawerSample?.id === sampleId) {
+        const res = await getSample(expId, sampleId)
+        setDrawerSample(res.data.data)
+      }
     } catch {
       message.error('上傳失敗')
     }
@@ -244,9 +287,85 @@ export default function ExperimentDetailPage() {
   const handleDeleteSample = async (sampleId: number) => {
     try {
       await deleteSample(expId, sampleId)
+      if (drawerSample?.id === sampleId) setDrawerSample(null)
       reload()
     } catch {
       message.error('刪除失敗')
+    }
+  }
+
+  const openSampleDrawer = async (sample: Sample) => {
+    setDrawerSample(sample)
+    setDrawerEditing(false)
+    try {
+      const res = await getSampleAttachments(expId, sample.id)
+      setSampleAttachments(res.data.data ?? [])
+    } catch {
+      setSampleAttachments([])
+    }
+  }
+
+  const handleDrawerEdit = () => {
+    if (!drawerSample) return
+    drawerForm.setFieldsValue({
+      clientName: drawerSample.clientName,
+      label: drawerSample.label,
+      targetItem: drawerSample.targetItem,
+      notes: drawerSample.notes,
+    })
+    setDrawerEditing(true)
+  }
+
+  const handleDrawerSave = async (values: {
+    clientName: string; label: string; targetItem: string; notes: string
+  }) => {
+    if (!drawerSample) return
+    setDrawerSaving(true)
+    try {
+      await updateSample(expId, drawerSample.id, values)
+      message.success('已更新')
+      setDrawerEditing(false)
+      const res = await getSample(expId, drawerSample.id)
+      setDrawerSample(res.data.data)
+      reload()
+    } catch {
+      message.error('更新失敗')
+    } finally {
+      setDrawerSaving(false)
+    }
+  }
+
+  const handleUploadSampleAttachment = async (file: File) => {
+    if (!drawerSample) return false
+    try {
+      await uploadSampleAttachment(expId, drawerSample.id, file, getAttachmentType(file))
+      message.success('上傳成功')
+      const res = await getSampleAttachments(expId, drawerSample.id)
+      setSampleAttachments(res.data.data ?? [])
+    } catch {
+      message.error('上傳失敗')
+    }
+    return false
+  }
+
+  const handleDeleteSampleAttachment = async (attachmentId: number) => {
+    if (!drawerSample) return
+    try {
+      await deleteSampleAttachment(expId, drawerSample.id, attachmentId)
+      const res = await getSampleAttachments(expId, drawerSample.id)
+      setSampleAttachments(res.data.data ?? [])
+    } catch {
+      message.error('刪除失敗')
+    }
+  }
+
+  const handleDownloadSampleAttachment = async (a: Attachment) => {
+    try {
+      const res = await fetch(a.fileUrl)
+      const blob = await res.blob()
+      downloadBlob(blob, a.fileName)
+    } catch {
+      message.error('下載失敗')
     }
   }
 
@@ -340,21 +459,32 @@ export default function ExperimentDetailPage() {
                   <Image.PreviewGroup>
                     <Space wrap>
                       {experiment.attachments.map((a: Attachment) => (
-                        <div key={a.id} style={{ position: 'relative' }}>
+                        <div key={a.id} className={styles.attachmentWrap}>
                           {a.fileType === 'image' ? (
-                            <Image src={a.fileUrl} width={120} height={90} style={{ objectFit: 'cover' }} />
+                            <Image src={a.fileUrl} width={120} height={90} className={styles.attachmentImg} />
                           ) : (
-                            <Card size="small" style={{ width: 120 }}>
-                              <PictureOutlined /> {a.fileName}
-                            </Card>
+                            <Tooltip title={a.fileName}>
+                              <div className={styles.attachmentIconBox}>
+                                {a.fileType === 'pdf' && <FilePdfOutlined className={styles.iconPdf} />}
+                                {a.fileType === 'excel' && <FileExcelOutlined className={styles.iconExcel} />}
+                                {a.fileType === 'video' && <VideoCameraOutlined className={styles.iconVideo} />}
+                                {!['pdf', 'excel', 'video'].includes(a.fileType) && <PictureOutlined className={styles.iconFile} />}
+                              </div>
+                            </Tooltip>
                           )}
+                          <Button
+                            size="small"
+                            icon={<DownloadOutlined />}
+                            className={styles.attachmentDownloadBtn}
+                            onClick={() => handleDownloadAttachment(a)}
+                          />
                           {canEdit && (
                             <Popconfirm title="刪除此附件？" onConfirm={() => handleDeleteAttachment(a.id)}>
                               <Button
                                 size="small"
                                 danger
                                 icon={<DeleteOutlined />}
-                                style={{ position: 'absolute', top: 4, right: 4 }}
+                                className={styles.attachmentDeleteBtn}
                               />
                             </Popconfirm>
                           )}
@@ -364,11 +494,11 @@ export default function ExperimentDetailPage() {
                   </Image.PreviewGroup>
                   {canEdit && (
                     <Upload
-                      accept="image/*,video/*"
+                      accept="image/*,video/*,.pdf,.xlsx,.xls,.csv"
                       showUploadList={false}
                       beforeUpload={(file) => handleUploadAttachment(file)}
                     >
-                      <Button icon={<UploadOutlined />}>上傳圖片 / 影片</Button>
+                      <Button icon={<UploadOutlined />}>上傳附件</Button>
                     </Upload>
                   )}
                 </Space>
@@ -388,18 +518,24 @@ export default function ExperimentDetailPage() {
                     dataSource={samples}
                     renderItem={(s: Sample) => (
                       <List.Item
+                        className={styles.sampleListItem}
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).closest('.ant-popconfirm, .ant-btn-dangerous')) return
+                          openSampleDrawer(s)
+                        }}
                         actions={
                           canEdit
                             ? [
-                                <Upload
-                                  accept="image/*"
-                                  showUploadList={false}
-                                  beforeUpload={(file) => handleSamplePhoto(s.id, file)}
+                                <Popconfirm
+                                  title="刪除此樣品？"
+                                  onConfirm={(e) => { e?.stopPropagation(); handleDeleteSample(s.id) }}
                                 >
-                                  <Button size="small" icon={<UploadOutlined />}>照片</Button>
-                                </Upload>,
-                                <Popconfirm title="刪除此樣品？" onConfirm={() => handleDeleteSample(s.id)}>
-                                  <Button size="small" danger icon={<DeleteOutlined />} />
+                                  <Button
+                                    size="small"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
                                 </Popconfirm>,
                               ]
                             : undefined
@@ -408,7 +544,7 @@ export default function ExperimentDetailPage() {
                         <List.Item.Meta
                           avatar={
                             s.photoUrl
-                              ? <Image src={s.photoUrl} width={48} height={48} style={{ objectFit: 'cover' }} />
+                              ? <Image src={s.photoUrl} width={48} height={48} style={{ objectFit: 'cover' }} preview={false} />
                               : <Avatar icon={<FileTextOutlined />} />
                           }
                           title={
@@ -417,7 +553,7 @@ export default function ExperimentDetailPage() {
                               <Tag>{s.clientName}</Tag>
                             </Space>
                           }
-                          description={`${s.label} | 目標：${s.targetItem} | 日期：${s.sampleDate}`}
+                          description={`${s.label} | 目標：${s.targetItem} | 日期：${s.sampleDate?.split('T')[0]}`}
                         />
                       </List.Item>
                     )}
@@ -463,7 +599,7 @@ export default function ExperimentDetailPage() {
       <Modal
         title="新增樣品"
         open={sampleModalOpen}
-        onCancel={() => setSampleModalOpen(false)}
+        onCancel={() => { setSampleModalOpen(false); setPendingAttachFiles([]) }}
         footer={null}
         destroyOnClose
       >
@@ -486,12 +622,128 @@ export default function ExperimentDetailPage() {
           <Form.Item name="notes" label="備註">
             <Input.TextArea rows={2} />
           </Form.Item>
+          <Form.Item label="附件">
+            <Upload
+              accept="image/*,video/*,.pdf,.xlsx,.xls,.csv"
+              multiple
+              fileList={pendingAttachFiles}
+              beforeUpload={() => false}
+              onChange={({ fileList }) => setPendingAttachFiles(fileList)}
+            >
+              <Button icon={<UploadOutlined />}>選擇附件</Button>
+            </Upload>
+          </Form.Item>
           <Space>
             <Button type="primary" htmlType="submit">新增</Button>
-            <Button onClick={() => setSampleModalOpen(false)}>取消</Button>
+            <Button onClick={() => { setSampleModalOpen(false); setPendingAttachFiles([]) }}>取消</Button>
           </Space>
         </Form>
       </Modal>
+
+      {/* 樣品詳情 Drawer */}
+      <Drawer
+        title={`樣品 — ${drawerSample?.sampleCode ?? ''}`}
+        open={!!drawerSample}
+        onClose={() => { setDrawerSample(null); setDrawerEditing(false) }}
+        width={520}
+        extra={
+          canEdit && !drawerEditing && (
+            <Button icon={<EditOutlined />} onClick={handleDrawerEdit}>編輯</Button>
+          )
+        }
+      >
+        {drawerSample && (
+          <Space direction="vertical" className={styles.drawerBody}>
+            {drawerEditing ? (
+              <Form form={drawerForm} layout="vertical" onFinish={handleDrawerSave}>
+                <Form.Item name="clientName" label="客戶名稱" rules={[{ required: true }]}>
+                  <Input />
+                </Form.Item>
+                <Form.Item name="label" label="標籤說明">
+                  <Input />
+                </Form.Item>
+                <Form.Item name="targetItem" label="目標原料項目">
+                  <Input />
+                </Form.Item>
+                <Form.Item name="notes" label="備註">
+                  <Input.TextArea rows={2} />
+                </Form.Item>
+                <Space>
+                  <Button type="primary" htmlType="submit" loading={drawerSaving}>儲存</Button>
+                  <Button onClick={() => setDrawerEditing(false)}>取消</Button>
+                </Space>
+              </Form>
+            ) : (
+              <Descriptions bordered column={1} size="small">
+                <Descriptions.Item label="樣品編號">{drawerSample.sampleCode}</Descriptions.Item>
+                <Descriptions.Item label="客戶名稱">{drawerSample.clientName}</Descriptions.Item>
+                <Descriptions.Item label="標籤說明">{drawerSample.label || '—'}</Descriptions.Item>
+                <Descriptions.Item label="目標原料項目">{drawerSample.targetItem || '—'}</Descriptions.Item>
+                <Descriptions.Item label="日期">{drawerSample.sampleDate?.split('T')[0]}</Descriptions.Item>
+                <Descriptions.Item label="備註">{drawerSample.notes || '—'}</Descriptions.Item>
+              </Descriptions>
+            )}
+
+            <Divider>照片</Divider>
+            {drawerSample.photoUrl
+              ? <Image src={drawerSample.photoUrl} width={200} />
+              : <Typography.Text type="secondary">尚無照片</Typography.Text>
+            }
+            {canEdit && (
+              <Upload
+                accept="image/*"
+                showUploadList={false}
+                beforeUpload={(file) => handleSamplePhoto(drawerSample.id, file)}
+              >
+                <Button icon={<UploadOutlined />}>上傳照片</Button>
+              </Upload>
+            )}
+
+            <Divider>附件</Divider>
+            <Image.PreviewGroup>
+              <Space wrap>
+                {sampleAttachments.map((a: Attachment) => (
+                  <div key={a.id} className={styles.attachmentWrap}>
+                    {a.fileType === 'image' ? (
+                      <Image src={a.fileUrl} width={120} height={90} className={styles.attachmentImg} />
+                    ) : (
+                      <Tooltip title={a.fileName}>
+                        <div className={styles.attachmentIconBox}>
+                          {a.fileType === 'pdf' && <FilePdfOutlined className={styles.iconPdf} />}
+                          {a.fileType === 'excel' && <FileExcelOutlined className={styles.iconExcel} />}
+                          {a.fileType === 'video' && <VideoCameraOutlined className={styles.iconVideo} />}
+                          {!['pdf', 'excel', 'video'].includes(a.fileType) && <PictureOutlined className={styles.iconFile} />}
+                        </div>
+                      </Tooltip>
+                    )}
+                    <Button
+                      size="small"
+                      icon={<DownloadOutlined />}
+                      className={styles.attachmentDownloadBtn}
+                      onClick={() => handleDownloadSampleAttachment(a)}
+                    />
+                    {canEdit && (
+                      <Popconfirm title="刪除此附件？" onConfirm={() => handleDeleteSampleAttachment(a.id)}>
+                        <Button size="small" danger icon={<DeleteOutlined />} className={styles.attachmentDeleteBtn} />
+                      </Popconfirm>
+                    )}
+                  </div>
+                ))}
+              </Space>
+            </Image.PreviewGroup>
+            {sampleAttachments.length === 0 && <Typography.Text type="secondary">尚無附件</Typography.Text>}
+            {canEdit && (
+              <Upload
+                accept="image/*,video/*,.pdf,.xlsx,.xls,.csv"
+                showUploadList={false}
+                beforeUpload={(file) => handleUploadSampleAttachment(file)}
+              >
+                <Button icon={<UploadOutlined />}>上傳附件</Button>
+              </Upload>
+            )}
+          </Space>
+        )}
+      </Drawer>
     </Space>
   )
 }

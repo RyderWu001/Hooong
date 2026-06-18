@@ -39,7 +39,7 @@ export const deleteStep = (experimentId: number, stepId: number) =>
   client.delete(`/experiments/${experimentId}/steps/${stepId}`)
 
 // Attachments
-export const uploadAttachment = (id: number, file: File, fileType: 'image' | 'video') => {
+export const uploadAttachment = (id: number, file: File, fileType: 'image' | 'video' | 'pdf' | 'excel') => {
   const form = new FormData()
   form.append('file', file)
   form.append('fileType', fileType)
@@ -86,3 +86,27 @@ export const uploadSamplePhoto = (experimentId: number, sampleId: number, file: 
 
 export const deleteSample = (experimentId: number, sampleId: number) =>
   client.delete(`/experiments/${experimentId}/samples/${sampleId}`)
+
+// Sample Attachments
+export const getSampleAttachments = (experimentId: number, sampleId: number) =>
+  client.get(`/experiments/${experimentId}/samples/${sampleId}/attachments`)
+
+export const uploadSampleAttachment = (
+  experimentId: number,
+  sampleId: number,
+  file: File,
+  fileType: 'image' | 'video' | 'pdf' | 'excel'
+) => {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('fileType', fileType)
+  return client.post(`/experiments/${experimentId}/samples/${sampleId}/attachments`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export const deleteSampleAttachment = (
+  experimentId: number,
+  sampleId: number,
+  attachmentId: number
+) => client.delete(`/experiments/${experimentId}/samples/${sampleId}/attachments/${attachmentId}`)

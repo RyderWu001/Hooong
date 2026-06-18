@@ -67,12 +67,13 @@ export interface Sample {
   sampleDate: string
   notes: string
   photoUrl?: string
+  attachments?: Attachment[]
 }
 
 export interface Attachment {
   id: number
   fileUrl: string
-  fileType: 'image' | 'video'
+  fileType: 'image' | 'video' | 'pdf' | 'excel'
   fileName: string
   createdAt: string
 }

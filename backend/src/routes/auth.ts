@@ -66,6 +66,27 @@ router.post('/register', async (req, res) => {
   })
 })
 
+// POST /auth/change-password
+router.post('/change-password', requireAuth, async (req: AuthRequest, res) => {
+  const { currentPassword, newPassword } = req.body
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '請填寫所有欄位' } })
+    return
+  }
+  if (newPassword.length < 8) {
+    res.status(400).json({ success: false, error: { code: 'PASSWORD_TOO_SHORT', message: '新密碼至少 8 個字元' } })
+    return
+  }
+  const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
+  if (!user) { res.status(404).json({ success: false }); return }
+  if (!bcrypt.compareSync(currentPassword, user.password)) {
+    res.status(400).json({ success: false, error: { code: 'WRONG_PASSWORD', message: '目前密碼錯誤' } })
+    return
+  }
+  await prisma.user.update({ where: { id: user.id }, data: { password: bcrypt.hashSync(newPassword, 10) } })
+  res.json({ success: true, message: '密碼已更新' })
+})
+
 // POST /auth/admin/register — 需要 ADMIN，可指定角色
 router.post('/admin/register', requireAuth, requireRole('ADMIN'), async (req, res) => {
   const { username, email, password, role } = req.body

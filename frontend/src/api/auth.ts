@@ -15,6 +15,9 @@ export const adminRegister = (data: { username: string; email: string; password:
 export const forgotPassword = (email: string) =>
   client.post('/auth/forgot-password', { email })
 
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  client.post('/auth/change-password', { currentPassword, newPassword })
+
 export const getMe = () => client.get<{ data: User }>('/auth/me')
 
 export const getUsers = (params?: { role?: Role; isActive?: boolean; page?: number; limit?: number }) =>

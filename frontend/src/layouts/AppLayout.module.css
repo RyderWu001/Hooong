@@ -1,0 +1,63 @@
+.root {
+  min-height: 100vh;
+}
+
+/* Sider 內部使用 flex column，讓底部設定區固定在最下方 */
+.siderInner {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+.siderLogo {
+  padding: 16px;
+  text-align: center;
+  border-bottom: 1px solid #303030;
+  flex-shrink: 0;
+}
+
+.logoText {
+  color: #fff;
+  font-size: 16px;
+}
+
+.siderMenuWrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.siderBottom {
+  flex-shrink: 0;
+  border-top: 1px solid #303030;
+}
+
+/* Header */
+.header {
+  background: #fff;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.collapseBtn {
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.userInfo {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Content */
+.content {
+  margin: 24px;
+  min-height: 280px;
+}

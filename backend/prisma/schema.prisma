@@ -105,16 +105,17 @@ model ExperimentStep {
 }
 
 model Sample {
-  id           Int        @id @default(autoincrement())
-  experiment   Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  id           Int          @id @default(autoincrement())
+  experiment   Experiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
   experimentId Int
   sampleCode   String
-  clientName   String     @default("")
-  label        String     @default("")
-  targetItem   String     @default("")
+  clientName   String       @default("")
+  label        String       @default("")
+  targetItem   String       @default("")
   sampleDate   DateTime
-  notes        String     @default("")
+  notes        String       @default("")
   photoUrl     String?
+  attachments  Attachment[]
 }
 
 model Attachment {
@@ -127,6 +128,8 @@ model Attachment {
   experimentId     Int?
   result           ExperimentResult? @relation(fields: [resultId], references: [id], onDelete: Cascade)
   resultId         Int?
+  sample           Sample?           @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  sampleId         Int?
 }
 
 model ExperimentResult {
