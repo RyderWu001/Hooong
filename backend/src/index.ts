@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import path from 'path'
 import express from 'express'
+import { ensureBucket } from './db/storage'
 import cors from 'cors'
 import authRouter from './routes/auth'
 import usersRouter from './routes/users'
@@ -50,6 +51,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
   res.status(500).json({ success: false, error: { code: 'INTERNAL_ERROR', message: '伺服器錯誤' } })
 })
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  await ensureBucket().catch((e) => console.warn('Storage bucket init:', e.message))
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 })

@@ -1,23 +1,11 @@
 import { Router } from 'express'
-import path from 'path'
-import fs from 'fs'
 import multer from 'multer'
 import prisma from '../db/client'
+import { uploadToStorage } from '../db/storage'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 
 const router = Router()
-
-const uploadsDir = path.join(__dirname, '../../../uploads')
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true })
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadsDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname)
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`)
-  },
-})
-const upload = multer({ storage })
+const upload = multer({ storage: multer.memoryStorage() })
 
 const expInclude = {
   formula: { select: { name: true } },
@@ -189,7 +177,7 @@ router.patch('/:id/samples/:sampleId', requireAuth, requireRole('ADMIN', 'LAB_ST
 
 router.post('/:id/samples/:sampleId/photo', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
-  const photoUrl = `/uploads/${req.file.filename}`
+  const photoUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
   const s = await prisma.sample.update({
     where: { id: Number(req.params.sampleId) },
     data: { photoUrl },
@@ -241,10 +229,11 @@ router.get('/:id/attachments', requireAuth, async (req, res) => {
 router.post('/:id/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
   const { fileType } = req.body
+  const fileUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
   const a = await prisma.attachment.create({
     data: {
       experimentId: Number(req.params.id),
-      fileUrl: `/uploads/${req.file.filename}`,
+      fileUrl,
       fileType: fileType ?? 'image',
       fileName: req.file.originalname,
     },
@@ -269,10 +258,11 @@ router.post('/:id/result/attachments', requireAuth, requireRole('ADMIN', 'LAB_ST
   if (!result) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '尚未建立結果' } }); return }
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
   const { fileType } = req.body
+  const fileUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
   const a = await prisma.attachment.create({
     data: {
       resultId: result.id,
-      fileUrl: `/uploads/${req.file.filename}`,
+      fileUrl,
       fileType: fileType ?? 'image',
       fileName: req.file.originalname,
     },

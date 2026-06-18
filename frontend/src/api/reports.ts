@@ -24,14 +24,3 @@ export const getResultSummaryReport = (params?: ReportParams) =>
 export const getCustomReport = (params?: ReportParams) =>
   client.get('/reports/custom', { params })
 
-export const exportExcel = (params?: ReportParams) =>
-  client.get('/reports/export/excel', {
-    params,
-    responseType: 'blob',
-  })
-
-export const exportPdf = (params?: ReportParams) =>
-  client.get('/reports/export/pdf', {
-    params,
-    responseType: 'blob',
-  })

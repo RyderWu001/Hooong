@@ -15,12 +15,6 @@ export const adminRegister = (data: { username: string; email: string; password:
 export const forgotPassword = (email: string) =>
   client.post('/auth/forgot-password', { email })
 
-export const resetPassword = (token: string, newPassword: string) =>
-  client.post('/auth/reset-password', { token, newPassword })
-
-export const changePassword = (oldPassword: string, newPassword: string) =>
-  client.patch('/auth/change-password', { oldPassword, newPassword })
-
 export const getMe = () => client.get<{ data: User }>('/auth/me')
 
 export const getUsers = (params?: { role?: Role; isActive?: boolean; page?: number; limit?: number }) =>
