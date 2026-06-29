@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Card, Form, Input, Select, Button, Space, Tag, Upload,
-  Image, Popconfirm, message, Spin, Descriptions, Divider,
+  Image, Popconfirm, message, Spin, Descriptions, Divider, InputNumber,
 } from 'antd'
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { getResult, createResult, updateResult, uploadResultAttachment, deleteResultAttachment } from '../../api/results'
+import { useDropdownOptions } from '../../hooks/useDropdownOptions'
 import type { ExperimentResult, ResultStatus, Attachment } from '../../types'
 import { useAuthStore } from '../../stores/authStore'
 import dayjs from 'dayjs'
@@ -26,6 +27,10 @@ export default function ResultDetailPage() {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form] = Form.useForm()
+
+  const { selectOptions: abnormalReasonOptions } = useDropdownOptions('result_abnormal_reason')
+  const { selectOptions: improvementActionOptions } = useDropdownOptions('result_improvement')
+  const { selectOptions: clientFeedbackResultOptions } = useDropdownOptions('result_client_feedback')
 
   const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
 
@@ -108,15 +113,33 @@ export default function ResultDetailPage() {
               <Descriptions.Item label="結果狀態">
                 <Tag color={statusColor(result.status)}>{statusLabel(result.status)}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="記錄時間">
+              <Descriptions.Item label="評分">
+                {result.score != null ? (
+                  <Tag color={result.score >= 80 ? 'green' : result.score >= 60 ? 'orange' : 'red'}>
+                    {result.score} 分
+                  </Tag>
+                ) : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="記錄時間" span={2}>
                 {dayjs(result.updatedAt).format('YYYY-MM-DD HH:mm')}
               </Descriptions.Item>
-              <Descriptions.Item label="結果說明" span={2}>{result.description}</Descriptions.Item>
-              <Descriptions.Item label="實驗心得" span={2}>{result.reflection}</Descriptions.Item>
-              <Descriptions.Item label="問題紀錄" span={2}>{result.issueRecord}</Descriptions.Item>
-              <Descriptions.Item label="改善建議" span={2}>{result.improvement}</Descriptions.Item>
-              <Descriptions.Item label="客戶回饋" span={2}>{result.clientFeedback}</Descriptions.Item>
-              <Descriptions.Item label="備註" span={2}>{result.notes}</Descriptions.Item>
+              <Descriptions.Item label="結果說明" span={2}>{result.description || '—'}</Descriptions.Item>
+              <Descriptions.Item label="實驗心得" span={2}>{result.reflection || '—'}</Descriptions.Item>
+              <Descriptions.Item label="問題紀錄" span={2}>{result.issueRecord || '—'}</Descriptions.Item>
+              <Descriptions.Item label="異常原因">
+                {result.abnormalReason ? <Tag color="red">{result.abnormalReason}</Tag> : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="客戶回饋結果">
+                {result.clientFeedbackResult
+                  ? <Tag color={result.clientFeedbackResult === '通過' ? 'green' : 'red'}>{result.clientFeedbackResult}</Tag>
+                  : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="改善建議" span={2}>{result.improvement || '—'}</Descriptions.Item>
+              <Descriptions.Item label="改善措施建議" span={2}>
+                {result.improvementAction ? <Tag color="blue">{result.improvementAction}</Tag> : '—'}
+              </Descriptions.Item>
+              <Descriptions.Item label="客戶回饋備註" span={2}>{result.clientFeedback || '—'}</Descriptions.Item>
+              <Descriptions.Item label="備註" span={2}>{result.notes || '—'}</Descriptions.Item>
             </Descriptions>
 
             <Divider>附件</Divider>
@@ -152,6 +175,9 @@ export default function ResultDetailPage() {
             <Form.Item name="status" label="結果狀態" rules={[{ required: true }]}>
               <Select options={STATUS_OPTIONS} />
             </Form.Item>
+            <Form.Item name="score" label="評分（0–100）">
+              <InputNumber min={0} max={100} style={{ width: 160 }} placeholder="例：85" />
+            </Form.Item>
             <Form.Item name="description" label="結果說明">
               <Input.TextArea rows={3} />
             </Form.Item>
@@ -161,11 +187,20 @@ export default function ResultDetailPage() {
             <Form.Item name="issueRecord" label="問題紀錄">
               <Input.TextArea rows={2} />
             </Form.Item>
+            <Form.Item name="abnormalReason" label="異常原因">
+              <Select allowClear options={abnormalReasonOptions} placeholder="請選擇異常原因" />
+            </Form.Item>
             <Form.Item name="improvement" label="改善建議">
               <Input.TextArea rows={2} />
             </Form.Item>
-            <Form.Item name="clientFeedback" label="客戶回饋">
+            <Form.Item name="improvementAction" label="改善措施建議">
+              <Select allowClear options={improvementActionOptions} placeholder="請選擇改善措施" />
+            </Form.Item>
+            <Form.Item name="clientFeedback" label="客戶回饋備註">
               <Input.TextArea rows={2} />
+            </Form.Item>
+            <Form.Item name="clientFeedbackResult" label="客戶回饋結果">
+              <Select allowClear options={clientFeedbackResultOptions} placeholder="請選擇" />
             </Form.Item>
             <Form.Item name="notes" label="備註">
               <Input.TextArea rows={2} />

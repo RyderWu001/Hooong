@@ -32,12 +32,13 @@ function formatExp(e: any) {
 router.get('/', requireAuth, async (req, res) => {
   const page = Number(req.query.page ?? 1)
   const limit = Number(req.query.limit ?? 20)
-  const { code, formulaId, experimenterId, dateFrom, dateTo } = req.query
+  const { code, formulaId, experimenterId, dateFrom, dateTo, category } = req.query
 
   const where: any = {}
   if (code) where.code = { contains: code as string }
   if (formulaId) where.formulaId = Number(formulaId)
   if (experimenterId) where.experimenterId = Number(experimenterId)
+  if (category) where.category = category as string
   if (dateFrom || dateTo) {
     where.experimentDate = {}
     if (dateFrom) where.experimentDate.gte = new Date(dateFrom as string)
@@ -60,12 +61,18 @@ router.get('/:id', requireAuth, async (req, res) => {
 
 // POST /experiments
 router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
-  const { code, formulaId, experimenterId, experimentDate, temperature, humidity, notes, steps } = req.body
+  const { code, formulaId, experimenterId, experimentDate, category, temperature, humidity,
+    dyeingMethod, acidAddingMethod, bathRatio, dyeingTemp, dyeingTime, pH, notes, steps } = req.body
   const e = await prisma.experiment.create({
     data: {
       code, formulaId, experimenterId: experimenterId ?? req.user!.id,
       experimentDate: new Date(experimentDate),
-      temperature: temperature ?? 25, humidity: humidity ?? 60, notes: notes ?? '',
+      category: category ?? null,
+      temperature: temperature ?? 25, humidity: humidity ?? 60,
+      dyeingMethod: dyeingMethod ?? null, acidAddingMethod: acidAddingMethod ?? null,
+      bathRatio: bathRatio ?? null, dyeingTemp: dyeingTemp ?? null,
+      dyeingTime: dyeingTime ?? null, pH: pH ?? null,
+      notes: notes ?? '',
       steps: { create: (steps ?? []).map((s: any, i: number) => ({ stepOrder: s.stepOrder ?? i + 1, description: s.description })) },
     },
     include: expInclude,
@@ -76,16 +83,24 @@ router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: Aut
 // PUT /experiments/:id
 router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const id = Number(req.params.id)
-  const { temperature, humidity, notes } = req.body
-  const e = await prisma.experiment.update({ where: { id }, data: { temperature, humidity, notes }, include: expInclude })
+  const { category, temperature, humidity, dyeingMethod, acidAddingMethod, bathRatio, dyeingTemp, dyeingTime, pH, notes } = req.body
+  const e = await prisma.experiment.update({
+    where: { id },
+    data: { category, temperature, humidity, dyeingMethod, acidAddingMethod, bathRatio, dyeingTemp, dyeingTime, pH, notes },
+    include: expInclude,
+  })
   res.json({ success: true, data: formatExp(e) })
 })
 
-// PATCH /experiments/:id — Bug 3 fix: frontend uses PATCH for partial update
+// PATCH /experiments/:id — frontend uses PATCH for partial update
 router.patch('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const id = Number(req.params.id)
-  const { temperature, humidity, notes } = req.body
-  const e = await prisma.experiment.update({ where: { id }, data: { temperature, humidity, notes }, include: expInclude })
+  const { category, temperature, humidity, dyeingMethod, acidAddingMethod, bathRatio, dyeingTemp, dyeingTime, pH, notes } = req.body
+  const e = await prisma.experiment.update({
+    where: { id },
+    data: { category, temperature, humidity, dyeingMethod, acidAddingMethod, bathRatio, dyeingTemp, dyeingTime, pH, notes },
+    include: expInclude,
+  })
   res.json({ success: true, data: formatExp(e) })
 })
 
@@ -158,22 +173,24 @@ router.get('/:id/samples/:sampleId', requireAuth, async (req, res) => {
 })
 
 router.post('/:id/samples', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
-  const { sampleCode, clientName, label, targetItem, sampleDate, notes } = req.body
+  const { sampleCode, clientName, label, targetItem, sampleDate, notes, category, attribute, industry, status } = req.body
   const s = await prisma.sample.create({
     data: {
       experimentId: Number(req.params.id),
       sampleCode, clientName: clientName ?? '', label: label ?? '',
       targetItem: targetItem ?? '', sampleDate: new Date(sampleDate), notes: notes ?? '',
+      category: category ?? null, attribute: attribute ?? null,
+      industry: industry ?? null, status: status ?? null,
     },
   })
   res.status(201).json({ success: true, data: s })
 })
 
 router.patch('/:id/samples/:sampleId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
-  const { clientName, label, targetItem, notes } = req.body
+  const { clientName, label, targetItem, notes, category, attribute, industry, status } = req.body
   const s = await prisma.sample.update({
     where: { id: Number(req.params.sampleId) },
-    data: { clientName, label, targetItem, notes },
+    data: { clientName, label, targetItem, notes, category, attribute, industry, status },
   })
   res.json({ success: true, data: s })
 })
@@ -231,9 +248,18 @@ router.get('/:id/result', requireAuth, async (req, res) => {
 
 router.post('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const experimentId = Number(req.params.id)
-  const { status, description, reflection, issueRecord, improvement, clientFeedback, notes } = req.body
+  const { status, score, description, reflection, issueRecord, abnormalReason,
+    improvement, improvementAction, clientFeedback, clientFeedbackResult, notes } = req.body
   const r = await prisma.experimentResult.create({
-    data: { experimentId, status, description: description ?? '', reflection: reflection ?? '', issueRecord: issueRecord ?? '', improvement: improvement ?? '', clientFeedback: clientFeedback ?? '', notes: notes ?? '' },
+    data: {
+      experimentId, status,
+      score: score != null ? Number(score) : null,
+      description: description ?? '', reflection: reflection ?? '',
+      issueRecord: issueRecord ?? '', abnormalReason: abnormalReason ?? null,
+      improvement: improvement ?? '', improvementAction: improvementAction ?? null,
+      clientFeedback: clientFeedback ?? '', clientFeedbackResult: clientFeedbackResult ?? null,
+      notes: notes ?? '',
+    },
     include: { attachments: true },
   })
   res.status(201).json({ success: true, data: r })
@@ -241,9 +267,19 @@ router.post('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async
 
 router.put('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const experimentId = Number(req.params.id)
-  const { status, description, reflection, issueRecord, improvement, clientFeedback, notes } = req.body
+  const { status, score, description, reflection, issueRecord, abnormalReason,
+    improvement, improvementAction, clientFeedback, clientFeedbackResult, notes } = req.body
   const r = await prisma.experimentResult.update({
-    where: { experimentId }, data: { status, description, reflection, issueRecord, improvement, clientFeedback, notes },
+    where: { experimentId },
+    data: {
+      status,
+      score: score != null ? Number(score) : null,
+      description, reflection, issueRecord,
+      abnormalReason: abnormalReason ?? null,
+      improvement, improvementAction: improvementAction ?? null,
+      clientFeedback, clientFeedbackResult: clientFeedbackResult ?? null,
+      notes,
+    },
     include: { attachments: true },
   })
   res.json({ success: true, data: r })
@@ -257,7 +293,7 @@ router.get('/:id/attachments', requireAuth, async (req, res) => {
 
 router.post('/:id/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
-  const { fileType } = req.body
+  const { fileType, imageCategory } = req.body
   const fileUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
   const a = await prisma.attachment.create({
     data: {
@@ -265,6 +301,7 @@ router.post('/:id/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), 
       fileUrl,
       fileType: fileType ?? 'image',
       fileName: decodeFilename(req.file.originalname),
+      imageCategory: imageCategory ?? null,
     },
   })
   res.status(201).json({ success: true, data: a })

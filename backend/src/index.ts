@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import 'express-async-errors'
 import path from 'path'
 import express from 'express'
 import { ensureBucket } from './db/storage'
@@ -13,6 +14,11 @@ import reportsRouter from './routes/reports'
 import materialsRouter from './routes/materials'
 import { suppliersRouter, evaluationsRouter, purchasesRouter } from './routes/suppliers'
 import risksRouter from './routes/risks'
+import dropdownsRouter from './routes/dropdowns'
+import samplesRouter from './routes/samples'
+import traceabilityRouter from './routes/traceability'
+import permissionsRouter from './routes/permissions'
+import knowledgeRouter from './routes/knowledge'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 3000)
@@ -33,6 +39,11 @@ app.use('/api/v1/suppliers', suppliersRouter)
 app.use('/api/v1/evaluations', evaluationsRouter)
 app.use('/api/v1/purchases', purchasesRouter)
 app.use('/api/v1/risks', risksRouter)
+app.use('/api/v1/dropdowns', dropdownsRouter)
+app.use('/api/v1/samples', samplesRouter)
+app.use('/api/v1/traceability', traceabilityRouter)
+app.use('/api/v1/permissions', permissionsRouter)
+app.use('/api/v1/knowledge', knowledgeRouter)
 
 app.get('/api/v1/health', (_, res) => res.json({ status: 'ok' }))
 

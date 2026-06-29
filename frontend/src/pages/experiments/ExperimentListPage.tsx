@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Input, Space, Card, DatePicker, Select, Form, Row, Col, message, Badge, Typography } from 'antd'
+import { Table, Button, Input, Space, Card, DatePicker, Select, Form, Row, Col, message, Badge, Typography, Tag } from 'antd'
 import { PlusOutlined, SearchOutlined, ClearOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { getExperiments } from '../../api/experiments'
 import { getFormulas } from '../../api/formulas'
 import { getUsers } from '../../api/auth'
+import { useDropdownOptions } from '../../hooks/useDropdownOptions'
 import type { Experiment, Formula, User } from '../../types'
 import { useAuthStore } from '../../stores/authStore'
 import dayjs from 'dayjs'
@@ -15,6 +16,7 @@ interface Filters {
   code?: string
   formulaId?: number
   experimenterId?: number
+  category?: string
   dateFrom?: string
   dateTo?: string
   page: number
@@ -31,6 +33,8 @@ export default function ExperimentListPage() {
   const [filters, setFilters] = useState<Filters>({ page: 1, limit: 20 })
   const [formulas, setFormulas] = useState<Formula[]>([])
   const [users, setUsers] = useState<User[]>([])
+
+  const { selectOptions: categoryOptions } = useDropdownOptions('experiment_category')
 
   useEffect(() => {
     getFormulas({ status: 'ACTIVE', limit: 200 }).then((r) => setFormulas(r.data.data ?? []))
@@ -56,12 +60,14 @@ export default function ExperimentListPage() {
     code?: string
     formulaId?: number
     experimenterId?: number
+    category?: string
     dateRange?: [dayjs.Dayjs, dayjs.Dayjs]
   }) => {
     setFilters({
       code: values.code || undefined,
       formulaId: values.formulaId,
       experimenterId: values.experimenterId,
+      category: values.category,
       dateFrom: values.dateRange?.[0]?.format('YYYY-MM-DD'),
       dateTo: values.dateRange?.[1]?.format('YYYY-MM-DD'),
       page: 1,
@@ -84,6 +90,12 @@ export default function ExperimentListPage() {
   const columns = [
     { title: '實驗編號', dataIndex: 'code', key: 'code' },
     { title: '配方', dataIndex: 'formulaName', key: 'formulaName' },
+    {
+      title: '實驗分類',
+      dataIndex: 'category',
+      key: 'category',
+      render: (v: string | null) => v ? <Tag color="blue">{v}</Tag> : <Typography.Text type="secondary">—</Typography.Text>,
+    },
     { title: '實驗人員', dataIndex: 'experimenterName', key: 'experimenterName' },
     {
       title: '實驗日期',
@@ -157,6 +169,19 @@ export default function ExperimentListPage() {
                 placeholder="實驗人員"
                 allowClear
                 options={staffOptions}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Form.Item name="category" style={{ marginBottom: 0 }}>
+              <Select
+                placeholder="實驗分類"
+                allowClear
+                showSearch
+                options={categoryOptions}
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
               />
             </Form.Item>
           </Col>

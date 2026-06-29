@@ -19,8 +19,42 @@ export type FormulaStatus = 'ACTIVE' | 'INACTIVE' | 'DELETED'
 export interface Ingredient {
   id: number
   name: string
+  code: string | null
+  casNo: string | null
+  englishName: string | null
+  category: string | null
+  industry: string | null
+  status: string
+  packageSpec: string | null
   unit: string
+  unitPrice: number | null
   description: string
+  createdAt: string
+}
+
+export interface IngredientDocument {
+  id: number
+  ingredientId: number
+  fileUrl: string
+  fileName: string
+  fileType: string
+  uploadedAt: string
+  uploaderName: string
+}
+
+export interface IngredientBatch {
+  id: number
+  ingredientId: number
+  batchNo: string
+  supplierBatch: string | null
+  mfgDate: string | null
+  expiryDate: string | null
+  quantity: number
+  unit: string
+  status: string
+  notes: string
+  createdAt: string
+  ingredientName?: string
 }
 
 export interface FormulaIngredient {
@@ -28,12 +62,15 @@ export interface FormulaIngredient {
   ingredientName?: string
   ratio: number
   unit: string
+  unitPrice?: number | null
 }
 
 export interface Formula {
   id: number
   code: string
   name: string
+  category: string | null
+  formulaType: string | null
   productType: string
   description: string
   status: FormulaStatus
@@ -44,11 +81,12 @@ export interface Formula {
 }
 
 export interface FormulaVersion {
+  id: number
   version: number
   changeNote: string
   createdAt: string
   createdBy: string
-  ingredients: FormulaIngredient[]
+  ingredientsSnapshot?: FormulaIngredient[] | null
 }
 
 // Experiment
@@ -60,6 +98,9 @@ export interface ExperimentStep {
 
 export interface Sample {
   id: number
+  experimentId: number
+  experimentCode?: string
+  experimentDate?: string
   sampleCode: string
   clientName: string
   label: string
@@ -67,6 +108,10 @@ export interface Sample {
   sampleDate: string
   notes: string
   photoUrl?: string
+  category: string | null
+  attribute: string | null
+  industry: string | null
+  status: string | null
   attachments?: Attachment[]
 }
 
@@ -75,6 +120,7 @@ export interface Attachment {
   fileUrl: string
   fileType: 'image' | 'video' | 'pdf' | 'excel'
   fileName: string
+  imageCategory: string | null
   createdAt: string
 }
 
@@ -86,8 +132,15 @@ export interface Experiment {
   experimenterId: number
   experimenterName?: string
   experimentDate: string
+  category: string | null
   temperature: number
   humidity: number
+  dyeingMethod: string | null
+  acidAddingMethod: string | null
+  bathRatio: string | null
+  dyeingTemp: number | null
+  dyeingTime: number | null
+  pH: number | null
   notes: string
   steps: ExperimentStep[]
   attachments: Attachment[]
@@ -103,11 +156,15 @@ export interface ExperimentResult {
   experimentId: number
   experimentCode?: string
   status: ResultStatus
+  score: number | null
   description: string
   reflection: string
   issueRecord: string
+  abnormalReason: string | null
   improvement: string
+  improvementAction: string | null
   clientFeedback: string
+  clientFeedbackResult: string | null
   notes: string
   attachments: Attachment[]
   createdAt: string
@@ -289,6 +346,47 @@ export interface AbnormalEvent {
   resolution?: string
   resolvedAt?: string
   createdAt: string
+}
+
+// Traceability
+export interface FormulaTraceability {
+  formula: { id: number; code: string; name: string; productType: string; status: string; currentVersion: number; createdAt: string }
+  versions: Array<{ id: number; version: number; changeNote: string; createdAt: string; createdBy: string; ingredientsSnapshot: any }>
+  experiments: Array<{ id: number; code: string; experimentDate: string; experimenterName: string; result: { status: string; score: number | null } | null; samplesCount: number }>
+}
+
+export interface IngredientTraceability {
+  ingredient: { id: number; name: string; code: string | null; unit: string; status: string }
+  batches: IngredientBatch[]
+  usedInFormulas: Array<{
+    formulaId: number; formulaCode: string; formulaName: string; formulaStatus: string
+    ratio: number; unit: string
+    experiments: Array<{ id: number; code: string; experimentDate: string; experimenterName: string; resultStatus: string | null }>
+  }>
+}
+
+// Knowledge
+export interface KnowledgeArticle {
+  id: number
+  title: string
+  content: string
+  category: string
+  tags: string
+  createdById: number
+  createdByName?: string
+  createdAt: string
+  updatedAt: string
+}
+
+// Permissions
+export interface RolePermission {
+  id: number
+  role: string
+  module: string
+  canView: boolean
+  canCreate: boolean
+  canEdit: boolean
+  canDelete: boolean
 }
 
 // Pagination

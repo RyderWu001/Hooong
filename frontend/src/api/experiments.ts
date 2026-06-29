@@ -4,6 +4,7 @@ export const getExperiments = (params?: {
   code?: string
   formulaId?: number
   experimenterId?: number
+  category?: string
   dateFrom?: string
   dateTo?: string
   page?: number
@@ -16,14 +17,32 @@ export const createExperiment = (data: {
   code: string
   formulaId: number
   experimentDate: string
+  category?: string | null
   temperature: number
   humidity: number
+  dyeingMethod?: string | null
+  acidAddingMethod?: string | null
+  bathRatio?: string | null
+  dyeingTemp?: number | null
+  dyeingTime?: number | null
+  pH?: number | null
   notes: string
 }) => client.post('/experiments', data)
 
 export const updateExperiment = (
   id: number,
-  data: { temperature?: number; humidity?: number; notes?: string }
+  data: {
+    category?: string | null
+    temperature?: number
+    humidity?: number
+    dyeingMethod?: string | null
+    acidAddingMethod?: string | null
+    bathRatio?: string | null
+    dyeingTemp?: number | null
+    dyeingTime?: number | null
+    pH?: number | null
+    notes?: string
+  }
 ) => client.patch(`/experiments/${id}`, data)
 
 // Steps
@@ -44,10 +63,16 @@ export const reorderSteps = (
 ) => client.put(`/experiments/${experimentId}/steps`, { steps })
 
 // Attachments
-export const uploadAttachment = (id: number, file: File, fileType: 'image' | 'video' | 'pdf' | 'excel') => {
+export const uploadAttachment = (
+  id: number,
+  file: File,
+  fileType: 'image' | 'video' | 'pdf' | 'excel',
+  imageCategory?: string | null
+) => {
   const form = new FormData()
   form.append('file', file)
   form.append('fileType', fileType)
+  if (imageCategory) form.append('imageCategory', imageCategory)
   return client.post(`/experiments/${id}/attachments`, form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })

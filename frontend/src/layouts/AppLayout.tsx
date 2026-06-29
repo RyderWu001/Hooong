@@ -16,6 +16,11 @@ import {
   SettingOutlined,
   LockOutlined,
   InfoCircleOutlined,
+  UnorderedListOutlined,
+  TagsOutlined,
+  ApartmentOutlined,
+  BookOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
@@ -85,9 +90,16 @@ export default function AppLayout() {
     { key: '/risks',        icon: <WarningOutlined />,     label: '風險管理' },
     { key: '/experiments',  icon: <ExperimentOutlined />,  label: '實驗管理' },
     { key: '/results',      icon: <FileTextOutlined />,    label: '實驗結果' },
-    { key: '/reports',      icon: <BarChartOutlined />,    label: '報表' },
+    { key: '/samples',       icon: <TagsOutlined />,              label: '樣品管理' },
+    { key: '/reports',       icon: <BarChartOutlined />,          label: '報表' },
+    { key: '/traceability',  icon: <ApartmentOutlined />,         label: '溯源管理' },
+    { key: '/knowledge',     icon: <BookOutlined />,              label: '知識庫' },
     ...(user?.role === 'ADMIN'
-      ? [{ key: '/users', icon: <TeamOutlined />, label: '使用者管理' }]
+      ? [
+          { key: '/users',       icon: <TeamOutlined />,            label: '使用者管理' },
+          { key: '/dropdowns',   icon: <UnorderedListOutlined />,   label: '選項管理' },
+          { key: '/permissions', icon: <SafetyCertificateOutlined />, label: '權限管理' },
+        ]
       : []),
   ]
 

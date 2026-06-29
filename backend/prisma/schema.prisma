@@ -16,20 +16,30 @@ model User {
   role                String               @default("LAB_STAFF")
   isActive            Boolean              @default(true)
   createdAt           DateTime             @default(now())
-  experiments         Experiment[]         @relation("ExperimenterRelation")
-  versions            FormulaVersion[]
-  transactions        MaterialTransaction[]
-  evaluations         SupplierEvaluation[]
-  formulaRisks        FormulaRisk[]
-  ingredientRisks     IngredientRisk[]
-  reportedEvents      AbnormalEvent[]      @relation("AbnormalEventReporter")
-  resolvedEvents      AbnormalEvent[]      @relation("AbnormalEventResolver")
+  experiments           Experiment[]         @relation("ExperimenterRelation")
+  versions              FormulaVersion[]
+  transactions          MaterialTransaction[]
+  evaluations           SupplierEvaluation[]
+  formulaRisks          FormulaRisk[]
+  ingredientRisks       IngredientRisk[]
+  reportedEvents        AbnormalEvent[]      @relation("AbnormalEventReporter")
+  resolvedEvents        AbnormalEvent[]      @relation("AbnormalEventResolver")
+  ingredientDocuments   IngredientDocument[]
+  knowledgeArticles     KnowledgeArticle[]
 }
 
 model Ingredient {
   id              Int                  @id @default(autoincrement())
   name            String
+  code            String?
+  casNo           String?
+  englishName     String?
+  category        String?
+  industry        String?
+  status          String               @default("使用中")
+  packageSpec     String?
   unit            String
+  unitPrice       Float?
   description     String               @default("")
   createdAt       DateTime             @default(now())
   formulaUses     FormulaIngredient[]
@@ -37,12 +47,43 @@ model Ingredient {
   purchases       PurchaseRecord[]
   ingredientRisks IngredientRisk[]
   abnormalEvents  AbnormalEvent[]
+  documents       IngredientDocument[]
+  batches         IngredientBatch[]
+}
+
+model IngredientDocument {
+  id           Int        @id @default(autoincrement())
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  ingredientId Int
+  fileUrl      String
+  fileName     String
+  fileType     String     @default("OTHER")
+  uploadedAt   DateTime   @default(now())
+  uploadedBy   User       @relation(fields: [uploadedById], references: [id])
+  uploadedById Int
+}
+
+model IngredientBatch {
+  id            Int        @id @default(autoincrement())
+  ingredient    Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  ingredientId  Int
+  batchNo       String
+  supplierBatch String?
+  mfgDate       DateTime?
+  expiryDate    DateTime?
+  quantity      Float
+  unit          String
+  status        String     @default("正常")
+  notes         String     @default("")
+  createdAt     DateTime   @default(now())
 }
 
 model Formula {
   id             Int                 @id @default(autoincrement())
   code           String              @unique
   name           String
+  category       String?
+  formulaType    String?
   productType    String
   description    String              @default("")
   status         String              @default("ACTIVE")
@@ -67,33 +108,41 @@ model FormulaIngredient {
 }
 
 model FormulaVersion {
-  id         Int      @id @default(autoincrement())
-  formula    Formula  @relation(fields: [formulaId], references: [id], onDelete: Cascade)
-  formulaId  Int
-  version    Int
-  changeNote String   @default("")
-  createdAt  DateTime @default(now())
-  createdBy  User     @relation(fields: [userId], references: [id])
-  userId     Int
+  id                  Int      @id @default(autoincrement())
+  formula             Formula  @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  formulaId           Int
+  version             Int
+  changeNote          String   @default("")
+  ingredientsSnapshot Json?
+  createdAt           DateTime @default(now())
+  createdBy           User     @relation(fields: [userId], references: [id])
+  userId              Int
 }
 
 model Experiment {
-  id             Int              @id @default(autoincrement())
-  code           String           @unique
-  formula        Formula          @relation(fields: [formulaId], references: [id])
-  formulaId      Int
-  experimenter   User             @relation("ExperimenterRelation", fields: [experimenterId], references: [id])
-  experimenterId Int
-  experimentDate DateTime
-  temperature    Float            @default(25.0)
-  humidity       Float            @default(60.0)
-  notes          String           @default("")
-  createdAt      DateTime         @default(now())
-  steps          ExperimentStep[]
-  attachments    Attachment[]
-  samples        Sample[]
-  result         ExperimentResult?
-  transactions   MaterialTransaction[]
+  id               Int              @id @default(autoincrement())
+  code             String           @unique
+  formula          Formula          @relation(fields: [formulaId], references: [id])
+  formulaId        Int
+  experimenter     User             @relation("ExperimenterRelation", fields: [experimenterId], references: [id])
+  experimenterId   Int
+  experimentDate   DateTime
+  category         String?
+  temperature      Float            @default(25.0)
+  humidity         Float            @default(60.0)
+  dyeingMethod     String?
+  acidAddingMethod String?
+  bathRatio        String?
+  dyeingTemp       Float?
+  dyeingTime       Int?
+  pH               Float?
+  notes            String           @default("")
+  createdAt        DateTime         @default(now())
+  steps            ExperimentStep[]
+  attachments      Attachment[]
+  samples          Sample[]
+  result           ExperimentResult?
+  transactions     MaterialTransaction[]
 }
 
 model ExperimentStep {
@@ -115,6 +164,10 @@ model Sample {
   sampleDate   DateTime
   notes        String       @default("")
   photoUrl     String?
+  category     String?
+  attribute    String?
+  industry     String?
+  status       String?
   attachments  Attachment[]
 }
 
@@ -123,6 +176,7 @@ model Attachment {
   fileUrl          String
   fileType         String
   fileName         String
+  imageCategory    String?
   createdAt        DateTime          @default(now())
   experiment       Experiment?       @relation(fields: [experimentId], references: [id], onDelete: Cascade)
   experimentId     Int?
@@ -133,19 +187,23 @@ model Attachment {
 }
 
 model ExperimentResult {
-  id             Int          @id @default(autoincrement())
-  experiment     Experiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
-  experimentId   Int          @unique
-  status         String       @default("OBSERVING")
-  description    String       @default("")
-  reflection     String       @default("")
-  issueRecord    String       @default("")
-  improvement    String       @default("")
-  clientFeedback String       @default("")
-  notes          String       @default("")
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  attachments    Attachment[]
+  id                   Int          @id @default(autoincrement())
+  experiment           Experiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId         Int          @unique
+  status               String       @default("OBSERVING")
+  score                Int?
+  description          String       @default("")
+  reflection           String       @default("")
+  issueRecord          String       @default("")
+  abnormalReason       String?
+  improvement          String       @default("")
+  improvementAction    String?
+  clientFeedback       String       @default("")
+  clientFeedbackResult String?
+  notes                String       @default("")
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  attachments          Attachment[]
 }
 
 // ── 原物料管理 ────────────────────────────────────────────────
@@ -227,6 +285,26 @@ model PurchaseRecord {
   createdAt    DateTime  @default(now())
 }
 
+// ── 下拉選項管理 ─────────────────────────────────────────────
+
+model DropdownCategory {
+  id      Int              @id @default(autoincrement())
+  key     String           @unique
+  label   String
+  options DropdownOption[]
+}
+
+model DropdownOption {
+  id         Int              @id @default(autoincrement())
+  category   DropdownCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId Int
+  value      String
+  label      String
+  sortOrder  Int              @default(0)
+  isActive   Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+}
+
 // ── 風險管理 ──────────────────────────────────────────────────
 
 model FormulaRisk {
@@ -278,4 +356,32 @@ model AbnormalEvent {
   resolvedById        Int?
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
+}
+
+// ── 知識庫 ────────────────────────────────────────────────────
+
+model KnowledgeArticle {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  category    String   @default("")
+  tags        String   @default("")
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdById Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ── 細粒度權限 ─────────────────────────────────────────────────
+
+model RolePermission {
+  id        Int     @id @default(autoincrement())
+  role      String
+  module    String
+  canView   Boolean @default(true)
+  canCreate Boolean @default(false)
+  canEdit   Boolean @default(false)
+  canDelete Boolean @default(false)
+
+  @@unique([role, module])
 }

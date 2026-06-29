@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   Card, Descriptions, Tabs, Button, Space, Form, Input, Upload,
   Image, message, Spin, List, Avatar, Popconfirm, Tag, Modal,
-  InputNumber, DatePicker, Tooltip, Drawer, Divider, Typography,
+  InputNumber, DatePicker, Tooltip, Drawer, Divider, Typography, Select,
 } from 'antd'
 import type { UploadFile } from 'antd'
 import {
@@ -32,11 +32,14 @@ import {
   getSamples, getSample, createSample, updateSample, deleteSample, uploadSamplePhoto,
   getSampleAttachments, uploadSampleAttachment, deleteSampleAttachment,
 } from '../../api/experiments'
+import { useDropdownOptions } from '../../hooks/useDropdownOptions'
 import type { Experiment, ExperimentStep, Attachment, Sample } from '../../types'
 import { useAuthStore } from '../../stores/authStore'
 import { downloadBlob } from '../../utils/download'
 import dayjs from 'dayjs'
 import styles from './ExperimentDetailPage.module.css'
+
+const IMAGE_CATEGORIES = ['染色前', '染色中', '染色後', '成品', '對照樣', '其他']
 
 // 單一可拖曳步驟列
 function SortableStep({
@@ -118,6 +121,15 @@ export default function ExperimentDetailPage() {
   const [drawerForm] = Form.useForm()
   const [sampleAttachments, setSampleAttachments] = useState<Attachment[]>([])
   const [pendingAttachFiles, setPendingAttachFiles] = useState<UploadFile[]>([])
+  const [imageCategoryFilter, setImageCategoryFilter] = useState<string | null>(null)
+  const [pendingImageCategory, setPendingImageCategory] = useState<string | null>(null)
+
+  const { selectOptions: expCategoryOptions } = useDropdownOptions('experiment_category')
+  const { selectOptions: acidMethodOptions } = useDropdownOptions('dyeing_acid_method')
+  const { selectOptions: sampleCategoryOptions } = useDropdownOptions('sample_category')
+  const { selectOptions: sampleAttributeOptions } = useDropdownOptions('sample_attribute')
+  const { selectOptions: sampleIndustryOptions } = useDropdownOptions('sample_industry')
+  const { selectOptions: sampleStatusOptions } = useDropdownOptions('sample_status')
 
   const expId = Number(id)
   const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
@@ -160,8 +172,15 @@ export default function ExperimentDetailPage() {
   const openEditModal = () => {
     if (!experiment) return
     editForm.setFieldsValue({
+      category: experiment.category,
       temperature: experiment.temperature,
       humidity: experiment.humidity,
+      dyeingMethod: experiment.dyeingMethod,
+      acidAddingMethod: experiment.acidAddingMethod,
+      bathRatio: experiment.bathRatio,
+      dyeingTemp: experiment.dyeingTemp,
+      dyeingTime: experiment.dyeingTime,
+      pH: experiment.pH,
       notes: experiment.notes,
       experimentDate: dayjs(experiment.experimentDate),
     })
@@ -169,16 +188,29 @@ export default function ExperimentDetailPage() {
   }
 
   const handleSaveExperiment = async (values: {
+    category?: string
     temperature: number
     humidity: number
+    dyeingMethod?: string
+    acidAddingMethod?: string
+    bathRatio?: string
+    dyeingTemp?: number
+    dyeingTime?: number
+    pH?: number
     notes: string
-    experimentDate: dayjs.Dayjs
   }) => {
     setSaving(true)
     try {
       await updateExperiment(expId, {
+        category: values.category ?? null,
         temperature: values.temperature,
         humidity: values.humidity,
+        dyeingMethod: values.dyeingMethod ?? null,
+        acidAddingMethod: values.acidAddingMethod ?? null,
+        bathRatio: values.bathRatio ?? null,
+        dyeingTemp: values.dyeingTemp ?? null,
+        dyeingTime: values.dyeingTime ?? null,
+        pH: values.pH ?? null,
         notes: values.notes,
       })
       message.success('已更新')
@@ -220,8 +252,9 @@ export default function ExperimentDetailPage() {
 
   const handleUploadAttachment = async (file: File) => {
     const type = getAttachmentType(file)
+    const category = type === 'image' ? pendingImageCategory : null
     try {
-      await uploadAttachment(expId, file, type)
+      await uploadAttachment(expId, file, type, category)
       message.success('上傳成功')
       reload()
     } catch {
@@ -252,6 +285,7 @@ export default function ExperimentDetailPage() {
   const handleCreateSample = async (values: {
     sampleCode: string; clientName: string; label: string
     targetItem: string; sampleDate: string; notes: string
+    category?: string; attribute?: string; industry?: string; status?: string
   }) => {
     try {
       const res = await createSample(expId, values)
@@ -324,12 +358,17 @@ export default function ExperimentDetailPage() {
       label: drawerSample.label,
       targetItem: drawerSample.targetItem,
       notes: drawerSample.notes,
+      category: drawerSample.category,
+      attribute: drawerSample.attribute,
+      industry: drawerSample.industry,
+      status: drawerSample.status,
     })
     setDrawerEditing(true)
   }
 
   const handleDrawerSave = async (values: {
     clientName: string; label: string; targetItem: string; notes: string
+    category?: string; attribute?: string; industry?: string; status?: string
   }) => {
     if (!drawerSample) return
     setDrawerSaving(true)
@@ -407,9 +446,11 @@ export default function ExperimentDetailPage() {
           <Descriptions.Item label="配方">{experiment.formulaName}</Descriptions.Item>
           <Descriptions.Item label="實驗人員">{experiment.experimenterName}</Descriptions.Item>
           <Descriptions.Item label="實驗日期">{dayjs(experiment.experimentDate).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
-          <Descriptions.Item label="溫度">{experiment.temperature} °C</Descriptions.Item>
-          <Descriptions.Item label="濕度">{experiment.humidity} %</Descriptions.Item>
-          <Descriptions.Item label="備註" span={2}>{experiment.notes}</Descriptions.Item>
+          <Descriptions.Item label="實驗分類">
+            {experiment.category ? <Tag color="blue">{experiment.category}</Tag> : <Typography.Text type="secondary">—</Typography.Text>}
+          </Descriptions.Item>
+          <Descriptions.Item label="環境條件">{experiment.temperature} °C / {experiment.humidity} %</Descriptions.Item>
+          <Descriptions.Item label="備註" span={2}>{experiment.notes || '—'}</Descriptions.Item>
         </Descriptions>
       </Card>
 
@@ -464,16 +505,51 @@ export default function ExperimentDetailPage() {
               ),
             },
             {
+              key: 'dyeing',
+              label: '染色條件',
+              children: (
+                <Descriptions bordered column={2} size="small">
+                  <Descriptions.Item label="染色方式">{experiment.dyeingMethod || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="加酸方式">{experiment.acidAddingMethod || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="浴比">{experiment.bathRatio || '—'}</Descriptions.Item>
+                  <Descriptions.Item label="染色溫度">{experiment.dyeingTemp != null ? `${experiment.dyeingTemp} °C` : '—'}</Descriptions.Item>
+                  <Descriptions.Item label="染色時間">{experiment.dyeingTime != null ? `${experiment.dyeingTime} 分鐘` : '—'}</Descriptions.Item>
+                  <Descriptions.Item label="pH 值">{experiment.pH != null ? experiment.pH : '—'}</Descriptions.Item>
+                </Descriptions>
+              ),
+            },
+            {
               key: 'attachments',
               label: '附件',
               children: (
                 <Space direction="vertical" style={{ width: '100%' }}>
+                  {experiment.attachments.some((a) => a.fileType === 'image') && (
+                    <Space>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>篩選圖片分類：</Typography.Text>
+                      <Select
+                        allowClear
+                        placeholder="全部"
+                        style={{ width: 140 }}
+                        options={IMAGE_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                        value={imageCategoryFilter}
+                        onChange={(v) => setImageCategoryFilter(v ?? null)}
+                        size="small"
+                      />
+                    </Space>
+                  )}
                   <Image.PreviewGroup>
                     <Space wrap>
-                      {experiment.attachments.map((a: Attachment) => (
+                      {experiment.attachments
+                        .filter((a) => !imageCategoryFilter || a.fileType !== 'image' || a.imageCategory === imageCategoryFilter)
+                        .map((a: Attachment) => (
                         <div key={a.id} className={styles.attachmentWrap}>
                           {a.fileType === 'image' ? (
-                            <Image src={a.fileUrl} width={120} height={90} className={styles.attachmentImg} />
+                            <>
+                              <Image src={a.fileUrl} width={120} height={90} className={styles.attachmentImg} />
+                              {a.imageCategory && (
+                                <Tag color="cyan" style={{ marginTop: 2, fontSize: 11, padding: '0 4px' }}>{a.imageCategory}</Tag>
+                              )}
+                            </>
                           ) : (
                             <Tooltip title={a.fileName}>
                               <div className={styles.attachmentIconBox}>
@@ -505,13 +581,24 @@ export default function ExperimentDetailPage() {
                     </Space>
                   </Image.PreviewGroup>
                   {canEdit && (
-                    <Upload
-                      accept="image/*,video/*,.pdf,.xlsx,.xls,.csv"
-                      showUploadList={false}
-                      beforeUpload={(file) => handleUploadAttachment(file)}
-                    >
-                      <Button icon={<UploadOutlined />}>上傳附件</Button>
-                    </Upload>
+                    <Space>
+                      <Select
+                        allowClear
+                        placeholder="圖片分類（選填）"
+                        style={{ width: 160 }}
+                        options={IMAGE_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                        value={pendingImageCategory}
+                        onChange={(v) => setPendingImageCategory(v ?? null)}
+                        size="small"
+                      />
+                      <Upload
+                        accept="image/*,video/*,.pdf,.xlsx,.xls,.csv"
+                        showUploadList={false}
+                        beforeUpload={(file) => handleUploadAttachment(file)}
+                      >
+                        <Button icon={<UploadOutlined />}>上傳附件</Button>
+                      </Upload>
+                    </Space>
                   )}
                 </Space>
               ),
@@ -584,17 +671,53 @@ export default function ExperimentDetailPage() {
         onCancel={() => setEditModalOpen(false)}
         footer={null}
         destroyOnClose
+        width={640}
       >
         <Form form={editForm} layout="vertical" onFinish={handleSaveExperiment} style={{ marginTop: 16 }}>
+          <Form.Item name="category" label="實驗分類">
+            <Select
+              options={expCategoryOptions}
+              allowClear
+              placeholder="選擇實驗分類"
+            />
+          </Form.Item>
           <Form.Item name="experimentDate" label="實驗日期">
             <DatePicker showTime style={{ width: '100%' }} disabled />
           </Form.Item>
           <Space>
             <Form.Item name="temperature" label="溫度（°C）" rules={[{ required: true }]}>
-              <InputNumber step={0.1} style={{ width: 160 }} />
+              <InputNumber step={0.1} style={{ width: 150 }} />
             </Form.Item>
             <Form.Item name="humidity" label="濕度（%）" rules={[{ required: true }]}>
-              <InputNumber step={0.1} min={0} max={100} style={{ width: 160 }} />
+              <InputNumber step={0.1} min={0} max={100} style={{ width: 150 }} />
+            </Form.Item>
+          </Space>
+          <Divider orientation="left" style={{ fontSize: 13, color: '#888', margin: '8px 0' }}>染色條件</Divider>
+          <Space wrap>
+            <Form.Item name="dyeingMethod" label="染色方式" style={{ marginBottom: 8 }}>
+              <Input placeholder="例：浸染、軋染" style={{ width: 160 }} />
+            </Form.Item>
+            <Form.Item name="acidAddingMethod" label="加酸方式" style={{ marginBottom: 8 }}>
+              <Select
+                options={acidMethodOptions}
+                allowClear
+                placeholder="選擇"
+                style={{ width: 160 }}
+              />
+            </Form.Item>
+            <Form.Item name="bathRatio" label="浴比" style={{ marginBottom: 8 }}>
+              <Input placeholder="例：1:10" style={{ width: 130 }} />
+            </Form.Item>
+          </Space>
+          <Space wrap>
+            <Form.Item name="dyeingTemp" label="染色溫度（°C）" style={{ marginBottom: 8 }}>
+              <InputNumber step={1} style={{ width: 150 }} />
+            </Form.Item>
+            <Form.Item name="dyeingTime" label="染色時間（分鐘）" style={{ marginBottom: 8 }}>
+              <InputNumber step={1} min={0} style={{ width: 150 }} />
+            </Form.Item>
+            <Form.Item name="pH" label="pH 值" style={{ marginBottom: 8 }}>
+              <InputNumber step={0.1} min={0} max={14} style={{ width: 130 }} />
             </Form.Item>
           </Space>
           <Form.Item name="notes" label="備註">
@@ -630,6 +753,18 @@ export default function ExperimentDetailPage() {
           </Form.Item>
           <Form.Item name="sampleDate" label="日期" rules={[{ required: true }]}>
             <Input type="date" />
+          </Form.Item>
+          <Form.Item name="category" label="樣品分類">
+            <Select allowClear options={sampleCategoryOptions} placeholder="請選擇" />
+          </Form.Item>
+          <Form.Item name="attribute" label="樣品屬性">
+            <Select allowClear options={sampleAttributeOptions} placeholder="請選擇" />
+          </Form.Item>
+          <Form.Item name="industry" label="產業別">
+            <Select allowClear options={sampleIndustryOptions} placeholder="請選擇" />
+          </Form.Item>
+          <Form.Item name="status" label="樣品狀態">
+            <Select allowClear options={sampleStatusOptions} placeholder="請選擇" />
           </Form.Item>
           <Form.Item name="notes" label="備註">
             <Input.TextArea rows={2} />
@@ -677,6 +812,18 @@ export default function ExperimentDetailPage() {
                 <Form.Item name="targetItem" label="目標原料項目">
                   <Input />
                 </Form.Item>
+                <Form.Item name="category" label="樣品分類">
+                  <Select allowClear options={sampleCategoryOptions} placeholder="請選擇" />
+                </Form.Item>
+                <Form.Item name="attribute" label="樣品屬性">
+                  <Select allowClear options={sampleAttributeOptions} placeholder="請選擇" />
+                </Form.Item>
+                <Form.Item name="industry" label="產業別">
+                  <Select allowClear options={sampleIndustryOptions} placeholder="請選擇" />
+                </Form.Item>
+                <Form.Item name="status" label="樣品狀態">
+                  <Select allowClear options={sampleStatusOptions} placeholder="請選擇" />
+                </Form.Item>
                 <Form.Item name="notes" label="備註">
                   <Input.TextArea rows={2} />
                 </Form.Item>
@@ -692,6 +839,18 @@ export default function ExperimentDetailPage() {
                 <Descriptions.Item label="標籤說明">{drawerSample.label || '—'}</Descriptions.Item>
                 <Descriptions.Item label="目標原料項目">{drawerSample.targetItem || '—'}</Descriptions.Item>
                 <Descriptions.Item label="日期">{drawerSample.sampleDate?.split('T')[0]}</Descriptions.Item>
+                {drawerSample.category && (
+                  <Descriptions.Item label="樣品分類"><Tag color="blue">{drawerSample.category}</Tag></Descriptions.Item>
+                )}
+                {drawerSample.attribute && (
+                  <Descriptions.Item label="樣品屬性"><Tag color="cyan">{drawerSample.attribute}</Tag></Descriptions.Item>
+                )}
+                {drawerSample.industry && (
+                  <Descriptions.Item label="產業別"><Tag color="purple">{drawerSample.industry}</Tag></Descriptions.Item>
+                )}
+                {drawerSample.status && (
+                  <Descriptions.Item label="樣品狀態"><Tag color="geekblue">{drawerSample.status}</Tag></Descriptions.Item>
+                )}
                 <Descriptions.Item label="備註">{drawerSample.notes || '—'}</Descriptions.Item>
               </Descriptions>
             )}

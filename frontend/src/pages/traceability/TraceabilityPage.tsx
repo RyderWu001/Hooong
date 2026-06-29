@@ -1,0 +1,274 @@
+import { useState } from 'react'
+import {
+  Card, Tabs, Select, Button, Space, Timeline, Table, Tag, Spin,
+  message, Descriptions, Collapse, Typography, Divider, Empty,
+} from 'antd'
+import { SearchOutlined, BranchesOutlined, ApartmentOutlined } from '@ant-design/icons'
+import type { ColumnsType } from 'antd/es/table'
+import { getFormulaTraceability, getIngredientTraceability } from '../../api/traceability'
+import { getFormulas, getIngredients } from '../../api/formulas'
+import type { FormulaTraceability, IngredientTraceability, Formula, Ingredient } from '../../types'
+import dayjs from 'dayjs'
+
+const { Text } = Typography
+
+const RESULT_COLOR: Record<string, string> = {
+  SUCCESS: 'green', FAILED: 'red', OBSERVING: 'orange', NEEDS_ADJUST: 'blue',
+}
+const RESULT_LABEL: Record<string, string> = {
+  SUCCESS: '成功', FAILED: '失敗', OBSERVING: '待觀察', NEEDS_ADJUST: '需調整',
+}
+
+export default function TraceabilityPage() {
+  const [formulaOptions, setFormulaOptions] = useState<Formula[]>([])
+  const [ingredientOptions, setIngredientOptions] = useState<Ingredient[]>([])
+  const [selectedFormula, setSelectedFormula] = useState<number | null>(null)
+  const [selectedIngredient, setSelectedIngredient] = useState<number | null>(null)
+  const [formulaData, setFormulaData] = useState<FormulaTraceability | null>(null)
+  const [ingredientData, setIngredientData] = useState<IngredientTraceability | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const fetchFormulaOptions = async () => {
+    if (formulaOptions.length > 0) return
+    try {
+      const res = await getFormulas({ limit: 200 })
+      setFormulaOptions(res.data.data ?? [])
+    } catch { }
+  }
+
+  const fetchIngredientOptions = async () => {
+    if (ingredientOptions.length > 0) return
+    try {
+      const res = await getIngredients({ limit: 200 })
+      setIngredientOptions(res.data.data ?? [])
+    } catch { }
+  }
+
+  const handleFormulaSearch = async () => {
+    if (!selectedFormula) { message.warning('請選擇配方'); return }
+    setLoading(true)
+    try {
+      const res = await getFormulaTraceability(selectedFormula)
+      setFormulaData(res.data.data)
+    } catch {
+      message.error('載入失敗')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleIngredientSearch = async () => {
+    if (!selectedIngredient) { message.warning('請選擇原物料'); return }
+    setLoading(true)
+    try {
+      const res = await getIngredientTraceability(selectedIngredient)
+      setIngredientData(res.data.data)
+    } catch {
+      message.error('載入失敗')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const expColumns: ColumnsType<FormulaTraceability['experiments'][0]> = [
+    { title: '實驗編號', dataIndex: 'code', key: 'code', render: (v) => <Text strong>{v}</Text> },
+    { title: '實驗日期', dataIndex: 'experimentDate', key: 'experimentDate', render: (v) => dayjs(v).format('YYYY-MM-DD') },
+    { title: '實驗者', dataIndex: 'experimenterName', key: 'experimenterName' },
+    {
+      title: '結果', key: 'result',
+      render: (_, row) => row.result
+        ? <Tag color={RESULT_COLOR[row.result.status]}>{RESULT_LABEL[row.result.status]}{row.result.score != null ? ` ${row.result.score}分` : ''}</Tag>
+        : <Text type="secondary">未建立</Text>,
+    },
+    { title: '樣品數', dataIndex: 'samplesCount', key: 'samplesCount' },
+  ]
+
+  const tabItems = [
+    {
+      key: 'formula',
+      label: <span><BranchesOutlined /> 配方版本溯源</span>,
+      children: (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Space>
+            <Select
+              showSearch
+              placeholder="選擇配方"
+              style={{ width: 320 }}
+              options={formulaOptions.map((f) => ({ value: f.id, label: `${f.code} — ${f.name}` }))}
+              onFocus={fetchFormulaOptions}
+              onChange={(v) => setSelectedFormula(v)}
+              filterOption={(input, option) => (option?.label as string)?.toLowerCase().includes(input.toLowerCase())}
+            />
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleFormulaSearch} loading={loading}>
+              查詢
+            </Button>
+          </Space>
+
+          {formulaData && (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Card size="small" title="配方基本資訊">
+                <Descriptions column={3} size="small">
+                  <Descriptions.Item label="配方代碼">{formulaData.formula.code}</Descriptions.Item>
+                  <Descriptions.Item label="配方名稱">{formulaData.formula.name}</Descriptions.Item>
+                  <Descriptions.Item label="當前版本">v{formulaData.formula.currentVersion}</Descriptions.Item>
+                  <Descriptions.Item label="產品類型">{formulaData.formula.productType}</Descriptions.Item>
+                  <Descriptions.Item label="狀態"><Tag>{formulaData.formula.status}</Tag></Descriptions.Item>
+                  <Descriptions.Item label="建立時間">{dayjs(formulaData.formula.createdAt).format('YYYY-MM-DD')}</Descriptions.Item>
+                </Descriptions>
+              </Card>
+
+              <Card size="small" title={`版本歷史（共 ${formulaData.versions.length} 版）`}>
+                {formulaData.versions.length === 0
+                  ? <Empty description="無版本紀錄" />
+                  : (
+                    <Timeline
+                      items={formulaData.versions.map((v) => ({
+                        color: v.version === formulaData.formula.currentVersion ? 'green' : 'blue',
+                        children: (
+                          <div>
+                            <Space>
+                              <Tag color={v.version === formulaData.formula.currentVersion ? 'green' : 'default'}>
+                                v{v.version}
+                              </Tag>
+                              <Text type="secondary">{dayjs(v.createdAt).format('YYYY-MM-DD HH:mm')}</Text>
+                              <Text type="secondary">by {v.createdBy}</Text>
+                            </Space>
+                            {v.changeNote && <div><Text>{v.changeNote}</Text></div>}
+                            {v.ingredientsSnapshot && Array.isArray(v.ingredientsSnapshot) && (
+                              <div style={{ marginTop: 4 }}>
+                                {(v.ingredientsSnapshot as any[]).map((ing: any, i: number) => (
+                                  <Tag key={i} style={{ marginBottom: 2 }}>
+                                    {ing.ingredientName ?? ing.ingredientId}: {ing.ratio}{ing.unit}
+                                  </Tag>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ),
+                      }))}
+                    />
+                  )}
+              </Card>
+
+              <Card size="small" title={`使用此配方的實驗（共 ${formulaData.experiments.length} 筆）`}>
+                <Table
+                  columns={expColumns}
+                  dataSource={formulaData.experiments}
+                  rowKey="id"
+                  size="small"
+                  pagination={{ pageSize: 10 }}
+                />
+              </Card>
+            </Space>
+          )}
+
+          {!formulaData && !loading && (
+            <Empty description="選擇配方後按查詢，即可查看完整版本歷史與實驗紀錄" />
+          )}
+          {loading && <Spin />}
+        </Space>
+      ),
+    },
+    {
+      key: 'ingredient',
+      label: <span><ApartmentOutlined /> 成分批號追溯</span>,
+      children: (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Space>
+            <Select
+              showSearch
+              placeholder="選擇原物料"
+              style={{ width: 320 }}
+              options={ingredientOptions.map((i) => ({ value: i.id, label: `${i.code ?? i.id} — ${i.name}` }))}
+              onFocus={fetchIngredientOptions}
+              onChange={(v) => setSelectedIngredient(v)}
+              filterOption={(input, option) => (option?.label as string)?.toLowerCase().includes(input.toLowerCase())}
+            />
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleIngredientSearch} loading={loading}>
+              追溯
+            </Button>
+          </Space>
+
+          {ingredientData && (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Card size="small" title="原物料資訊">
+                <Descriptions column={3} size="small">
+                  <Descriptions.Item label="名稱">{ingredientData.ingredient.name}</Descriptions.Item>
+                  <Descriptions.Item label="代碼">{ingredientData.ingredient.code ?? '—'}</Descriptions.Item>
+                  <Descriptions.Item label="單位">{ingredientData.ingredient.unit}</Descriptions.Item>
+                  <Descriptions.Item label="狀態"><Tag>{ingredientData.ingredient.status}</Tag></Descriptions.Item>
+                </Descriptions>
+              </Card>
+
+              {ingredientData.batches.length > 0 && (
+                <Card size="small" title={`批次紀錄（共 ${ingredientData.batches.length} 批）`}>
+                  <Table
+                    dataSource={ingredientData.batches}
+                    rowKey="id"
+                    size="small"
+                    pagination={{ pageSize: 5 }}
+                    columns={[
+                      { title: '批號', dataIndex: 'batchNo', key: 'batchNo', render: (v) => <Text strong>{v}</Text> },
+                      { title: '供應商批號', dataIndex: 'supplierBatch', key: 'supplierBatch', render: (v) => v ?? '—' },
+                      { title: '數量', key: 'qty', render: (_, r) => `${r.quantity} ${r.unit}` },
+                      { title: '狀態', dataIndex: 'status', key: 'status', render: (v) => <Tag>{v}</Tag> },
+                      { title: '生產日期', dataIndex: 'mfgDate', key: 'mfgDate', render: (v) => v ? dayjs(v).format('YYYY-MM-DD') : '—' },
+                      { title: '到期日', dataIndex: 'expiryDate', key: 'expiryDate', render: (v) => v ? dayjs(v).format('YYYY-MM-DD') : '—' },
+                    ]}
+                  />
+                </Card>
+              )}
+
+              <Divider>配方使用追溯</Divider>
+              {ingredientData.usedInFormulas.length === 0
+                ? <Empty description="此原物料尚未被任何配方使用" />
+                : (
+                  <Collapse
+                    items={ingredientData.usedInFormulas.map((fu) => ({
+                      key: fu.formulaId,
+                      label: (
+                        <Space>
+                          <Tag color="blue">{fu.formulaCode}</Tag>
+                          <Text strong>{fu.formulaName}</Text>
+                          <Text type="secondary">用量：{fu.ratio} {fu.unit}</Text>
+                          <Tag color={fu.formulaStatus === 'ACTIVE' ? 'green' : 'default'}>{fu.formulaStatus}</Tag>
+                        </Space>
+                      ),
+                      children: (
+                        <Table
+                          dataSource={fu.experiments}
+                          rowKey="id"
+                          size="small"
+                          pagination={false}
+                          columns={[
+                            { title: '實驗編號', dataIndex: 'code', key: 'code' },
+                            { title: '日期', dataIndex: 'experimentDate', key: 'experimentDate', render: (v) => dayjs(v).format('YYYY-MM-DD') },
+                            { title: '實驗者', dataIndex: 'experimenterName', key: 'experimenterName' },
+                            {
+                              title: '結果', dataIndex: 'resultStatus', key: 'resultStatus',
+                              render: (v) => v ? <Tag color={RESULT_COLOR[v]}>{RESULT_LABEL[v]}</Tag> : <Text type="secondary">—</Text>,
+                            },
+                          ]}
+                        />
+                      ),
+                    }))}
+                  />
+                )}
+            </Space>
+          )}
+
+          {!ingredientData && !loading && (
+            <Empty description="選擇原物料後按追溯，查看配方使用紀錄與批次歷史" />
+          )}
+          {loading && <Spin />}
+        </Space>
+      ),
+    },
+  ]
+
+  return (
+    <Card title="溯源管理">
+      <Tabs items={tabItems} />
+    </Card>
+  )
+}

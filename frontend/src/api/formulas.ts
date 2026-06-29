@@ -14,6 +14,8 @@ export const getFormula = (id: number) => client.get<{ data: Formula }>(`/formul
 export const createFormula = (data: {
   code: string
   name: string
+  category?: string | null
+  formulaType?: string | null
   productType: string
   description: string
   ingredients: FormulaIngredient[]
@@ -23,12 +25,23 @@ export const updateFormula = (
   id: number,
   data: {
     name: string
+    category?: string | null
+    formulaType?: string | null
     productType: string
     description: string
     changeNote: string
     ingredients: FormulaIngredient[]
   }
 ) => client.put(`/formulas/${id}`, data)
+
+export const copyFormula = (id: number, data: { newCode: string; newName?: string }) =>
+  client.post(`/formulas/${id}/copy`, data)
+
+export const promoteFormula = (id: number) =>
+  client.post(`/formulas/${id}/promote`, {})
+
+export const rollbackFormula = (id: number, data: { version: number; changeNote?: string }) =>
+  client.post(`/formulas/${id}/rollback`, data)
 
 export const deleteFormula = (id: number) => client.delete(`/formulas/${id}`)
 
@@ -48,10 +61,26 @@ export const getIngredients = (params?: { name?: string; page?: number; limit?: 
 export const getIngredient = (id: number) =>
   client.get<{ data: Ingredient }>(`/ingredients/${id}`)
 
-export const createIngredient = (data: { name: string; unit: string; description: string }) =>
-  client.post('/ingredients', data)
+export type IngredientPayload = {
+  name: string; code?: string | null; casNo?: string | null; englishName?: string | null
+  category?: string | null; industry?: string | null; status?: string; packageSpec?: string | null
+  unit: string; unitPrice?: number | null; description?: string
+}
 
-export const updateIngredient = (id: number, data: { name: string; unit: string; description: string }) =>
-  client.put(`/ingredients/${id}`, data)
+export const createIngredient = (data: IngredientPayload) => client.post('/ingredients', data)
+export const updateIngredient = (id: number, data: IngredientPayload) => client.put(`/ingredients/${id}`, data)
+
+// Documents
+export const getIngredientDocuments = (id: number) => client.get(`/ingredients/${id}/documents`)
+export const uploadIngredientDocument = (id: number, formData: FormData) =>
+  client.post(`/ingredients/${id}/documents`, formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+export const deleteIngredientDocument = (docId: number) => client.delete(`/ingredients/documents/${docId}`)
+
+// Batches
+export const getIngredientBatches = (id: number) => client.get(`/ingredients/${id}/batches`)
+export const createIngredientBatch = (id: number, data: object) => client.post(`/ingredients/${id}/batches`, data)
+export const updateIngredientBatch = (batchId: number, data: object) => client.put(`/ingredients/batches/${batchId}`, data)
+export const deleteIngredientBatch = (batchId: number) => client.delete(`/ingredients/batches/${batchId}`)
+export const getExpiringBatches = (days = 30) => client.get(`/ingredients/batches/expiring?days=${days}`)
 
 export const deleteIngredient = (id: number) => client.delete(`/ingredients/${id}`)

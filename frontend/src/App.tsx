@@ -27,6 +27,11 @@ import UserManagementPage from './pages/users/UserManagementPage'
 import MaterialsPage from './pages/materials/MaterialsPage'
 import SuppliersPage from './pages/suppliers/SuppliersPage'
 import RisksPage from './pages/risks/RisksPage'
+import DropdownManagePage from './pages/dropdowns/DropdownManagePage'
+import SamplesPage from './pages/samples/SamplesPage'
+import TraceabilityPage from './pages/traceability/TraceabilityPage'
+import KnowledgePage from './pages/knowledge/KnowledgePage'
+import PermissionsPage from './pages/permissions/PermissionsPage'
 
 dayjs.locale('zh-tw')
 
@@ -59,18 +64,37 @@ export default function App() {
             <Route path="experiments/:id/result" element={<ResultDetailPage />} />
 
             <Route path="results" element={<ResultListPage />} />
+            <Route path="samples" element={<SamplesPage />} />
 
             <Route path="materials" element={<MaterialsPage />} />
             <Route path="suppliers" element={<SuppliersPage />} />
             <Route path="risks" element={<RisksPage />} />
 
             <Route path="reports" element={<ReportsPage />} />
+            <Route path="traceability" element={<TraceabilityPage />} />
+            <Route path="knowledge" element={<KnowledgePage />} />
 
             <Route
               path="users"
               element={
                 <ProtectedRoute roles={['ADMIN']}>
                   <UserManagementPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="dropdowns"
+              element={
+                <ProtectedRoute roles={['ADMIN']}>
+                  <DropdownManagePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="permissions"
+              element={
+                <ProtectedRoute roles={['ADMIN']}>
+                  <PermissionsPage />
                 </ProtectedRoute>
               }
             />

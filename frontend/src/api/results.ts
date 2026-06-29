@@ -19,22 +19,30 @@ export const createResult = (
   experimentId: number,
   data: {
     status: ResultStatus
+    score?: number | null
     description: string
     reflection: string
     issueRecord: string
+    abnormalReason?: string | null
     improvement: string
+    improvementAction?: string | null
     clientFeedback: string
+    clientFeedbackResult?: string | null
     notes: string
   }
 ) => client.post(`/experiments/${experimentId}/result`, data)
 
 export const updateResult = (experimentId: number, data: Partial<{
   status: ResultStatus
+  score: number | null
   description: string
   reflection: string
   issueRecord: string
+  abnormalReason: string | null
   improvement: string
+  improvementAction: string | null
   clientFeedback: string
+  clientFeedbackResult: string | null
   notes: string
 }>) => client.put(`/experiments/${experimentId}/result`, data)
 
