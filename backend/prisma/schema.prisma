@@ -192,6 +192,12 @@ model ExperimentResult {
   experimentId         Int          @unique
   status               String       @default("OBSERVING")
   score                Int?
+  handFeelScore        Int?
+  colorShadeScore      Int?
+  fastnessScore        Int?
+  moistureScore        Int?
+  otherScoreName       String?
+  otherScore           Int?
   description          String       @default("")
   reflection           String       @default("")
   issueRecord          String       @default("")

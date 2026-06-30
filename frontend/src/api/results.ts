@@ -20,6 +20,12 @@ export const createResult = (
   data: {
     status: ResultStatus
     score?: number | null
+    handFeelScore?: number | null
+    colorShadeScore?: number | null
+    fastnessScore?: number | null
+    moistureScore?: number | null
+    otherScoreName?: string | null
+    otherScore?: number | null
     description: string
     reflection: string
     issueRecord: string
@@ -35,6 +41,12 @@ export const createResult = (
 export const updateResult = (experimentId: number, data: Partial<{
   status: ResultStatus
   score: number | null
+  handFeelScore: number | null
+  colorShadeScore: number | null
+  fastnessScore: number | null
+  moistureScore: number | null
+  otherScoreName: string | null
+  otherScore: number | null
   description: string
   reflection: string
   issueRecord: string

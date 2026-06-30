@@ -248,12 +248,19 @@ router.get('/:id/result', requireAuth, async (req, res) => {
 
 router.post('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const experimentId = Number(req.params.id)
-  const { status, score, description, reflection, issueRecord, abnormalReason,
+  const { status, score, handFeelScore, colorShadeScore, fastnessScore, moistureScore,
+    otherScoreName, otherScore, description, reflection, issueRecord, abnormalReason,
     improvement, improvementAction, clientFeedback, clientFeedbackResult, notes } = req.body
   const r = await prisma.experimentResult.create({
     data: {
       experimentId, status,
       score: score != null ? Number(score) : null,
+      handFeelScore: handFeelScore != null ? Number(handFeelScore) : null,
+      colorShadeScore: colorShadeScore != null ? Number(colorShadeScore) : null,
+      fastnessScore: fastnessScore != null ? Number(fastnessScore) : null,
+      moistureScore: moistureScore != null ? Number(moistureScore) : null,
+      otherScoreName: otherScoreName ?? null,
+      otherScore: otherScore != null ? Number(otherScore) : null,
       description: description ?? '', reflection: reflection ?? '',
       issueRecord: issueRecord ?? '', abnormalReason: abnormalReason ?? null,
       improvement: improvement ?? '', improvementAction: improvementAction ?? null,
@@ -267,13 +274,20 @@ router.post('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async
 
 router.put('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const experimentId = Number(req.params.id)
-  const { status, score, description, reflection, issueRecord, abnormalReason,
+  const { status, score, handFeelScore, colorShadeScore, fastnessScore, moistureScore,
+    otherScoreName, otherScore, description, reflection, issueRecord, abnormalReason,
     improvement, improvementAction, clientFeedback, clientFeedbackResult, notes } = req.body
   const r = await prisma.experimentResult.update({
     where: { experimentId },
     data: {
       status,
       score: score != null ? Number(score) : null,
+      handFeelScore: handFeelScore != null ? Number(handFeelScore) : null,
+      colorShadeScore: colorShadeScore != null ? Number(colorShadeScore) : null,
+      fastnessScore: fastnessScore != null ? Number(fastnessScore) : null,
+      moistureScore: moistureScore != null ? Number(moistureScore) : null,
+      otherScoreName: otherScoreName ?? null,
+      otherScore: otherScore != null ? Number(otherScore) : null,
       description, reflection, issueRecord,
       abnormalReason: abnormalReason ?? null,
       improvement, improvementAction: improvementAction ?? null,

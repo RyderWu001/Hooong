@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   Card, Form, Input, Select, Button, Space, Tag, Upload,
-  Image, Popconfirm, message, Spin, Descriptions, Divider, InputNumber,
+  Image, Popconfirm, message, Spin, Descriptions, Divider, InputNumber, Row, Col,
 } from 'antd'
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons'
 import { getResult, createResult, updateResult, uploadResultAttachment, deleteResultAttachment } from '../../api/results'
@@ -17,6 +17,15 @@ const STATUS_OPTIONS = [
   { value: 'OBSERVING', label: '待觀察', color: 'orange' },
   { value: 'NEEDS_ADJUST', label: '需調整', color: 'blue' },
 ]
+
+const SCORE_OPTIONS = Array.from({ length: 10 }, (_, i) => ({ label: String(i + 1), value: i + 1 }))
+
+const SCORE_DIMS = [
+  { name: 'handFeelScore', label: '手感' },
+  { name: 'colorShadeScore', label: '色光' },
+  { name: 'fastnessScore', label: '牢度' },
+  { name: 'moistureScore', label: '吸濕' },
+] as const
 
 export default function ResultDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -113,13 +122,19 @@ export default function ResultDetailPage() {
               <Descriptions.Item label="結果狀態">
                 <Tag color={statusColor(result.status)}>{statusLabel(result.status)}</Tag>
               </Descriptions.Item>
-              <Descriptions.Item label="評分">
+              <Descriptions.Item label="總評分">
                 {result.score != null ? (
                   <Tag color={result.score >= 80 ? 'green' : result.score >= 60 ? 'orange' : 'red'}>
                     {result.score} 分
                   </Tag>
                 ) : '—'}
               </Descriptions.Item>
+              <Descriptions.Item label="手感">{result.handFeelScore != null ? `${result.handFeelScore} 分` : '—'}</Descriptions.Item>
+              <Descriptions.Item label="色光">{result.colorShadeScore != null ? `${result.colorShadeScore} 分` : '—'}</Descriptions.Item>
+              <Descriptions.Item label="牢度">{result.fastnessScore != null ? `${result.fastnessScore} 分` : '—'}</Descriptions.Item>
+              <Descriptions.Item label="吸濕">{result.moistureScore != null ? `${result.moistureScore} 分` : '—'}</Descriptions.Item>
+              <Descriptions.Item label="其他評分項目">{result.otherScoreName || '—'}</Descriptions.Item>
+              <Descriptions.Item label="其他分數">{result.otherScore != null ? `${result.otherScore} 分` : '—'}</Descriptions.Item>
               <Descriptions.Item label="記錄時間" span={2}>
                 {dayjs(result.updatedAt).format('YYYY-MM-DD HH:mm')}
               </Descriptions.Item>
@@ -175,9 +190,32 @@ export default function ResultDetailPage() {
             <Form.Item name="status" label="結果狀態" rules={[{ required: true }]}>
               <Select options={STATUS_OPTIONS} />
             </Form.Item>
-            <Form.Item name="score" label="評分（0–100）">
+            <Form.Item name="score" label="總評分（0–100）">
               <InputNumber min={0} max={100} style={{ width: 160 }} placeholder="例：85" />
             </Form.Item>
+            <Divider orientation="left" orientationMargin={0}>細項評分（1–10）</Divider>
+            <Row gutter={16}>
+              {SCORE_DIMS.map((dim) => (
+                <Col span={6} key={dim.name}>
+                  <Form.Item name={dim.name} label={dim.label}>
+                    <Select allowClear options={SCORE_OPTIONS} placeholder="請選擇" />
+                  </Form.Item>
+                </Col>
+              ))}
+            </Row>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item name="otherScoreName" label="其他評分項目">
+                  <Input placeholder="例：柔軟度" />
+                </Form.Item>
+              </Col>
+              <Col span={6}>
+                <Form.Item name="otherScore" label="其他分數">
+                  <Select allowClear options={SCORE_OPTIONS} placeholder="請選擇" />
+                </Form.Item>
+              </Col>
+            </Row>
+            <Divider />
             <Form.Item name="description" label="結果說明">
               <Input.TextArea rows={3} />
             </Form.Item>
