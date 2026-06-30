@@ -85,7 +85,7 @@ export default function TraceabilityPage() {
   const ingredientSubTabs = ingredientData ? [
     {
       key: 'formula',
-      label: <span><BranchesOutlined /> 1.6.1 反查配方</span>,
+      label: <span><BranchesOutlined /> 反查配方</span>,
       children: (
         <Table
           dataSource={ingredientData.formulaUsage}
@@ -108,7 +108,7 @@ export default function TraceabilityPage() {
     },
     {
       key: 'client',
-      label: <span><TeamOutlined /> 1.6.2 反查產品客戶</span>,
+      label: <span><TeamOutlined /> 反查產品客戶</span>,
       children: ingredientData.clientUsage.length === 0
         ? <Empty description="尚無客戶樣品出貨紀錄" />
         : (
@@ -147,7 +147,7 @@ export default function TraceabilityPage() {
     },
     {
       key: 'experiment',
-      label: <span><ExperimentOutlined /> 1.6.3 實驗分析</span>,
+      label: <span><ExperimentOutlined /> 實驗分析</span>,
       children: (
         <Space direction="vertical" style={{ width: '100%' }}>
           <Row gutter={24} style={{ marginBottom: 24 }}>
@@ -202,7 +202,7 @@ export default function TraceabilityPage() {
     },
     {
       key: 'anomaly',
-      label: <span><AlertOutlined /> 1.6.4 異常追溯</span>,
+      label: <span><AlertOutlined /> 異常追溯</span>,
       children: ingredientData.anomalyEvents.length === 0
         ? <Empty description="此原料目前無異常事件紀錄" />
         : (
@@ -247,7 +247,7 @@ export default function TraceabilityPage() {
     },
     {
       key: 'batch',
-      label: <span><TagsOutlined /> 1.6.5 批號追溯</span>,
+      label: <span><TagsOutlined /> 批號追溯</span>,
       children: ingredientData.batches.length === 0
         ? <Empty description="尚無批次紀錄" />
         : (
