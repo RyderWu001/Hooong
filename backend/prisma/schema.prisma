@@ -25,30 +25,38 @@ model User {
   reportedEvents        AbnormalEvent[]      @relation("AbnormalEventReporter")
   resolvedEvents        AbnormalEvent[]      @relation("AbnormalEventResolver")
   ingredientDocuments   IngredientDocument[]
+  createdIngredients    Ingredient[]         @relation("IngredientCreator")
   knowledgeArticles     KnowledgeArticle[]
 }
 
 model Ingredient {
-  id              Int                  @id @default(autoincrement())
-  name            String
-  code            String?
-  casNo           String?
-  englishName     String?
-  category        String?
-  industry        String?
-  status          String               @default("使用中")
-  packageSpec     String?
-  unit            String
-  unitPrice       Float?
-  description     String               @default("")
-  createdAt       DateTime             @default(now())
-  formulaUses     FormulaIngredient[]
-  inventory       MaterialInventory?
-  purchases       PurchaseRecord[]
-  ingredientRisks IngredientRisk[]
-  abnormalEvents  AbnormalEvent[]
-  documents       IngredientDocument[]
-  batches         IngredientBatch[]
+  id               Int                  @id @default(autoincrement())
+  name             String
+  code             String?
+  casNo            String?
+  englishName      String?
+  category         String?
+  industry         String?
+  status           String               @default("使用中")
+  solidContent     String?
+  density          String?
+  appearance       String?
+  storageCondition String?
+  shelfLife        String?
+  packageSpec      String?
+  unit             String
+  unitPrice        Float?
+  description      String               @default("")
+  createdAt        DateTime             @default(now())
+  createdBy        User?                @relation("IngredientCreator", fields: [createdById], references: [id])
+  createdById      Int?
+  formulaUses      FormulaIngredient[]
+  inventory        MaterialInventory?
+  purchases        PurchaseRecord[]
+  ingredientRisks  IngredientRisk[]
+  abnormalEvents   AbnormalEvent[]
+  documents        IngredientDocument[]
+  batches          IngredientBatch[]
 }
 
 model IngredientDocument {
@@ -64,18 +72,25 @@ model IngredientDocument {
 }
 
 model IngredientBatch {
-  id            Int        @id @default(autoincrement())
-  ingredient    Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
-  ingredientId  Int
-  batchNo       String
-  supplierBatch String?
-  mfgDate       DateTime?
-  expiryDate    DateTime?
-  quantity      Float
-  unit          String
-  status        String     @default("正常")
-  notes         String     @default("")
-  createdAt     DateTime   @default(now())
+  id               Int        @id @default(autoincrement())
+  ingredient       Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  ingredientId     Int
+  batchNo          String
+  supplierBatch    String?
+  mfgDate          DateTime?
+  expiryDate       DateTime?
+  arrivalDate      DateTime?
+  warehousingDate  DateTime?
+  usageDate        DateTime?
+  usageQuantity    Float?
+  remainingQty     Float?
+  openedDate       DateTime?
+  openedExpiry     Int?
+  quantity         Float
+  unit             String
+  status           String     @default("正常")
+  notes            String     @default("")
+  createdAt        DateTime   @default(now())
 }
 
 model Formula {

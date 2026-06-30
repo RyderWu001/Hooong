@@ -25,11 +25,17 @@ export interface Ingredient {
   category: string | null
   industry: string | null
   status: string
+  solidContent: string | null
+  density: string | null
+  appearance: string | null
+  storageCondition: string | null
+  shelfLife: string | null
   packageSpec: string | null
   unit: string
   unitPrice: number | null
   description: string
   createdAt: string
+  createdByName: string | null
 }
 
 export interface IngredientDocument {
@@ -49,12 +55,20 @@ export interface IngredientBatch {
   supplierBatch: string | null
   mfgDate: string | null
   expiryDate: string | null
+  arrivalDate: string | null
+  warehousingDate: string | null
+  usageDate: string | null
+  usageQuantity: number | null
+  remainingQty: number | null
+  openedDate: string | null
+  openedExpiry: number | null
   quantity: number
   unit: string
   status: string
   notes: string
   createdAt: string
   ingredientName?: string
+  ingredientUnit?: string
 }
 
 export interface FormulaIngredient {
