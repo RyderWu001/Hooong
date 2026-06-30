@@ -363,12 +363,30 @@ export interface FormulaTraceability {
 
 export interface IngredientTraceability {
   ingredient: { id: number; name: string; code: string | null; unit: string; status: string }
-  batches: IngredientBatch[]
-  usedInFormulas: Array<{
+  // 1.6.1 反查配方
+  formulaUsage: Array<{
     formulaId: number; formulaCode: string; formulaName: string; formulaStatus: string
-    ratio: number; unit: string
-    experiments: Array<{ id: number; code: string; experimentDate: string; experimenterName: string; resultStatus: string | null }>
+    ratio: number; unit: string; experimentCount: number
   }>
+  // 1.6.2 反查產品客戶
+  clientUsage: Array<{
+    clientName: string; sampleCount: number; formulaNames: string[]
+    samples: Array<{ sampleCode: string; status: string | null; experimentCode: string; formulaName: string; experimentDate: string }>
+  }>
+  // 1.6.3 實驗統計
+  experimentStats: {
+    total: number; successCount: number; failedCount: number
+    observingCount: number; needsAdjustCount: number; successRate: string
+    experiments: Array<{ id: number; code: string; experimentDate: string; experimenterName: string; formulaName: string; resultStatus: string | null }>
+  }
+  // 1.6.4 異常追溯
+  anomalyEvents: Array<{
+    id: number; eventCode: string; title: string; description: string
+    eventType: string; severity: string; status: string
+    occurredAt: string; resolution: string; resolvedAt: string | null; createdAt: string
+  }>
+  // 1.6.5 批號追溯
+  batches: IngredientBatch[]
 }
 
 // Knowledge
