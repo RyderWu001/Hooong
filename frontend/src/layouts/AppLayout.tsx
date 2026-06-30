@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Layout, Menu, Avatar, Dropdown, Typography, Tag, Modal, Descriptions, Form, Input, Button, Space, message } from 'antd'
 import {
   ExperimentOutlined,
@@ -84,21 +84,47 @@ export default function AppLayout() {
   }
 
   const menuItems = [
-    { key: '/formulas',     icon: <MedicineBoxOutlined />, label: '配方管理' },
-    { key: '/materials',    icon: <ShopOutlined />,        label: '原物料管理' },
-    { key: '/suppliers',    icon: <TruckOutlined />,       label: '供應商管理' },
-    { key: '/risks',        icon: <WarningOutlined />,     label: '風險管理' },
-    { key: '/experiments',  icon: <ExperimentOutlined />,  label: '實驗管理' },
-    { key: '/results',      icon: <FileTextOutlined />,    label: '實驗結果' },
-    { key: '/samples',       icon: <TagsOutlined />,              label: '樣品管理' },
-    { key: '/reports',       icon: <BarChartOutlined />,          label: '報表' },
-    { key: '/traceability',  icon: <ApartmentOutlined />,         label: '溯源管理' },
-    { key: '/knowledge',     icon: <BookOutlined />,              label: '知識庫' },
+    {
+      key: '/formulas',
+      icon: <MedicineBoxOutlined />,
+      label: '配方管理',
+      onTitleClick: ({ key }: { key: string }) => navigate(key),
+      children: [
+        { key: '/traceability', icon: <ApartmentOutlined />, label: '溯源管理' },
+      ],
+    },
+    { key: '/materials', icon: <ShopOutlined />, label: '原物料管理' },
+    {
+      key: '/experiments',
+      icon: <ExperimentOutlined />,
+      label: '實驗管理',
+      onTitleClick: ({ key }: { key: string }) => navigate(key),
+      children: [
+        { key: '/samples', icon: <TagsOutlined />, label: '樣品管理' },
+      ],
+    },
+    { key: '/results',   icon: <FileTextOutlined />, label: '實驗結果' },
+    {
+      type: 'group' as const,
+      label: '其他',
+      children: [
+        { key: '/risks',      icon: <WarningOutlined />, label: '風險管理' },
+        { key: '/suppliers',  icon: <TruckOutlined />,   label: '供應商管理' },
+      ],
+    },
+    { key: '/reports',   icon: <BarChartOutlined />, label: '報表' },
+    { key: '/knowledge', icon: <BookOutlined />,     label: '知識庫' },
     ...(user?.role === 'ADMIN'
       ? [
-          { key: '/users',       icon: <TeamOutlined />,            label: '使用者管理' },
-          { key: '/dropdowns',   icon: <UnorderedListOutlined />,   label: '選項管理' },
-          { key: '/permissions', icon: <SafetyCertificateOutlined />, label: '權限管理' },
+          {
+            type: 'group' as const,
+            label: '系統管理',
+            children: [
+              { key: '/users',       icon: <TeamOutlined />,              label: '使用者管理' },
+              { key: '/dropdowns',   icon: <UnorderedListOutlined />,     label: '選項管理' },
+              { key: '/permissions', icon: <SafetyCertificateOutlined />, label: '權限管理' },
+            ],
+          },
         ]
       : []),
   ]
@@ -140,6 +166,28 @@ export default function AppLayout() {
 
   const selectedKey = '/' + location.pathname.split('/')[1]
 
+  // 子頁面 → 對應的父選單 key
+  const CHILD_PARENT: Record<string, string> = {
+    '/traceability': '/formulas',
+    '/samples': '/experiments',
+  }
+
+  const getRequiredOpenKeys = (path: string) => {
+    const keys: string[] = []
+    if (CHILD_PARENT[path]) keys.push(CHILD_PARENT[path])
+    if (path === '/formulas' || path === '/experiments') keys.push(path)
+    return keys
+  }
+
+  const [openKeys, setOpenKeys] = useState<string[]>(() => getRequiredOpenKeys(selectedKey))
+
+  useEffect(() => {
+    const required = getRequiredOpenKeys(selectedKey)
+    if (required.length > 0) {
+      setOpenKeys(prev => [...new Set([...prev, ...required])])
+    }
+  }, [selectedKey])
+
   return (
     <Layout className={styles.root}>
       <Sider trigger={null} collapsible collapsed={collapsed} theme="dark" width={220}>
@@ -157,6 +205,8 @@ export default function AppLayout() {
               theme="dark"
               mode="inline"
               selectedKeys={[selectedKey]}
+              openKeys={openKeys}
+              onOpenChange={setOpenKeys}
               items={menuItems}
               onClick={({ key }) => navigate(key)}
             />
