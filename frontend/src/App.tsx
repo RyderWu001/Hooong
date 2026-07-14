@@ -32,6 +32,8 @@ import KnowledgePage from './pages/knowledge/KnowledgePage'
 import PermissionsPage from './pages/permissions/PermissionsPage'
 import LabDailyLogPage from './pages/forms/LabDailyLogPage'
 import SampleSubmissionPage from './pages/forms/SampleSubmissionPage'
+import ChemicalEvaluationPage from './pages/forms/ChemicalEvaluationPage'
+import ChemicalRequestPage from './pages/forms/ChemicalRequestPage'
 
 dayjs.locale('zh-tw')
 
@@ -156,6 +158,8 @@ export default function App() {
             <Route path="knowledge" element={<KnowledgePage />} />
             <Route path="lab-daily-log" element={<LabDailyLogPage />} />
             <Route path="sample-submissions" element={<SampleSubmissionPage />} />
+            <Route path="chemical-evaluations" element={<ChemicalEvaluationPage />} />
+            <Route path="chemical-requests" element={<ChemicalRequestPage />} />
 
             <Route
               path="users"

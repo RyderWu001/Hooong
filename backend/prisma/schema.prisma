@@ -513,3 +513,75 @@ model RolePermission {
 
   @@unique([role, module])
 }
+
+// ── 附件8: 化學品評估表 (CMS01-01-1B) ────────────────────────────────────────
+
+model ChemicalEvaluation {
+  id                   Int       @id @default(autoincrement())
+  no                   String?
+  date                 DateTime?
+  supplierCode         String?
+  supplierName         String?
+  chemicalName         String?
+  batchNo              String?
+  unitPrice            String?
+  usage                String?
+  certifications       Json?
+  hazardClassification String?
+  substanceType        String?
+  pureSubstance        Json?
+  mixtures             Json?
+  cod                  String?
+  bod                  String?
+  phWater              String?
+  appearance           String?
+  solidContent         String?
+  ph1pct               String?
+  density              String?
+  sugarDegree          String?
+  ionProperty          String?
+  testRecord           String?
+  solidPhoto           String?
+  zdhcMrsl             String?
+  chemAppendix1        String?
+  chemAppendix2        String?
+  result               String?
+  issue                String?
+  notes                String?
+  conclusion           String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+// ── 附件9: 化學品需求申請單 (CMS01-01-2B) ────────────────────────────────────
+
+model ChemicalRequest {
+  id                  Int       @id @default(autoincrement())
+  no                  String?
+  date                DateTime?
+  chemicalName        String?
+  supplierInfo        String?
+  unitPrice           String?
+  usage               String?
+  expectedQty         String?
+  processInfo         String?
+  isReplacement       Boolean   @default(false)
+  replacedProduct     String?
+  hasSDS              String?
+  hasTDS              String?
+  hasCOA              String?
+  hasThirdParty       String?
+  zdhcMrsl            String?
+  chemAppendix1       String?
+  chemAppendix2       String?
+  ingredients         Json?
+  supplement          String?
+  techOpinion         String?
+  ehsSDS              Boolean   @default(false)
+  ehsMRSL             Boolean   @default(false)
+  supervisorDecision  String?
+  ceoDecision         String?
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}

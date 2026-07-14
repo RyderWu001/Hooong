@@ -22,6 +22,8 @@ import knowledgeRouter from './routes/knowledge'
 import sampleSubmissionsRouter from './routes/sampleSubmissions'
 import labDailyLogsRouter from './routes/labDailyLogs'
 import commissionScanRouter from './routes/commissionScan'
+import chemicalEvaluationsRouter from './routes/chemicalEvaluations'
+import chemicalRequestsRouter from './routes/chemicalRequests'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 3000)
@@ -50,6 +52,8 @@ app.use('/api/v1/knowledge', knowledgeRouter)
 app.use('/api/v1/sample-submissions', sampleSubmissionsRouter)
 app.use('/api/v1/lab-daily-logs', labDailyLogsRouter)
 app.use('/api/v1/commission-scan', commissionScanRouter)
+app.use('/api/v1/chemical-evaluations', chemicalEvaluationsRouter)
+app.use('/api/v1/chemical-requests', chemicalRequestsRouter)
 
 app.get('/api/v1/health', (_, res) => res.json({ status: 'ok' }))
 

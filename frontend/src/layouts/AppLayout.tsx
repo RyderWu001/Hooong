@@ -20,6 +20,8 @@ import {
   SafetyCertificateOutlined,
   FormOutlined,
   CalendarOutlined,
+  AuditOutlined,
+  FileAddOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
@@ -108,8 +110,10 @@ export default function AppLayout() {
       icon: <FormOutlined />,
       label: '表單管理',
       children: [
-        { key: '/lab-daily-log',      icon: <CalendarOutlined />, label: '每日工作日誌' },
-        { key: '/sample-submissions', icon: <TagsOutlined />,     label: '送樣連絡單' },
+        { key: '/lab-daily-log',         icon: <CalendarOutlined />, label: '每日工作日誌' },
+        { key: '/sample-submissions',    icon: <TagsOutlined />,     label: '送樣連絡單' },
+        { key: '/chemical-evaluations',  icon: <AuditOutlined />,    label: '化學品評估表' },
+        { key: '/chemical-requests',     icon: <FileAddOutlined />,  label: '化學品需求申請單' },
       ],
     },
     { key: '/reports',   icon: <BarChartOutlined />, label: '報表' },
@@ -166,10 +170,12 @@ export default function AppLayout() {
   const selectedKey = '/' + location.pathname.split('/')[1]
 
   const CHILD_PARENT: Record<string, string> = {
-    '/traceability':       '/formulas',
-    '/samples':            '/experiments',
-    '/lab-daily-log':      '/forms',
-    '/sample-submissions': '/forms',
+    '/traceability':           '/formulas',
+    '/samples':                '/experiments',
+    '/lab-daily-log':          '/forms',
+    '/sample-submissions':     '/forms',
+    '/chemical-evaluations':   '/forms',
+    '/chemical-requests':      '/forms',
   }
 
   const getRequiredOpenKeys = (path: string) => {
