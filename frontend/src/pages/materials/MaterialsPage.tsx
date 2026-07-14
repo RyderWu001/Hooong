@@ -31,7 +31,7 @@ import type {
 import { useAuthStore } from '../../stores/authStore'
 import DropdownSelect from '../../components/DropdownSelect'
 import ApprovalChain from '../../components/ApprovalChain'
-import { getFormSignatures } from '../../api/formSignatures'
+import { getFormSignatures, type FormSignatureRecord } from '../../api/formSignatures'
 
 const { Text } = Typography
 
@@ -367,12 +367,13 @@ function printQCReport(
 }
 
 function QCReportModal({
-  open, onClose, batch, ingredient,
+  open, onClose, batch, ingredient, onSigUpdate,
 }: {
   open: boolean
   onClose: () => void
   batch: IngredientBatch | null
   ingredient: Ingredient
+  onSigUpdate?: () => void
 }) {
   const [acceptanceNo, setAcceptanceNo] = useState('')
   const [orderDateStr, setOrderDateStr] = useState('')
@@ -544,7 +545,7 @@ function QCReportModal({
 
         {/* 電子簽核 */}
         <Divider plain style={{ margin: '4px 0 8px', fontSize: 12 }}>電子簽核</Divider>
-        <ApprovalChain formType="QcReport" formId={batch.id} />
+        <ApprovalChain formType="QcReport" formId={batch.id} onUpdate={onSigUpdate} />
       </Space>
     </Modal>
   )
@@ -562,6 +563,7 @@ function IngredientDetailDrawer({
 }) {
   const [docs, setDocs] = useState<IngredientDocument[]>([])
   const [batches, setBatches] = useState<IngredientBatch[]>([])
+  const [batchSigsMap, setBatchSigsMap] = useState<Record<number, FormSignatureRecord[]>>({})
   const [uploading, setUploading] = useState(false)
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [docType, setDocType] = useState('SDS')
@@ -576,11 +578,23 @@ function IngredientDetailDrawer({
     setDocs(res.data.data ?? [])
   }, [ingredient?.id])
 
+  const loadBatchSigs = useCallback(async (list: IngredientBatch[]) => {
+    const entries = await Promise.all(
+      list.map(async b => {
+        const sigs = await getFormSignatures('QcReport', b.id).catch(() => [])
+        return [b.id, sigs] as const
+      })
+    )
+    setBatchSigsMap(Object.fromEntries(entries))
+  }, [])
+
   const loadBatches = useCallback(async () => {
     if (!ingredient) return
     const res = await getIngredientBatches(ingredient.id)
-    setBatches(res.data.data ?? [])
-  }, [ingredient?.id])
+    const list: IngredientBatch[] = res.data.data ?? []
+    setBatches(list)
+    loadBatchSigs(list)
+  }, [ingredient?.id, loadBatchSigs])
 
   useEffect(() => {
     if (open && ingredient) {
@@ -735,15 +749,23 @@ function IngredientDetailDrawer({
     },
     { title: '備註', dataIndex: 'notes', key: 'notes', render: (v) => v || '—' },
     {
-      title: '原物料驗收', key: 'qc', width: 140,
+      title: '原物料驗收', key: 'qc', width: 150,
       render: (_: unknown, row: IngredientBatch) => {
-        const hasQC = row.qcItems && row.qcItems.length > 0
+        const hasQC = !!(row.qcItems && row.qcItems.length > 0)
         const ngCount = hasQC ? row.qcItems!.filter((i: any) => i.result === 'NG').length : 0
+        const sigs = batchSigsMap[row.id] ?? []
+        const signedCount = sigs.filter(s => s.signedAt).length
+        const TOTAL_SLOTS = 3  // QcReport：檢測員 / 審核 / 單位主管
+        const allSigned = signedCount >= TOTAL_SLOTS
+
         const statusTag = !hasQC
           ? <Tag color="orange" icon={<ExclamationCircleOutlined />} style={{ fontSize: 11, fontWeight: 600 }}>待驗收</Tag>
-          : ngCount > 0
-            ? <Tag color="warning" style={{ fontSize: 11 }}>不合格 {ngCount}項</Tag>
-            : <Tag color="success" style={{ fontSize: 11 }}>合格</Tag>
+          : !allSigned
+            ? <Tag color="processing" style={{ fontSize: 11 }}>審核中 ({signedCount}/{TOTAL_SLOTS})</Tag>
+            : ngCount > 0
+              ? <Tag color="error" style={{ fontSize: 11 }}>驗收失敗 {ngCount}項NG</Tag>
+              : <Tag color="success" style={{ fontSize: 11 }}>驗收成功</Tag>
+
         return (
           <Space size={4} direction="vertical" style={{ width: '100%' }}>
             {statusTag}
@@ -893,6 +915,7 @@ function IngredientDetailDrawer({
         onClose={() => { setQcBatch(null); loadBatches() }}
         batch={qcBatch}
         ingredient={ingredient}
+        onSigUpdate={() => qcBatch && loadBatchSigs(batches)}
       />
 
       <Modal

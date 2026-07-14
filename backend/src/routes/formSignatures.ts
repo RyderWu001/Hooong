@@ -12,7 +12,7 @@ router.get('/', requireAuth, async (req, res) => {
     return
   }
   const data = await prisma.formSignature.findMany({
-    where: { formType: String(formType), formId: Number(formId) },
+    where: { formType: String(formType), formId: Number(formId), signedAt: { not: null } },
     orderBy: { slotOrder: 'asc' },
   })
   res.json({ success: true, data })
@@ -26,19 +26,27 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
     return
   }
 
-  // Enforce sequential: all slots with lower order must already be signed
-  const pendingBefore = await prisma.formSignature.findFirst({
-    where: {
-      formType,
-      formId: Number(formId),
-      slotOrder: { lt: Number(slotOrder) },
-      signedAt: null,
-    },
-  })
-  if (pendingBefore) {
-    res.status(422).json({ success: false, error: { code: 'OUT_OF_ORDER', message: `請先完成「${pendingBefore.slotName}」的簽核` } })
-    return
+  // Enforce sequential: the immediately preceding slot must already be signed
+  if (Number(slotOrder) > 1) {
+    const prevSigned = await prisma.formSignature.findFirst({
+      where: {
+        formType,
+        formId: Number(formId),
+        slotOrder: Number(slotOrder) - 1,
+        signedAt: { not: null },
+      },
+    })
+    if (!prevSigned) {
+      res.status(422).json({ success: false, error: { code: 'OUT_OF_ORDER', message: '請先完成上一關的簽核' } })
+      return
+    }
   }
+
+  const userRecord = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { username: true },
+  })
+  const signedByName = userRecord?.username ?? null
 
   const data = await prisma.formSignature.upsert({
     where: { formType_formId_slotName: { formType, formId: Number(formId), slotName } },
@@ -48,13 +56,13 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
       slotName,
       slotOrder: Number(slotOrder),
       signedById: req.user!.id,
-      signedByName: req.user!.username,
+      signedByName,
       signatureImg: signatureImg ?? null,
       signedAt: new Date(),
     },
     update: {
       signedById: req.user!.id,
-      signedByName: req.user!.username,
+      signedByName,
       signatureImg: signatureImg ?? null,
       signedAt: new Date(),
     },
@@ -87,10 +95,7 @@ router.delete('/:id', requireAuth, async (req: AuthRequest, res) => {
     return
   }
 
-  await prisma.formSignature.update({
-    where: { id: sig.id },
-    data: { signedById: null, signedByName: null, signatureImg: null, signedAt: null },
-  })
+  await prisma.formSignature.delete({ where: { id: sig.id } })
   res.json({ success: true, message: '已撤回簽核' })
 })
 
