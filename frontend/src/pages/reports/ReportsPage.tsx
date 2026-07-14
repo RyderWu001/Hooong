@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, Tabs, Button, DatePicker, Space, Statistic, Row, Col, Table, Select, message, Tag, Divider, Typography } from 'antd'
 import { DownloadOutlined, SearchOutlined } from '@ant-design/icons'
 import {
@@ -22,6 +23,7 @@ interface DateFilter {
 type ExportType = 'experiment' | 'formula' | 'result'
 
 export default function ReportsPage() {
+  const navigate = useNavigate()
   const [dateFilter, setDateFilter] = useState<DateFilter>({})
   const [summaryData, setSummaryData] = useState<ResultSummaryReport | null>(null)
   const [usageData, setUsageData] = useState<FormulaUsageReport[]>([])
@@ -275,8 +277,17 @@ export default function ReportsPage() {
                   rowKey="id"
                   loading={loadingExp}
                   dataSource={expData}
+                  onRow={(row) => ({
+                    onClick: () => navigate(`/experiments/${row.id}`),
+                    style: { cursor: 'pointer' },
+                  })}
                   columns={[
-                    { title: '實驗編號', dataIndex: 'code', key: 'code' },
+                    {
+                      title: '實驗編號', dataIndex: 'code', key: 'code',
+                      render: (v: string) => (
+                        <Typography.Text style={{ color: '#4096ff', fontWeight: 500 }}>{v}</Typography.Text>
+                      ),
+                    },
                     { title: '配方', dataIndex: 'formulaName', key: 'formulaName' },
                     { title: '實驗人員', dataIndex: 'experimenterName', key: 'experimenterName' },
                     {

@@ -31,6 +31,7 @@ export interface Ingredient {
   storageCondition: string | null
   shelfLife: string | null
   packageSpec: string | null
+  qcStandards: Record<string, string> | null
   unit: string
   unitPrice: number | null
   description: string

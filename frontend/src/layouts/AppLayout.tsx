@@ -192,10 +192,10 @@ export default function AppLayout() {
     <Layout className={styles.root}>
       <Sider trigger={null} collapsible collapsed={collapsed} theme="dark" width={220}>
         <div className={styles.siderInner}>
-          <div className={styles.siderLogo}>
+          <div className={styles.siderLogo} style={{ cursor: 'pointer' }} onClick={() => navigate('/login')}>
             <div className={styles.logoIcon}>H</div>
             {!collapsed && (
-              <span className={styles.logoLink} onClick={() => navigate('/')}>
+              <span className={styles.logoLink}>
                 <Typography.Text strong className={styles.logoText}>
                   泓利廣實驗室
                 </Typography.Text>

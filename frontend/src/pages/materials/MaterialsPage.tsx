@@ -141,16 +141,16 @@ function printQCReport(
       ? `${v}<div style="font-size:9px;color:#777;margin-top:1px">${unit}</div>`
       : v
     return `<tr>
-      <td style="text-align:center">
+      <td class="no-t no-l" style="text-align:center">
         <div style="font-weight:bold;font-size:12px">${itemBi.zh}</div>
         ${itemBi.vi ? `<div style="font-size:9px;color:#555">${itemBi.vi}</div>` : ''}
       </td>
-      <td style="text-align:center;vertical-align:middle">${valCell(r.supplierStd)}</td>
-      <td style="text-align:center;vertical-align:middle">${valCell(r.actualValue)}</td>
-      <td style="text-align:center;vertical-align:middle">${valCell(r.confirmedValue)}</td>
-      <td style="text-align:center;font-size:16px;vertical-align:middle">${r.result === 'OK' ? '☑' : '☐'}</td>
-      <td style="text-align:center;font-size:16px;vertical-align:middle">${r.result === 'NG' ? '☑' : '☐'}</td>
-      <td style="text-align:center">
+      <td class="no-t no-l" style="text-align:center;vertical-align:middle">${valCell(r.supplierStd)}</td>
+      <td class="no-t no-l" style="text-align:center;vertical-align:middle">${valCell(r.actualValue)}</td>
+      <td class="no-t no-l" style="text-align:center;vertical-align:middle">${valCell(r.confirmedValue)}</td>
+      <td class="no-t no-l" style="text-align:center;font-size:16px;vertical-align:middle">${r.result === 'OK' ? '☑' : '☐'}</td>
+      <td class="no-t no-l" style="text-align:center;font-size:16px;vertical-align:middle">${r.result === 'NG' ? '☑' : '☐'}</td>
+      <td class="no-t no-l no-r" style="text-align:center">
         <div style="font-weight:bold">${equipBi.zh}</div>
         ${equipBi.vi ? `<div style="font-size:9px;color:#555">${equipBi.vi}</div>` : ''}
       </td>
@@ -164,173 +164,196 @@ function printQCReport(
 <title>進料品質檢驗分析報告書</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif;font-size:11px;color:#000;background:#fff;padding:14px}
+  body{font-family:'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif;font-size:11px;color:#000;background:#fff;padding:10px}
   table{width:100%;border-collapse:collapse}
-  th,td{border:1px solid #000;padding:4px 6px;vertical-align:middle}
-  .vi{font-size:9px;color:#555;display:block;margin-top:1px}
-  .zh{font-weight:bold;font-size:11px}
-  @media print{body{padding:6px}@page{margin:8mm;size:A4}}
+  td,th{border:1px solid #000;padding:3px 5px;vertical-align:middle}
+  .zh{font-weight:bold;font-size:11px;display:block}
+  .vi{font-size:8.5px;color:#444;display:block;margin-top:1px}
+  .outer{border:2px solid #000}
+  .no-t{border-top:none}.no-b{border-bottom:none}.no-l{border-left:none}.no-r{border-right:none}
+  @media print{body{padding:4px}@page{margin:6mm;size:A4 portrait}}
 </style>
 </head>
 <body>
 
-<!-- ① 主標頭 -->
-<table style="border:2px solid #000;margin-bottom:0">
-  <tr>
-    <td style="width:110px;border-right:2px solid #000;text-align:center;padding:6px 8px">
-      <div style="font-size:20px;font-weight:900;font-style:italic;color:#c0392b;letter-spacing:1px">R<span style="font-size:14px">ICH</span></div>
-      <div style="font-size:9px;color:#666;margin-top:2px">旺隆</div>
-      <div style="margin-top:6px;font-size:10px;text-align:left">No:&nbsp;<strong>${acceptanceNo}</strong></div>
-    </td>
-    <td style="text-align:center;padding:10px 8px;border:none">
-      <div style="font-size:11px;font-weight:bold;letter-spacing:0.5px">BÁO CÁO KIỂM TRA VÀ PHÂN TÍCH CHẤT LƯỢNG</div>
-      <div style="font-size:18px;font-weight:900;letter-spacing:4px;margin-top:4px">進 料 品 質 檢 驗 分 析 報 告 書</div>
-    </td>
-  </tr>
-</table>
+<!-- ═══ 整體外框（單一2px粗線包住全部）═══ -->
+<table class="outer">
 
-<!-- ② 資訊欄（4 欄 × 2 列）-->
-<table style="border:2px solid #000;border-top:none;margin-bottom:0">
+  <!-- ① 標頭：LOGO 左 / 標題 右（標題跨兩列）-->
   <tr>
-    <td style="width:22%">
-      <div class="zh">驗收單號</div>
-      <div class="vi">SỐ PHIẾU NGHIỆM THU</div>
-      <div style="font-size:12px;margin-top:3px">${acceptanceNo}</div>
+    <td style="width:118px;border-right:1px solid #000;border-bottom:1px solid #000;text-align:center;padding:7px 8px;vertical-align:middle">
+      <div style="font-size:22px;font-weight:900;font-style:italic;color:#c0392b;line-height:1.1">R<span style="font-size:15px">ICH</span><sup style="font-size:8px;vertical-align:super">®</sup></div>
+      <div style="font-size:8px;color:#555;font-weight:bold;margin-top:2px;letter-spacing:1px">旺隆</div>
     </td>
-    <td style="width:20%">
-      <div class="zh">訂貨日期</div>
-      <div class="vi">NGÀY ĐẶT HÀNG</div>
-      <div style="font-size:12px;margin-top:3px">${orderDate}</div>
-    </td>
-    <td style="width:20%">
-      <div class="zh">進貨日期</div>
-      <div class="vi">NGÀY NHẬN HÀNG</div>
-      <div style="font-size:12px;margin-top:3px">${arrivalStr}</div>
-    </td>
-    <td style="width:38%">
-      <div class="zh">供應商</div>
-      <div class="vi">NHÀ CUNG CẤP</div>
-      <div style="font-size:12px;margin-top:3px">${batch.supplierBatch ?? ''}</div>
+    <td rowspan="2" class="no-t no-b" style="text-align:center;padding:10px 10px;border-right:none;border-left:none">
+      <div style="font-size:10px;font-weight:bold;letter-spacing:0.5px">BÁO CÁO KIỂM TRA VÀ PHÂN TÍCH CHẤT LƯỢNG</div>
+      <div style="font-size:19px;font-weight:900;letter-spacing:5px;margin-top:5px">進 料 品 質 檢 驗 分 析 報 告 書</div>
     </td>
   </tr>
+  <!-- No: 方格（LOGO 下方獨立一列）-->
   <tr>
-    <td>
-      <div class="zh">品名規格</div>
-      <div class="vi">QUY CÁCH</div>
-      <div style="font-size:12px;margin-top:3px">${ingredient.name}</div>
-    </td>
-    <td>
-      <div class="zh">原料編號</div>
-      <div class="vi">MÃ NGUYÊN LIỆU</div>
-      <div style="font-size:12px;margin-top:3px">${ingredient.code ?? ''}</div>
-    </td>
-    <td>
-      <div class="zh">批號</div>
-      <div class="vi">SỐ LÔ</div>
-      <div style="font-size:12px;margin-top:3px">${batch.batchNo}</div>
-    </td>
-    <td>
-      <div class="zh">數量 (${batch.unit})</div>
-      <div class="vi">SỐ LƯỢNG</div>
-      <div style="font-size:12px;margin-top:3px">${batch.quantity}</div>
+    <td style="border-right:1px solid #000;border-top:none;padding:3px 7px;font-size:10px">
+      No:&nbsp;&nbsp;<strong style="font-size:11px">${acceptanceNo}</strong>
     </td>
   </tr>
-  <tr>
-    <td colspan="4" style="text-align:center;background:#f0f0f0;padding:5px">
-      <span style="font-size:13px;font-weight:bold">品質狀況</span>
-      <span style="font-size:10px;margin-left:6px">TÌNH TRẠNG CHẤT LƯỢNG</span>
-    </td>
-  </tr>
-</table>
 
-<!-- ③ QC 檢測表 -->
-<table style="border:2px solid #000;border-top:none;margin-bottom:0">
-  <thead>
-    <tr style="background:#f5f5f5">
-      <th style="width:13%;text-align:center">
-        <div class="zh" style="font-size:10px">檢測項目</div>
-        <div class="vi">HẠNG MỤC KIỂM TRA</div>
-      </th>
-      <th style="width:14%;text-align:center">
-        <div class="zh" style="font-size:10px">供應商標準</div>
-        <div class="vi">TIÊU CHUẨN NHÀ CUNG CẤP</div>
-      </th>
-      <th style="width:14%;text-align:center">
-        <div class="zh" style="font-size:10px">實際測值</div>
-        <div class="vi">GIÁ TRỊ THỬ NGHIỆM THỰC TẾ</div>
-      </th>
-      <th style="width:14%;text-align:center">
-        <div class="zh" style="font-size:10px">二次確認值</div>
-        <div class="vi">GIÁ TRỊ KIỂM TRA LẦN 2</div>
-      </th>
-      <th style="width:9%;text-align:center">
-        <div class="zh" style="font-size:10px">檢測OK</div>
-        <div class="vi">ĐẠT (OK)</div>
-      </th>
-      <th style="width:9%;text-align:center">
-        <div class="zh" style="font-size:10px">檢測NG</div>
-        <div class="vi">KHÔNG ĐẠT (NG)</div>
-      </th>
-      <th style="width:27%;text-align:center">
-        <div class="zh" style="font-size:10px">檢測設備</div>
-        <div class="vi">THIẾT BỊ KIỂM TRA</div>
-      </th>
-    </tr>
-  </thead>
-  <tbody>${rows}</tbody>
-</table>
-
-<!-- ④ 備註 -->
-<table style="border:2px solid #000;border-top:none;margin-bottom:0">
+  <!-- ② 資訊欄（4 欄 × 2 列）-->
   <tr>
-    <td style="min-height:90px;vertical-align:top;padding:6px">
-      <div><strong>備註</strong><span class="vi" style="display:inline;margin-left:6px">CHÚ THÍCH</span></div>
-      <div style="margin-top:6px;white-space:pre-wrap;font-size:11px">${qcNotes}</div>
+    <td colspan="2" style="padding:0">
+      <table>
+        <tr>
+          <td style="width:25%" class="no-t no-l no-b">
+            <span class="zh">驗收單號</span><span class="vi">Số PHIẾU NGHIỆM THU</span>
+            <div style="font-size:12px;margin-top:3px">${acceptanceNo}</div>
+          </td>
+          <td style="width:25%" class="no-t no-l no-b">
+            <span class="zh">訂貨日期</span><span class="vi">NGÀY ĐẶT HÀNG</span>
+            <div style="font-size:12px;margin-top:3px">${orderDate}</div>
+          </td>
+          <td style="width:25%" class="no-t no-l no-b">
+            <span class="zh">進貨日期</span><span class="vi">NGÀY NHẬN HÀNG</span>
+            <div style="font-size:12px;margin-top:3px">${arrivalStr}</div>
+          </td>
+          <td style="width:25%" class="no-t no-l no-b no-r">
+            <span class="zh">供應商</span><span class="vi">NHÀ CUNG CẤP</span>
+            <div style="font-size:12px;margin-top:3px">${batch.supplierBatch ?? ''}</div>
+          </td>
+        </tr>
+        <tr>
+          <td class="no-t no-l no-b">
+            <span class="zh">品名規格</span><span class="vi">QUY CÁCH</span>
+            <div style="font-size:12px;margin-top:3px">${ingredient.name}</div>
+          </td>
+          <td class="no-t no-l no-b">
+            <span class="zh">原料編號</span><span class="vi">MÃ NGUYÊN LIỆU</span>
+            <div style="font-size:12px;margin-top:3px">${ingredient.code ?? ''}</div>
+          </td>
+          <td class="no-t no-l no-b">
+            <span class="zh">批號</span><span class="vi">Số LÔ</span>
+            <div style="font-size:12px;margin-top:3px">${batch.batchNo}</div>
+          </td>
+          <td class="no-t no-l no-b no-r">
+            <span class="zh">數量 (${batch.unit})</span><span class="vi">Số LƯỢNG</span>
+            <div style="font-size:12px;margin-top:3px">${batch.quantity}</div>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- ③ 品質狀況 橫幅（中文居中上方，越文在下偏右）-->
+  <tr>
+    <td colspan="2" style="text-align:center;padding:5px 8px;background:#efefef">
+      <div style="font-size:14px;font-weight:900;letter-spacing:3px">品質狀況</div>
+      <div style="font-size:9px;color:#444;text-align:right;margin-top:1px">TÌNH TRẠNG CHẤT LƯỢNG</div>
+    </td>
+  </tr>
+
+  <!-- ④ QC 檢測主表（7 欄 × 9 列）-->
+  <tr>
+    <td colspan="2" style="padding:0">
+      <table>
+        <thead>
+          <tr style="background:#f0f0f0">
+            <th style="width:13%;text-align:center" class="no-t no-l">
+              <span class="zh" style="font-size:10px">檢測項目</span>
+              <span class="vi">HẠNG MỤC KIỂM TRA</span>
+            </th>
+            <th style="width:14%;text-align:center" class="no-t no-l">
+              <span class="zh" style="font-size:10px">供應商標準</span>
+              <span class="vi">TIÊU CHUẨN NHÀ CUNG CẤP</span>
+            </th>
+            <th style="width:14%;text-align:center" class="no-t no-l">
+              <span class="zh" style="font-size:10px">實際測值</span>
+              <span class="vi">GIÁ TRỊ THỬ NGHIỆM THỰC TẾ</span>
+            </th>
+            <th style="width:14%;text-align:center" class="no-t no-l">
+              <span class="zh" style="font-size:10px">二次確認值</span>
+              <span class="vi">GIÁ TRỊ KIỂM TRA LẦN 2</span>
+            </th>
+            <th style="width:8%;text-align:center" class="no-t no-l">
+              <span class="zh" style="font-size:10px">檢測OK</span>
+              <span class="vi">ĐẠT (OK)</span>
+            </th>
+            <th style="width:8%;text-align:center" class="no-t no-l">
+              <span class="zh" style="font-size:10px">檢測NG</span>
+              <span class="vi">KHÔNG ĐẠT (NG)</span>
+            </th>
+            <th style="width:29%;text-align:center" class="no-t no-l no-r">
+              <span class="zh" style="font-size:10px">檢測設備</span>
+              <span class="vi">THIẾT BỊ KIỂM TRA</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </td>
+  </tr>
+
+  <!-- ⑤ 備註 CHÚ THÍCH -->
+  <tr>
+    <td colspan="2" style="vertical-align:top;padding:6px">
+      <div><strong style="font-size:11px">備註</strong><span style="font-size:9px;color:#444;margin-left:8px">CHÚ THÍCH</span></div>
+      <div style="margin-top:5px;white-space:pre-wrap;font-size:11px">${qcNotes}</div>
       <div style="min-height:60px"></div>
     </td>
   </tr>
-</table>
 
-<!-- ⑤ 照片 -->
-<table style="border:2px solid #000;border-top:none;margin-bottom:0">
+  <!-- ⑥ 照片貼附區（左右各半）-->
   <tr>
-    <td style="width:50%;min-height:160px;text-align:center;vertical-align:top;padding:8px;border-right:2px solid #000">
-      <div class="zh">產品外觀照片貼處</div>
-      <div class="vi">VỊ TRÍ ĐÍNH KÈM ẢNH NGOẠI QUAN SẢN PHẨM</div>
-      ${photoAppearanceUrl
-        ? `<div style="margin-top:8px"><img src="${photoAppearanceUrl}" style="max-height:140px;max-width:95%;border:1px solid #ccc"></div>`
-        : '<div style="min-height:130px"></div>'}
-    </td>
-    <td style="width:50%;min-height:160px;text-align:center;vertical-align:top;padding:8px">
-      <div class="zh">產品固化照片貼處</div>
-      <div class="vi">VỊ TRÍ ĐÍNH KÈM ẢNH SẢN PHẨM ĐÃ SẤY KHÔ</div>
-      ${photoSolidUrl
-        ? `<div style="margin-top:8px"><img src="${photoSolidUrl}" style="max-height:140px;max-width:95%;border:1px solid #ccc"></div>`
-        : '<div style="min-height:130px"></div>'}
+    <td colspan="2" style="padding:0">
+      <table>
+        <tr>
+          <td style="width:50%;min-height:160px;text-align:center;vertical-align:top;padding:8px" class="no-t no-l no-b">
+            <span class="zh">產品外觀照片貼處</span>
+            <span class="vi">VỊ TRÍ ĐÍNH KÈM ẢNH NGOẠI QUAN SẢN PHẨM</span>
+            ${photoAppearanceUrl
+              ? `<div style="margin-top:8px"><img src="${photoAppearanceUrl}" style="max-height:140px;max-width:95%;border:1px solid #ccc"></div>`
+              : '<div style="min-height:130px"></div>'}
+          </td>
+          <td style="width:50%;min-height:160px;text-align:center;vertical-align:top;padding:8px" class="no-t no-l no-b no-r">
+            <span class="zh">產品固化照片貼處</span>
+            <span class="vi">VỊ TRÍ ĐÍNH KÈM ẢNH SẢN PHẨM ĐÃ SẤY KHÔ</span>
+            ${photoSolidUrl
+              ? `<div style="margin-top:8px"><img src="${photoSolidUrl}" style="max-height:140px;max-width:95%;border:1px solid #ccc"></div>`
+              : '<div style="min-height:130px"></div>'}
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
-</table>
 
-<!-- ⑥ 簽名列 -->
-<table style="border:2px solid #000;border-top:none">
+  <!-- ⑦ 簽名列（4 欄：主管 / 審核 / 檢測員 / CMS03-07-2B）-->
   <tr>
-    <td style="width:30%;text-align:center;min-height:65px;vertical-align:top;padding:5px">
-      <div><span class="zh">單位主管</span><span class="vi" style="display:inline;margin-left:4px">TRƯỞNG ĐƠN VỊ</span></div>
-      ${sigSupervisor ? `<img src="${sigSupervisor}" style="max-height:45px;margin-top:4px">` : '<div style="min-height:45px"></div>'}
-    </td>
-    <td style="width:30%;text-align:center;min-height:65px;vertical-align:top;padding:5px">
-      <div><span class="zh">審核</span><span class="vi" style="display:inline;margin-left:4px">THẨM TRA</span></div>
-      ${sigReviewer ? `<img src="${sigReviewer}" style="max-height:45px;margin-top:4px">` : '<div style="min-height:45px"></div>'}
-    </td>
-    <td style="width:30%;text-align:center;min-height:65px;vertical-align:top;padding:5px">
-      <div><span class="zh">檢測員</span><span class="vi" style="display:inline;margin-left:4px">NHÂN VIÊN KIỂM TRA</span></div>
-      ${sigInspector ? `<img src="${sigInspector}" style="max-height:45px;margin-top:4px">` : '<div style="min-height:45px"></div>'}
-    </td>
-    <td style="width:10%;text-align:center;vertical-align:middle;font-weight:bold;font-size:11px;border-left:2px solid #000">
-      CMS03-07-2B
+    <td colspan="2" style="padding:0">
+      <table>
+        <tr>
+          <td style="width:30%;text-align:center;min-height:65px;vertical-align:top;padding:5px" class="no-t no-l no-b">
+            <span class="zh">單位主管</span><span class="vi">TRƯỞNG ĐƠN VỊ</span>
+            ${sigSupervisor ? `<img src="${sigSupervisor}" style="max-height:45px;margin-top:6px">` : '<div style="min-height:45px"></div>'}
+          </td>
+          <td style="width:27%;text-align:center;min-height:65px;vertical-align:top;padding:5px" class="no-t no-l no-b">
+            <span class="zh">審核</span><span class="vi">THẨM TRA</span>
+            ${sigReviewer ? `<img src="${sigReviewer}" style="max-height:45px;margin-top:6px">` : '<div style="min-height:45px"></div>'}
+          </td>
+          <td style="width:30%;text-align:center;min-height:65px;vertical-align:top;padding:5px" class="no-t no-l no-b">
+            <span class="zh">檢測員</span><span class="vi">NHÂN VIÊN KIỂM TRA</span>
+            ${sigInspector ? `<img src="${sigInspector}" style="max-height:45px;margin-top:6px">` : '<div style="min-height:45px"></div>'}
+          </td>
+          <td style="width:13%;text-align:right;vertical-align:bottom;padding:5px 7px;font-weight:bold;font-size:11px" class="no-t no-l no-b no-r">
+            CMS03-07-2B
+          </td>
+        </tr>
+      </table>
     </td>
   </tr>
+
 </table>
+
+<!-- 頁腳（表框外，置中小字）-->
+<div style="text-align:center;font-size:9px;color:#555;margin-top:5px">
+  (附件2)CMS03-07-2B 進料品質檢驗分析報告書
+</div>
 
 <script>window.onload = () => window.print()</script>
 </body>
@@ -364,7 +387,21 @@ function QCReportModal({
     if (!open || !batch) return
     setAcceptanceNo(batch.acceptanceNo ?? '')
     setOrderDateStr(batch.orderDate ? dayjs(batch.orderDate).format('YYYY-MM-DD') : '')
-    setQcItems(batch.qcItems?.length ? batch.qcItems.map(i => ({ ...i })) : QC_ITEMS_DEFAULT.map(i => ({ ...i })))
+    if (batch.qcItems?.length) {
+      setQcItems(batch.qcItems.map((i: QCItem) => ({ ...i })))
+    } else {
+      // 優先用原料設定的 qcStandards，fallback 到基本規格欄位
+      const fallback: Record<string, string> = {
+        '外觀':   ingredient.appearance   ?? '',
+        '固成分': ingredient.solidContent ?? '',
+        '比重':   ingredient.density      ?? '',
+      }
+      const standards = ingredient.qcStandards ?? {}
+      setQcItems(QC_ITEMS_DEFAULT.map(i => ({
+        ...i,
+        supplierStd: standards[i.item] ?? fallback[i.item] ?? '',
+      })))
+    }
     setQcNotes(batch.qcNotes ?? '')
     setPhotoAppearanceFile(null)
     setPhotoSolidFile(null)
@@ -1169,6 +1206,25 @@ function IngredientTab() {
           <Form.Item name="description" label="說明">
             <Input.TextArea rows={2} />
           </Form.Item>
+          <Divider orientation="left" style={{ fontSize: 13, margin: '4px 0 8px' }}>
+            進料驗收供應商標準（附件2自動帶入）
+          </Divider>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>
+            {[
+              { key: '外觀',              placeholder: '例：淡黃色透明液體' },
+              { key: '固成分',            placeholder: '例：45±2%' },
+              { key: 'PH(1%)',           placeholder: '例：6.0~7.5' },
+              { key: '比重',              placeholder: '例：1.05~1.10' },
+              { key: '醣度',              placeholder: '例：—' },
+              { key: '黏度(cps)',         placeholder: '例：100~300' },
+              { key: '導電度(mmho/cm)',   placeholder: '例：—' },
+              { key: 'COD(mg/L)',        placeholder: '例：—' },
+            ].map(({ key, placeholder }) => (
+              <Form.Item key={key} name={['qcStandards', key]} label={key} style={{ marginBottom: 6 }}>
+                <Input size="small" placeholder={placeholder} />
+              </Form.Item>
+            ))}
+          </div>
         </Form>
       </Modal>
 

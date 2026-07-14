@@ -44,6 +44,7 @@ model Ingredient {
   storageCondition String?
   shelfLife        String?
   packageSpec      String?
+  qcStandards      Json?
   unit             String
   unitPrice        Float?
   description      String               @default("")
