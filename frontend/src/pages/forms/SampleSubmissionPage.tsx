@@ -4,13 +4,15 @@ import {
   Popconfirm, message, Typography, Tag, Divider, Checkbox, InputNumber,
 } from 'antd'
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, PrinterOutlined, FileTextOutlined,
+  PlusOutlined, EditOutlined, DeleteOutlined, PrinterOutlined, FileTextOutlined, AuditOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import {
   getSampleSubmissions, createSampleSubmission, updateSampleSubmission, deleteSampleSubmission,
 } from '../../api/sampleSubmissions'
+import { getFormSignatures, type FormSignatureRecord } from '../../api/formSignatures'
+import ApprovalChain from '../../components/ApprovalChain'
 
 const { Text } = Typography
 
@@ -64,7 +66,7 @@ const DEFAULT_FORMULA_TABLE: FormulaCostTable = {
 const DEFAULT_TRACKING: TrackingResult = { week1: '', week2: '', week3: '', conclusion: '' }
 const DEFAULT_ORDER: OrderInfo = { orderTime: '', massProductionModel: '', orderQty: '', formulaNo: '' }
 
-function printSubmission(sub: SampleSubmission, sigs: Record<string, string | null>) {
+function printSubmission(sub: SampleSubmission, chainSigs: FormSignatureRecord[] = []) {
   const items = sub.sampleItems ?? DEFAULT_SAMPLE_ITEMS
   const pkgs = sub.packaging ?? []
   const fabrics = sub.customerFabric ?? { color: '', yarnType: '', material: '', hasReport: false }
@@ -73,11 +75,15 @@ function printSubmission(sub: SampleSubmission, sigs: Record<string, string | nu
   const fc = sub.formulaCostTable ?? DEFAULT_FORMULA_TABLE
 
   const sigNames = ['總經理', '財務部', '行管部', '廠務部', '化驗室', '核准', '承辦人']
-  const sigBoxes = sigNames.map(n => `
-    <div class="sig-box">
+  const sigBoxes = sigNames.map(n => {
+    const s = chainSigs.find(c => c.slotName === n)
+    return `<div class="sig-box">
       <div class="sig-label">${n}</div>
-      ${sigs[n] ? `<img src="${sigs[n]}" style="max-height:40px">` : ''}
-    </div>`).join('')
+      ${s?.signatureImg ? `<img src="${s.signatureImg}" style="max-height:36px;max-width:100%;display:block;margin:2px auto">` : ''}
+      ${s?.signedByName ? `<div style="font-size:9px;color:#555">${s.signedByName}</div>` : ''}
+      ${s?.signedAt ? `<div style="font-size:8px;color:#777">${dayjs(s.signedAt).format('MM-DD HH:mm')}</div>` : ''}
+    </div>`
+  }).join('')
 
   const formulaHeader = fc.formulas.map(f => `<th colspan="2">${f.name}</th>`).join('') + '<th>預估成本</th><th>預估售價</th><th>核准報價</th>'
   const formulaRows = Array(6).fill(null).map((_, ri) =>
@@ -213,7 +219,8 @@ export default function SampleSubmissionPage() {
   const [customerFabric, setCustomerFabric] = useState<CustomerFabric>({ color: '', yarnType: '', material: '', hasReport: false })
   const [trackingResults, setTrackingResults] = useState<TrackingResult>(DEFAULT_TRACKING)
   const [orderInfo, setOrderInfo] = useState<OrderInfo>(DEFAULT_ORDER)
-  const [sigs, setSigs] = useState<Record<string, string | null>>({})
+  const [approvalOpen, setApprovalOpen] = useState(false)
+  const [approvalRecord, setApprovalRecord] = useState<SampleSubmission | null>(null)
 
   const load = useCallback(async (p = 1) => {
     setLoading(true)
@@ -237,7 +244,6 @@ export default function SampleSubmissionPage() {
     setCustomerFabric({ color: '', yarnType: '', material: '', hasReport: false })
     setTrackingResults(DEFAULT_TRACKING)
     setOrderInfo(DEFAULT_ORDER)
-    setSigs({})
     setModalOpen(true)
   }
 
@@ -261,7 +267,6 @@ export default function SampleSubmissionPage() {
     setCustomerFabric(row.customerFabric ?? { color: '', yarnType: '', material: '', hasReport: false })
     setTrackingResults(row.trackingResults ?? DEFAULT_TRACKING)
     setOrderInfo(row.orderInfo ?? DEFAULT_ORDER)
-    setSigs({})
     setModalOpen(true)
   }
 
@@ -308,10 +313,9 @@ export default function SampleSubmissionPage() {
     })
   }
 
-  const handleSigUpload = (name: string, file: File) => {
-    const reader = new FileReader()
-    reader.onload = e => setSigs(prev => ({ ...prev, [name]: e.target?.result as string }))
-    reader.readAsDataURL(file)
+  const handlePrintWithSigs = async (row: SampleSubmission) => {
+    const chainSigs = await getFormSignatures('SampleSubmission', row.id).catch(() => [])
+    printSubmission(row, chainSigs)
   }
 
   const columns: ColumnsType<SampleSubmission> = [
@@ -327,10 +331,11 @@ export default function SampleSubmissionPage() {
       render: (_, row) => `${row.sampleItems?.filter(i => i.name).length ?? 0} 項`,
     },
     {
-      title: '操作', key: 'actions', width: 180,
+      title: '操作', key: 'actions', width: 220,
       render: (_, row) => (
         <Space>
-          <Button size="small" icon={<PrinterOutlined />} onClick={() => printSubmission(row, sigs)}>列印</Button>
+          <Button size="small" icon={<AuditOutlined />} onClick={() => { setApprovalRecord(row); setApprovalOpen(true) }}>簽核</Button>
+          <Button size="small" icon={<PrinterOutlined />} onClick={() => handlePrintWithSigs(row)}>列印</Button>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)} />
           <Popconfirm title="確定刪除？" onConfirm={() => handleDelete(row.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
@@ -339,8 +344,6 @@ export default function SampleSubmissionPage() {
       ),
     },
   ]
-
-  const SIG_NAMES = ['總經理', '財務部', '行管部', '廠務部', '化驗室', '核准', '承辦人']
 
   return (
     <Card
@@ -571,19 +574,24 @@ export default function SampleSubmissionPage() {
             ))}
           </Space>
 
-          {/* 簽名 */}
-          <Divider plain style={{ margin: '4px 0 8px', fontSize: 12 }}>簽名（上傳後僅存於本次瀏覽器）</Divider>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
-            {SIG_NAMES.map(name => (
-              <div key={name} style={{ textAlign: 'center' }}>
-                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>{name}</Text>
-                {sigs[name] && <img src={sigs[name]!} alt={name} style={{ height: 40, border: '1px solid #2d3f55', borderRadius: 4, display: 'block', margin: '0 auto 4px' }} />}
-                <input type="file" accept="image/*" style={{ fontSize: 10, width: '100%' }}
-                  onChange={e => e.target.files?.[0] && handleSigUpload(name, e.target.files[0])} />
-              </div>
-            ))}
-          </div>
         </Form>
+      </Modal>
+
+      {/* 簽核流程 Modal */}
+      <Modal
+        title={<Space><AuditOutlined />簽核流程 — {approvalRecord?.companyName}</Space>}
+        open={approvalOpen}
+        onCancel={() => setApprovalOpen(false)}
+        footer={<Button onClick={() => setApprovalOpen(false)}>關閉</Button>}
+        width={820}
+        destroyOnHidden
+      >
+        {approvalRecord && (
+          <ApprovalChain
+            formType="SampleSubmission"
+            formId={approvalRecord.id}
+          />
+        )}
       </Modal>
     </Card>
   )

@@ -11,6 +11,7 @@ import dayjs from 'dayjs'
 import {
   getChemicalEvaluations, createChemicalEvaluation, updateChemicalEvaluation, deleteChemicalEvaluation,
 } from '../../api/chemicalForms'
+import ApprovalChain from '../../components/ApprovalChain'
 
 const { TextArea } = Input
 
@@ -334,6 +335,8 @@ export default function ChemicalEvaluationPage() {
   const [form] = Form.useForm()
   const [pureRows, setPureRows] = useState<SubstanceRow[]>(DEFAULT_SUBSTANCE_ROWS)
   const [mixRows, setMixRows] = useState<SubstanceRow[]>(DEFAULT_SUBSTANCE_ROWS)
+  const [approvalOpen, setApprovalOpen] = useState(false)
+  const [approvalRecord, setApprovalRecord] = useState<ChemEval | null>(null)
 
   const load = useCallback(async (p = 1) => {
     setLoading(true)
@@ -465,9 +468,10 @@ export default function ChemicalEvaluationPage() {
       render: (v: string) => v ? dayjs(v).format('YYYY-MM-DD') : '—',
     },
     {
-      title: '操作', key: 'actions', width: 180,
+      title: '操作', key: 'actions', width: 220,
       render: (_, row) => (
         <Space>
+          <Button size="small" icon={<AuditOutlined />} onClick={() => { setApprovalRecord(row); setApprovalOpen(true) }}>簽核</Button>
           <Button size="small" icon={<PrinterOutlined />} onClick={() => printEvaluation(row)}>列印</Button>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)} />
           <Popconfirm title="確定刪除？" onConfirm={() => handleDelete(row.id)}>
@@ -665,6 +669,20 @@ export default function ChemicalEvaluationPage() {
             <TextArea rows={2} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 簽核流程 Modal */}
+      <Modal
+        title={<Space><AuditOutlined />簽核流程 — {approvalRecord?.chemicalName}</Space>}
+        open={approvalOpen}
+        onCancel={() => setApprovalOpen(false)}
+        footer={<Button onClick={() => setApprovalOpen(false)}>關閉</Button>}
+        width={600}
+        destroyOnHidden
+      >
+        {approvalRecord && (
+          <ApprovalChain formType="ChemicalEvaluation" formId={approvalRecord.id} />
+        )}
       </Modal>
     </Card>
   )

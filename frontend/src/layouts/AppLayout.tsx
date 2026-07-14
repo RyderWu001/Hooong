@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Layout, Menu, Avatar, Dropdown, Typography, Tag, Modal, Descriptions, Form, Input, Button, Space, message } from 'antd'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Layout, Menu, Avatar, Dropdown, Typography, Tag, Modal, Descriptions, Form, Input, Button, Space, message, Upload, Divider } from 'antd'
 import {
   ExperimentOutlined,
   FileTextOutlined,
@@ -22,10 +22,13 @@ import {
   CalendarOutlined,
   AuditOutlined,
   FileAddOutlined,
+  UploadOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
 import { logout, changePassword } from '../api/auth'
+import { getMySignature, saveMySignature } from '../api/formSignatures'
 import styles from './AppLayout.module.css'
 
 const { Sider, Header, Content } = Layout
@@ -48,9 +51,49 @@ export default function AppLayout() {
   const [passwordOpen, setPasswordOpen] = useState(false)
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [passwordForm] = Form.useForm()
+  const [mySignature, setMySignature] = useState<string | null>(null)
+  const [signatureSaving, setSignatureSaving] = useState(false)
+  const sigPasteRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const location = useLocation()
   const { user, clearAuth } = useAuthStore()
+
+  const loadSignature = useCallback(async () => {
+    const sig = await getMySignature().catch(() => null)
+    setMySignature(sig)
+  }, [])
+
+  const handleSigPaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
+    const item = Array.from(e.clipboardData?.items ?? []).find(i => i.type.startsWith('image/'))
+    if (!item) return
+    e.preventDefault()
+    const blob = item.getAsFile()
+    if (!blob) return
+    const reader = new FileReader()
+    reader.onload = ev => setMySignature(ev.target?.result as string)
+    reader.readAsDataURL(blob)
+  }, [])
+
+  useEffect(() => { if (profileOpen) loadSignature() }, [profileOpen, loadSignature])
+
+  const handleSaveSignature = async () => {
+    setSignatureSaving(true)
+    try {
+      await saveMySignature(mySignature)
+      message.success('簽名已儲存')
+    } catch {
+      message.error('儲存失敗')
+    } finally {
+      setSignatureSaving(false)
+    }
+  }
+
+  const handleSigFileUpload = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = ev => setMySignature(ev.target?.result as string)
+    reader.readAsDataURL(file)
+    return false
+  }
 
   const handleLogout = async () => {
     await logout().catch(() => {})
@@ -269,6 +312,7 @@ export default function AppLayout() {
         open={profileOpen}
         onCancel={() => setProfileOpen(false)}
         footer={<Button onClick={() => setProfileOpen(false)}>關閉</Button>}
+        width={480}
       >
         <Descriptions bordered column={1} style={{ marginTop: 8 }}>
           <Descriptions.Item label="使用者名稱">{user?.username}</Descriptions.Item>
@@ -277,6 +321,67 @@ export default function AppLayout() {
             <Tag color={ROLE_COLOR[user?.role ?? '']}>{ROLE_LABEL[user?.role ?? '']}</Tag>
           </Descriptions.Item>
         </Descriptions>
+
+        <Divider orientation="left" style={{ fontSize: 13, margin: '16px 0 10px' }}>我的電子簽名</Divider>
+
+        {mySignature ? (
+          <div style={{ border: '1px solid #333', borderRadius: 6, padding: 12, textAlign: 'center', background: '#111', marginBottom: 10 }}>
+            <img src={mySignature} alt="我的簽名" style={{ maxHeight: 72, maxWidth: '100%', objectFit: 'contain' }} />
+          </div>
+        ) : (
+          <div style={{ color: '#666', fontSize: 12, marginBottom: 10 }}>尚未設定簽名</div>
+        )}
+
+        <div
+          ref={sigPasteRef}
+          contentEditable
+          suppressContentEditableWarning
+          tabIndex={0}
+          style={{
+            border: '2px dashed #444',
+            borderRadius: 8,
+            padding: '12px',
+            textAlign: 'center',
+            cursor: 'text',
+            outline: 'none',
+            color: '#888',
+            fontSize: 12,
+            marginBottom: 8,
+            userSelect: 'none',
+          }}
+          onPaste={handleSigPaste}
+          onKeyDown={e => {
+            if (!((e.ctrlKey || e.metaKey) && e.key === 'v')) e.preventDefault()
+          }}
+          onFocus={e => (e.currentTarget.style.borderColor = '#1677ff')}
+          onBlur={e => (e.currentTarget.style.borderColor = '#444')}
+        >
+          點此後按 <kbd style={{ background: '#222', border: '1px solid #555', borderRadius: 3, padding: '1px 4px' }}>Ctrl+V</kbd> 或<strong>右鍵 → 貼上</strong>簽名圖片
+        </div>
+
+        <Space style={{ marginBottom: 12 }}>
+          <Upload beforeUpload={handleSigFileUpload} showUploadList={false} accept="image/*">
+            <Button icon={<UploadOutlined />} size="small">從檔案選擇</Button>
+          </Upload>
+          {mySignature && (
+            <Button
+              icon={<DeleteOutlined />}
+              size="small"
+              danger
+              onClick={() => setMySignature(null)}
+            >
+              清除
+            </Button>
+          )}
+          <Button
+            type="primary"
+            size="small"
+            loading={signatureSaving}
+            onClick={handleSaveSignature}
+          >
+            儲存簽名
+          </Button>
+        </Space>
       </Modal>
 
       {/* 修改密碼 Modal */}

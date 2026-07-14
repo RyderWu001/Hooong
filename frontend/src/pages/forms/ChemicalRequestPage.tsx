@@ -4,8 +4,9 @@ import {
   Popconfirm, message, Divider, Select, Checkbox,
 } from 'antd'
 import {
-  PlusOutlined, EditOutlined, DeleteOutlined, PrinterOutlined, FileAddOutlined,
+  PlusOutlined, EditOutlined, DeleteOutlined, PrinterOutlined, FileAddOutlined, AuditOutlined,
 } from '@ant-design/icons'
+import ApprovalChain from '../../components/ApprovalChain'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import {
@@ -246,6 +247,8 @@ export default function ChemicalRequestPage() {
   const [saving, setSaving] = useState(false)
   const [form] = Form.useForm()
   const [ingrRows, setIngrRows] = useState<IngredientRow[]>(DEFAULT_INGREDIENT_ROWS)
+  const [approvalOpen, setApprovalOpen] = useState(false)
+  const [approvalRecord, setApprovalRecord] = useState<ChemRequest | null>(null)
 
   const load = useCallback(async (p = 1) => {
     setLoading(true)
@@ -361,9 +364,10 @@ export default function ChemicalRequestPage() {
       render: (v: string) => v ? dayjs(v).format('YYYY-MM-DD') : '—',
     },
     {
-      title: '操作', key: 'actions', width: 180,
+      title: '操作', key: 'actions', width: 220,
       render: (_, row) => (
         <Space>
+          <Button size="small" icon={<AuditOutlined />} onClick={() => { setApprovalRecord(row); setApprovalOpen(true) }}>簽核</Button>
           <Button size="small" icon={<PrinterOutlined />} onClick={() => printRequest(row)}>列印</Button>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)} />
           <Popconfirm title="確定刪除？" onConfirm={() => handleDelete(row.id)}>
@@ -539,6 +543,20 @@ export default function ChemicalRequestPage() {
             <TextArea rows={2} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 簽核流程 Modal */}
+      <Modal
+        title={<Space><AuditOutlined />簽核流程 — {approvalRecord?.chemicalName}</Space>}
+        open={approvalOpen}
+        onCancel={() => setApprovalOpen(false)}
+        footer={<Button onClick={() => setApprovalOpen(false)}>關閉</Button>}
+        width={580}
+        destroyOnHidden
+      >
+        {approvalRecord && (
+          <ApprovalChain formType="ChemicalRequest" formId={approvalRecord.id} />
+        )}
       </Modal>
     </Card>
   )

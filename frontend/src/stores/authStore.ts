@@ -8,11 +8,20 @@ interface AuthStore {
   clearAuth: () => void
 }
 
-const stored = localStorage.getItem('user')
+function loadUser() {
+  try {
+    const stored = localStorage.getItem('user')
+    if (!stored || stored === 'undefined' || stored === 'null') return null
+    return JSON.parse(stored)
+  } catch {
+    localStorage.removeItem('user')
+    return null
+  }
+}
 
 export const useAuthStore = create<AuthStore>((set) => ({
   token: localStorage.getItem('token'),
-  user: stored ? JSON.parse(stored) : null,
+  user: loadUser(),
   setAuth: (token, user) => {
     localStorage.setItem('token', token)
     localStorage.setItem('user', JSON.stringify(user))

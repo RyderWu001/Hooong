@@ -30,6 +30,8 @@ import type {
 } from '../../types'
 import { useAuthStore } from '../../stores/authStore'
 import DropdownSelect from '../../components/DropdownSelect'
+import ApprovalChain from '../../components/ApprovalChain'
+import { getFormSignatures } from '../../api/formSignatures'
 
 const { Text } = Typography
 
@@ -127,10 +129,9 @@ function printQCReport(
   qcNotes: string,
   photoAppearanceUrl: string | null,
   photoSolidUrl: string | null,
-  sigSupervisor: string | null,
-  sigReviewer: string | null,
-  sigInspector: string | null,
+  chainSigs: Array<{ slotName: string; signatureImg: string | null; signedByName: string | null; signedAt: string | null }> = [],
 ) {
+  const sigFor = (name: string) => chainSigs.find(s => s.slotName === name)
   const arrivalStr = batch.arrivalDate ? dayjs(batch.arrivalDate).format('YYYY-MM-DD') : ''
 
   const rows = qcItems.map(r => {
@@ -330,15 +331,18 @@ function printQCReport(
         <tr>
           <td style="width:30%;text-align:center;min-height:65px;vertical-align:top;padding:5px" class="no-t no-l no-b">
             <span class="zh">單位主管</span><span class="vi">TRƯỞNG ĐƠN VỊ</span>
-            ${sigSupervisor ? `<img src="${sigSupervisor}" style="max-height:45px;margin-top:6px">` : '<div style="min-height:45px"></div>'}
+            ${sigFor('單位主管')?.signatureImg ? `<img src="${sigFor('單位主管')!.signatureImg}" style="max-height:40px;margin-top:4px;display:block;margin-left:auto;margin-right:auto">` : '<div style="min-height:40px"></div>'}
+            ${sigFor('單位主管')?.signedByName ? `<div style="font-size:9px;color:#555;margin-top:2px">${sigFor('單位主管')!.signedByName}</div>` : ''}
           </td>
           <td style="width:27%;text-align:center;min-height:65px;vertical-align:top;padding:5px" class="no-t no-l no-b">
             <span class="zh">審核</span><span class="vi">THẨM TRA</span>
-            ${sigReviewer ? `<img src="${sigReviewer}" style="max-height:45px;margin-top:6px">` : '<div style="min-height:45px"></div>'}
+            ${sigFor('審核')?.signatureImg ? `<img src="${sigFor('審核')!.signatureImg}" style="max-height:40px;margin-top:4px;display:block;margin-left:auto;margin-right:auto">` : '<div style="min-height:40px"></div>'}
+            ${sigFor('審核')?.signedByName ? `<div style="font-size:9px;color:#555;margin-top:2px">${sigFor('審核')!.signedByName}</div>` : ''}
           </td>
           <td style="width:30%;text-align:center;min-height:65px;vertical-align:top;padding:5px" class="no-t no-l no-b">
             <span class="zh">檢測員</span><span class="vi">NHÂN VIÊN KIỂM TRA</span>
-            ${sigInspector ? `<img src="${sigInspector}" style="max-height:45px;margin-top:6px">` : '<div style="min-height:45px"></div>'}
+            ${sigFor('檢測員')?.signatureImg ? `<img src="${sigFor('檢測員')!.signatureImg}" style="max-height:40px;margin-top:4px;display:block;margin-left:auto;margin-right:auto">` : '<div style="min-height:40px"></div>'}
+            ${sigFor('檢測員')?.signedByName ? `<div style="font-size:9px;color:#555;margin-top:2px">${sigFor('檢測員')!.signedByName}</div>` : ''}
           </td>
           <td style="width:13%;text-align:right;vertical-align:bottom;padding:5px 7px;font-weight:bold;font-size:11px" class="no-t no-l no-b no-r">
             CMS03-07-2B
@@ -378,9 +382,6 @@ function QCReportModal({
   const [photoSolidFile, setPhotoSolidFile] = useState<File | null>(null)
   const [photoAppearancePreview, setPhotoAppearancePreview] = useState<string | null>(null)
   const [photoSolidPreview, setPhotoSolidPreview] = useState<string | null>(null)
-  const [sigSupervisor, setSigSupervisor] = useState<string | null>(null)
-  const [sigReviewer, setSigReviewer] = useState<string | null>(null)
-  const [sigInspector, setSigInspector] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -407,15 +408,12 @@ function QCReportModal({
     setPhotoSolidFile(null)
     setPhotoAppearancePreview(batch.qcPhotoAppearance ?? null)
     setPhotoSolidPreview(batch.qcPhotoSolid ?? null)
-    setSigSupervisor(null)
-    setSigReviewer(null)
-    setSigInspector(null)
   }, [open, batch?.id])
 
-  const handleSigUpload = (setter: (v: string) => void, file: File) => {
-    const reader = new FileReader()
-    reader.onload = e => setter(e.target?.result as string)
-    reader.readAsDataURL(file)
+  const handlePrintWithSigs = async () => {
+    const chainSigs = await getFormSignatures('QcReport', batch!.id).catch(() => [])
+    printQCReport(batch!, ingredient, acceptanceNo, orderDateStr, qcItems, qcNotes,
+      photoAppearancePreview, photoSolidPreview, chainSigs)
   }
 
   const handlePhotoChange = (field: 'appearance' | 'solid', file: File) => {
@@ -469,10 +467,7 @@ function QCReportModal({
       width={820}
       styles={{ body: { maxHeight: '72vh', overflowY: 'auto' } }}
       footer={[
-        <Button key="print" icon={<PrinterOutlined />} onClick={() => printQCReport(
-          batch, ingredient, acceptanceNo, orderDateStr, qcItems, qcNotes,
-          photoAppearancePreview, photoSolidPreview, sigSupervisor, sigReviewer, sigInspector,
-        )}>列印</Button>,
+        <Button key="print" icon={<PrinterOutlined />} onClick={handlePrintWithSigs}>列印</Button>,
         <Button key="cancel" onClick={onClose}>取消</Button>,
         <Button key="save" type="primary" loading={saving} onClick={handleSave}>儲存</Button>,
       ]}
@@ -547,22 +542,9 @@ function QCReportModal({
           ))}
         </div>
 
-        {/* Signatures */}
-        <Divider plain style={{ margin: '4px 0 8px', fontSize: 12 }}>簽名（僅存於本次瀏覽器）</Divider>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
-          {[
-            { label: '單位主管', value: sigSupervisor, setter: setSigSupervisor },
-            { label: '審核', value: sigReviewer, setter: setSigReviewer },
-            { label: '檢測員', value: sigInspector, setter: setSigInspector },
-          ].map(({ label, value, setter }) => (
-            <div key={label} style={{ textAlign: 'center' }}>
-              <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{label}</Text>
-              {value && <img src={value} alt={label} style={{ height: 48, border: '1px solid #2d3f55', borderRadius: 4, display: 'block', margin: '0 auto 4px' }} />}
-              <input type="file" accept="image/*" style={{ fontSize: 12 }}
-                onChange={e => e.target.files?.[0] && handleSigUpload(setter, e.target.files[0])} />
-            </div>
-          ))}
-        </div>
+        {/* 電子簽核 */}
+        <Divider plain style={{ margin: '4px 0 8px', fontSize: 12 }}>電子簽核</Divider>
+        <ApprovalChain formType="QcReport" formId={batch.id} />
       </Space>
     </Modal>
   )

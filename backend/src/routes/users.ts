@@ -5,6 +5,25 @@ import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 
 const router = Router()
 
+// GET /users/me/signature
+router.get('/me/signature', requireAuth, async (req: AuthRequest, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { signatureData: true },
+  })
+  res.json({ success: true, data: user?.signatureData ?? null })
+})
+
+// PUT /users/me/signature
+router.put('/me/signature', requireAuth, async (req: AuthRequest, res) => {
+  const { signatureData } = req.body
+  await prisma.user.update({
+    where: { id: req.user!.id },
+    data: { signatureData: signatureData ?? null },
+  })
+  res.json({ success: true, message: '簽名已儲存' })
+})
+
 // GET /users
 router.get('/', requireAuth, async (req, res) => {
   const page = Number(req.query.page ?? 1)

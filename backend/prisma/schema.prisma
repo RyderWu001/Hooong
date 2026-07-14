@@ -15,6 +15,7 @@ model User {
   password            String
   role                String               @default("LAB_STAFF")
   isActive            Boolean              @default(true)
+  signatureData       String?              @db.Text
   createdAt           DateTime             @default(now())
   experiments           Experiment[]         @relation("ExperimenterRelation")
   versions              FormulaVersion[]
@@ -27,6 +28,7 @@ model User {
   ingredientDocuments   IngredientDocument[]
   createdIngredients    Ingredient[]         @relation("IngredientCreator")
   knowledgeArticles     KnowledgeArticle[]
+  formSignatures        FormSignature[]
 }
 
 model Ingredient {
@@ -584,4 +586,22 @@ model ChemicalRequest {
   notes               String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+}
+
+// ── 電子簽核 ─────────────────────────────────────────────────────────────────
+
+model FormSignature {
+  id           Int       @id @default(autoincrement())
+  formType     String
+  formId       Int
+  slotName     String
+  slotOrder    Int
+  signedBy     User?     @relation(fields: [signedById], references: [id], onDelete: SetNull)
+  signedById   Int?
+  signedByName String?
+  signatureImg String?   @db.Text
+  signedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@unique([formType, formId, slotName])
 }
