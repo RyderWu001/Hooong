@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables (contains secrets)
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# Build output
+dist/
+build/
+frontend/dist/
+
+# Prisma generated
+backend/src/generated/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.swp
+
+# Claude internal
+CLAUDE.md/
+__merge_temp/
+
+# Uploads (local storage, not for git)
+uploads/
+
+# Test / mock files
+mock_commission_EXP-2024-TEST01.pdf

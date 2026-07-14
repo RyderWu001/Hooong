@@ -1,0 +1,39 @@
+.optionRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 4px;
+  border-bottom: 1px solid #f0f0f0;
+  border-radius: 6px;
+}
+
+.optionRowDragging {
+  opacity: 0.5;
+  background: #f0f5ff;
+}
+
+.dragHandle {
+  cursor: grab;
+  color: #bbb;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.optionTag {
+  flex: 1;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unsavedBar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 4px;
+  background: #fffbe6;
+  border-top: 1px solid #f5e6ca;
+  border-radius: 0 0 4px 4px;
+}

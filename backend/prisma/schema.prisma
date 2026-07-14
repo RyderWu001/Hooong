@@ -1,0 +1,514 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id                  Int                  @id @default(autoincrement())
+  username            String
+  email               String               @unique
+  password            String
+  role                String               @default("LAB_STAFF")
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  experiments           Experiment[]         @relation("ExperimenterRelation")
+  versions              FormulaVersion[]
+  transactions          MaterialTransaction[]
+  evaluations           SupplierEvaluation[]
+  formulaRisks          FormulaRisk[]
+  ingredientRisks       IngredientRisk[]
+  reportedEvents        AbnormalEvent[]      @relation("AbnormalEventReporter")
+  resolvedEvents        AbnormalEvent[]      @relation("AbnormalEventResolver")
+  ingredientDocuments   IngredientDocument[]
+  createdIngredients    Ingredient[]         @relation("IngredientCreator")
+  knowledgeArticles     KnowledgeArticle[]
+}
+
+model Ingredient {
+  id               Int                  @id @default(autoincrement())
+  name             String
+  code             String?
+  casNo            String?
+  englishName      String?
+  category         String?
+  industry         String?
+  status           String               @default("使用中")
+  solidContent     String?
+  density          String?
+  appearance       String?
+  storageCondition String?
+  shelfLife        String?
+  packageSpec      String?
+  unit             String
+  unitPrice        Float?
+  description      String               @default("")
+  createdAt        DateTime             @default(now())
+  createdBy        User?                @relation("IngredientCreator", fields: [createdById], references: [id])
+  createdById      Int?
+  formulaUses      FormulaIngredient[]
+  inventory        MaterialInventory?
+  purchases        PurchaseRecord[]
+  ingredientRisks  IngredientRisk[]
+  abnormalEvents   AbnormalEvent[]
+  documents        IngredientDocument[]
+  batches          IngredientBatch[]
+}
+
+model IngredientDocument {
+  id           Int        @id @default(autoincrement())
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  ingredientId Int
+  fileUrl      String
+  fileName     String
+  fileType     String     @default("OTHER")
+  uploadedAt   DateTime   @default(now())
+  uploadedBy   User       @relation(fields: [uploadedById], references: [id])
+  uploadedById Int
+}
+
+model IngredientBatch {
+  id                Int        @id @default(autoincrement())
+  ingredient        Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  ingredientId      Int
+  batchNo           String
+  supplierBatch     String?
+  mfgDate           DateTime?
+  expiryDate        DateTime?
+  arrivalDate       DateTime?
+  warehousingDate   DateTime?
+  usageDate         DateTime?
+  usageQuantity     Float?
+  remainingQty      Float?
+  openedDate        DateTime?
+  openedExpiry      Int?
+  quantity          Float
+  unit              String
+  status            String     @default("正常")
+  notes             String     @default("")
+  // 附件2: 進料品質檢驗分析報告書 (CMS03-07-2B)
+  acceptanceNo      String?
+  orderDate         DateTime?
+  qcItems           Json?
+  qcNotes           String?
+  qcPhotoAppearance String?
+  qcPhotoSolid      String?
+  createdAt         DateTime   @default(now())
+}
+
+model Formula {
+  id             Int                 @id @default(autoincrement())
+  code           String              @unique
+  name           String
+  category       String?
+  formulaType    String?
+  productType    String
+  description    String              @default("")
+  status         String              @default("ACTIVE")
+  currentVersion Int                 @default(1)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  ingredients    FormulaIngredient[]
+  versions       FormulaVersion[]
+  experiments    Experiment[]
+  risks          FormulaRisk[]
+  abnormalEvents AbnormalEvent[]
+}
+
+model FormulaIngredient {
+  id           Int        @id @default(autoincrement())
+  formula      Formula    @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  formulaId    Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId Int
+  ratio        Float
+  unit         String
+}
+
+model FormulaVersion {
+  id                  Int      @id @default(autoincrement())
+  formula             Formula  @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  formulaId           Int
+  version             Int
+  changeNote          String   @default("")
+  ingredientsSnapshot Json?
+  createdAt           DateTime @default(now())
+  createdBy           User     @relation(fields: [userId], references: [id])
+  userId              Int
+}
+
+model Experiment {
+  id               Int               @id @default(autoincrement())
+  code             String            @unique
+  formula          Formula?          @relation(fields: [formulaId], references: [id])
+  formulaId        Int?
+  experimenter     User              @relation("ExperimenterRelation", fields: [experimenterId], references: [id])
+  experimenterId   Int
+  experimentDate   DateTime
+  category         String?
+  temperature      Float             @default(25.0)
+  humidity         Float             @default(60.0)
+  notes            String            @default("")
+  // 委託單欄位
+  clientCompany    String?
+  fabricCode       String?
+  clientContact    String?
+  commissionType   String?
+  expectedDate     DateTime?
+  actualDate       DateTime?
+  testItems        Json?
+  commissionNotes  Json?
+  conclusionBefore String?
+  conclusionAfter  String?
+  createdAt        DateTime          @default(now())
+  groups           ExperimentGroup[]
+  attachments      Attachment[]
+  samples          Sample[]
+  result           ExperimentResult?
+  transactions     MaterialTransaction[]
+}
+
+model ExperimentGroup {
+  id                Int                   @id @default(autoincrement())
+  experiment        Experiment            @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId      Int
+  name              String
+  groupOrder        Int                   @default(1)
+  // 實驗項目類型
+  experimentType    String?               // 染色機/定型機
+  // 染色條件
+  bathRatio         String?
+  startPH           Float?
+  endPH             Float?
+  acidMethod        String?
+  tempRate          String?
+  holdTime          Int?
+  burningCondition  String?               // 燒毛/退漿/燒定漿條件
+  washCondition     String?               // 水洗條件
+  dyeAuxiliaries    Json?                 // 染色助劑（多選）
+  leveler           String?
+  fixer             String?
+  calciumChloride   String?
+  colorFixative     String?
+  dyeCombination    String?
+  dyeAmount         String?
+  // 定型加工條件（定型機適用）
+  fixingTemp        String?               // 加工溫度/時間
+  fixingAuxAmount   String?               // 助劑用量
+  fiberSpec         String?               // 纖維規格
+  widthShrinkage    String?               // 門幅縮率
+  shrinkTime        String?               // 縮水時間
+  fixingAuxiliaries Json?                 // 定型加工助劑（多選）
+  notes             String                @default("")
+  isSuccess         Boolean               @default(false)
+  createdAt         DateTime              @default(now())
+  steps             ExperimentGroupStep[]
+  attachments       Attachment[]
+  samples           Sample[]
+}
+
+model ExperimentGroupStep {
+  id          Int             @id @default(autoincrement())
+  group       ExperimentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  groupId     Int
+  stepOrder   Int
+  description String
+  notes       String          @default("")
+  isHighlight Boolean         @default(false)
+  attachments Attachment[]
+}
+
+model Sample {
+  id                Int              @id @default(autoincrement())
+  experiment        Experiment       @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId      Int
+  group             ExperimentGroup? @relation(fields: [groupId], references: [id])
+  groupId           Int?
+  sampleCode        String
+  sampleType        String?          // 建立類別（依來樣品/客戶來樣品/實驗樣品等）
+  clientName        String           @default("")
+  label             String           @default("")
+  targetItem        String           @default("")
+  sampleDate        DateTime
+  quantity          Float?           // 數量
+  notes             String           @default("")
+  photoUrl          String?
+  category          String?
+  attribute         String?
+  industry          String?
+  status            String?
+  // 留樣管理
+  retentionDate     DateTime?        // 留樣日期
+  retentionPeriod   Int?             // 留樣期限（天）
+  retentionLocation String?          // 留樣位置
+  storageCondition  String?          // 保存條件（常溫/冷藏/避光）
+  attachments       Attachment[]
+}
+
+model Attachment {
+  id               Int               @id @default(autoincrement())
+  fileUrl          String
+  fileType         String
+  fileName         String
+  imageCategory    String?
+  createdAt        DateTime          @default(now())
+  experiment              Experiment?           @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId            Int?
+  experimentGroup         ExperimentGroup?      @relation(fields: [experimentGroupId], references: [id], onDelete: Cascade)
+  experimentGroupId       Int?
+  experimentGroupStep     ExperimentGroupStep?  @relation(fields: [experimentGroupStepId], references: [id], onDelete: Cascade)
+  experimentGroupStepId   Int?
+  result                  ExperimentResult?     @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  resultId                Int?
+  sample                  Sample?               @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  sampleId                Int?
+}
+
+model ExperimentResult {
+  id                   Int          @id @default(autoincrement())
+  experiment           Experiment   @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  experimentId         Int          @unique
+  status               String       @default("OBSERVING")
+  score                Int?
+  handFeelScore        Int?
+  colorShadeScore      Int?
+  fastnessScore        Int?
+  moistureScore        Int?
+  otherScoreName       String?
+  otherScore           Int?
+  description          String       @default("")
+  reflection           String       @default("")
+  issueRecord          String       @default("")
+  abnormalReason       String?
+  anomalyTypes         Json?        // 異常類型（多選）
+  anomalyNote          String?      // 異常補充說明
+  improvement          String       @default("")
+  improvementAction    String?
+  clientFeedback       String       @default("")
+  clientFeedbackResult String?
+  notes                String       @default("")
+  scoreItems           Json?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  attachments          Attachment[]
+}
+
+// ── 原物料管理 ────────────────────────────────────────────────
+
+model MaterialInventory {
+  id           Int                   @id @default(autoincrement())
+  ingredient   Ingredient            @relation(fields: [ingredientId], references: [id])
+  ingredientId Int                   @unique
+  currentStock Float                 @default(0)
+  safetyStock  Float                 @default(0)
+  supplier     String                @default("")
+  expiryDate   DateTime?
+  lastUpdated  DateTime              @default(now()) @updatedAt
+  transactions MaterialTransaction[]
+}
+
+model MaterialTransaction {
+  id                    Int               @id @default(autoincrement())
+  inventory             MaterialInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  inventoryId           Int
+  transactionType       String
+  quantity              Float
+  relatedExperiment     Experiment?       @relation(fields: [relatedExperimentId], references: [id])
+  relatedExperimentId   Int?
+  operator              User              @relation(fields: [operatorId], references: [id])
+  operatorId            Int
+  note                  String            @default("")
+  createdAt             DateTime          @default(now())
+}
+
+// ── 供應商管理 ────────────────────────────────────────────────
+
+model Supplier {
+  id            Int                  @id @default(autoincrement())
+  code          String               @unique
+  name          String
+  contactPerson String               @default("")
+  phone         String               @default("")
+  email         String               @default("")
+  address       String               @default("")
+  supplyItems   String               @default("")
+  status        String               @default("ACTIVE")
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  evaluations   SupplierEvaluation[]
+  purchases     PurchaseRecord[]
+}
+
+model SupplierEvaluation {
+  id             Int      @id @default(autoincrement())
+  supplier       Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId     Int
+  evaluationDate DateTime
+  qualityScore   Float
+  deliveryScore  Float
+  priceScore     Float
+  serviceScore   Float
+  totalScore     Float
+  level          String
+  notes          String   @default("")
+  evaluator      User     @relation(fields: [evaluatorId], references: [id])
+  evaluatorId    Int
+  createdAt      DateTime @default(now())
+}
+
+model PurchaseRecord {
+  id           Int       @id @default(autoincrement())
+  supplier     Supplier  @relation(fields: [supplierId], references: [id])
+  supplierId   Int
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId Int
+  quantity     Float
+  unitPrice    Float
+  totalAmount  Float
+  purchaseDate DateTime
+  deliveryDate DateTime?
+  status       String    @default("PENDING")
+  notes        String    @default("")
+  createdAt    DateTime  @default(now())
+}
+
+// ── 下拉選項管理 ─────────────────────────────────────────────
+
+model DropdownCategory {
+  id      Int              @id @default(autoincrement())
+  key     String           @unique
+  label   String
+  options DropdownOption[]
+}
+
+model DropdownOption {
+  id         Int              @id @default(autoincrement())
+  category   DropdownCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId Int
+  value      String
+  label      String
+  sortOrder  Int              @default(0)
+  isActive   Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+}
+
+// ── 風險管理 ──────────────────────────────────────────────────
+
+model FormulaRisk {
+  id          Int      @id @default(autoincrement())
+  formula     Formula  @relation(fields: [formulaId], references: [id])
+  formulaId   Int
+  riskLevel   String
+  riskType    String
+  description String   @default("")
+  mitigation  String   @default("")
+  assessedBy  User     @relation(fields: [assessedById], references: [id])
+  assessedById Int
+  assessedAt  DateTime @default(now())
+  nextReviewAt DateTime
+}
+
+model IngredientRisk {
+  id                  Int        @id @default(autoincrement())
+  ingredient          Ingredient @relation(fields: [ingredientId], references: [id])
+  ingredientId        Int
+  riskLevel           String
+  riskType            String
+  hazardDescription   String     @default("")
+  safeHandling        String     @default("")
+  storageRequirements String     @default("")
+  assessedBy          User       @relation(fields: [assessedById], references: [id])
+  assessedById        Int
+  assessedAt          DateTime   @default(now())
+}
+
+model AbnormalEvent {
+  id                  Int        @id @default(autoincrement())
+  eventCode           String     @unique
+  title               String
+  description         String     @default("")
+  eventType           String
+  severity            String
+  status              String     @default("OPEN")
+  relatedFormula      Formula?   @relation(fields: [relatedFormulaId], references: [id])
+  relatedFormulaId    Int?
+  relatedIngredient   Ingredient? @relation(fields: [relatedIngredientId], references: [id])
+  relatedIngredientId Int?
+  occurredAt          DateTime
+  reportedBy          User       @relation("AbnormalEventReporter", fields: [reportedById], references: [id])
+  reportedById        Int
+  resolution          String     @default("")
+  resolvedAt          DateTime?
+  resolvedBy          User?      @relation("AbnormalEventResolver", fields: [resolvedById], references: [id])
+  resolvedById        Int?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+}
+
+// ── 附件4: 送樣連絡單 (CMS03-03-1B) ─────────────────────────────────────────
+
+model SampleSubmission {
+  id                   Int       @id @default(autoincrement())
+  formNo               String?
+  companyName          String
+  factoryLocation      String?
+  contactPerson        String?
+  formDate             DateTime
+  sampleTakenDate      DateTime?
+  phone                String?
+  submissionDate       DateTime?
+  submissionMethod     String?
+  sampleItems          Json?
+  packaging            Json?
+  formulaCostTable     Json?
+  customerFabric       Json?
+  businessRequirements String?
+  trackingResults      Json?
+  orderInfo            Json?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+// ── 附件5: 化驗室每日工作日誌 (CMS01-03-3B) ─────────────────────────────────
+
+model LabDailyLog {
+  id               Int      @id @default(autoincrement())
+  logDate          DateTime
+  weekday          String?
+  testEntries      Json?
+  procedureRecords String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ── 知識庫 ────────────────────────────────────────────────────
+
+model KnowledgeArticle {
+  id          Int      @id @default(autoincrement())
+  title       String
+  content     String
+  category    String   @default("")
+  tags        String   @default("")
+  createdBy   User     @relation(fields: [createdById], references: [id])
+  createdById Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ── 細粒度權限 ─────────────────────────────────────────────────
+
+model RolePermission {
+  id        Int     @id @default(autoincrement())
+  role      String
+  module    String
+  canView   Boolean @default(true)
+  canCreate Boolean @default(false)
+  canEdit   Boolean @default(false)
+  canDelete Boolean @default(false)
+
+  @@unique([role, module])
+}

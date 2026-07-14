@@ -1,0 +1,161 @@
+.root {
+  min-height: 100vh;
+}
+
+/* Sider */
+.siderInner {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: #0c1525;
+}
+
+.siderLogo {
+  padding: 0 16px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid #1e2d45;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #0c1525 0%, #162032 100%);
+}
+
+.logoIcon {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 16px;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+
+.logoText {
+  color: #e2e8f0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.logoSubtext {
+  color: #3b82f6;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  display: block;
+  margin-top: 1px;
+  opacity: 0.8;
+}
+
+.logoLink {
+  display: block;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.siderMenuWrap {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 8px;
+}
+
+.siderMenuWrap::-webkit-scrollbar {
+  width: 4px;
+}
+.siderMenuWrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+.siderMenuWrap::-webkit-scrollbar-thumb {
+  background: #2d3f55;
+  border-radius: 2px;
+}
+
+.siderBottom {
+  flex-shrink: 0;
+  border-top: 1px solid #1e2d45;
+}
+
+/* Header */
+.header {
+  background: #1a2744 !important;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #2d3f55;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.collapseBtn {
+  cursor: pointer;
+  font-size: 18px;
+  color: #94a3b8;
+  transition: color 0.2s;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.collapseBtn:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.userInfo {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.userInfo:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Content */
+.content {
+  margin: 24px;
+  min-height: 280px;
+}
+
+/* Page breadcrumb / title area styling applied globally via :global */
+:global(.ant-card-head) {
+  border-bottom: 1px solid #2d3f55 !important;
+}
+
+:global(.ant-card-head-title) {
+  font-weight: 600;
+  color: #e2e8f0 !important;
+  font-size: 15px;
+}
+
+:global(.ant-table-thead > tr > th) {
+  font-weight: 600 !important;
+  letter-spacing: 0.3px;
+}
+
+:global(.ant-descriptions-item-label) {
+  font-weight: 500;
+}

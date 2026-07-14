@@ -1,0 +1,198 @@
+.wrapper {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at 50% 30%, #162540 0%, #0c1525 50%, #0f172a 100%);
+}
+
+/* ── 外框卡片 ── */
+.card {
+  display: flex;
+  width: 880px;
+  min-height: 520px;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(59, 130, 246, 0.12);
+}
+
+/* ── 左側品牌區 ── */
+.brand {
+  flex: 0 0 360px;
+  background: linear-gradient(160deg, #1677ff 0%, #0958d9 60%, #003eb3 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 40px;
+  position: relative;
+  overflow: hidden;
+}
+
+.brand::before {
+  content: '';
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  top: -80px;
+  right: -80px;
+}
+
+.brand::after {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  bottom: -60px;
+  left: -60px;
+}
+
+.logoIcon {
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.15);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44px;
+  margin-bottom: 28px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  position: relative;
+  z-index: 1;
+}
+
+.brandTitle {
+  color: #fff !important;
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  margin-bottom: 8px !important;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  letter-spacing: 2px;
+}
+
+.brandSub {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.6;
+  position: relative;
+  z-index: 1;
+}
+
+.brandDivider {
+  width: 40px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+  margin: 20px auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── 右側表單區 ── */
+.formPanel {
+  flex: 1;
+  background: #1e293b;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 52px 48px;
+  border-left: 1px solid #2d3f55;
+}
+
+.formTitle {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: #e2e8f0 !important;
+  margin-bottom: 6px !important;
+}
+
+.formSub {
+  color: #94a3b8;
+  font-size: 13px;
+  margin-bottom: 36px;
+}
+
+.loginBtn {
+  height: 46px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 8px;
+  letter-spacing: 1px;
+}
+
+.links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 16px;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.copyright {
+  text-align: center;
+  margin-top: 40px;
+  font-size: 12px;
+  color: #475569;
+}
+
+/* ── RWD ── */
+@media (max-width: 720px) {
+  .card {
+    flex-direction: column;
+    width: 92vw;
+    min-height: unset;
+    border-radius: 16px;
+  }
+
+  .brand {
+    flex: none;
+    padding: 32px 24px;
+    flex-direction: row;
+    gap: 16px;
+    justify-content: flex-start;
+  }
+
+  .logoIcon {
+    width: 56px;
+    height: 56px;
+    font-size: 28px;
+    margin-bottom: 0;
+    border-radius: 14px;
+  }
+
+  .brandTitle {
+    font-size: 18px !important;
+    text-align: left;
+    margin-bottom: 2px !important;
+    letter-spacing: 1px;
+  }
+
+  .brandSub {
+    text-align: left;
+    font-size: 12px;
+  }
+
+  .brandDivider {
+    display: none;
+  }
+
+  .brand::before,
+  .brand::after {
+    display: none;
+  }
+
+  .formPanel {
+    padding: 36px 28px;
+  }
+}
