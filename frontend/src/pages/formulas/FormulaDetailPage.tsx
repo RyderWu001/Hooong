@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   Card, Descriptions, Tag, Button, Table, Tabs,
   Space, Timeline, message, Spin, Modal, Form, Input,
-  Statistic, Row, Col, Popconfirm, Typography, Alert,
+  Statistic, Row, Col, Popconfirm, Typography, Alert, Steps,
 } from 'antd'
 import {
   EditOutlined, CopyOutlined, RocketOutlined, RollbackOutlined,
+  CheckCircleOutlined, ClockCircleOutlined, FileDoneOutlined,
+  SendOutlined, InboxOutlined,
 } from '@ant-design/icons'
 import { getFormula, getFormulaVersions, copyFormula, promoteFormula, rollbackFormula, submitFormulaForReview, approveFormula, rejectFormula, archiveFormula } from '../../api/formulas'
 import type { Formula, FormulaVersion, FormulaStatus, FormulaIngredient } from '../../types'
@@ -117,6 +119,22 @@ export default function FormulaDetailPage() {
   if (!formula) return null
 
   const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const isManagerOrAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER'
+
+  // 審核流程步驟對應
+  const WORKFLOW_STEPS = [
+    { key: 'DRAFT',     label: '草稿',   icon: <FileDoneOutlined />,    desc: '配方建立中，尚未提交' },
+    { key: 'REVIEWING', label: '審核中', icon: <ClockCircleOutlined />, desc: '等待主管核准' },
+    { key: 'PUBLISHED', label: '已發布', icon: <CheckCircleOutlined />, desc: '核准，可用於實驗' },
+    { key: 'ACTIVE',    label: '量產',   icon: <RocketOutlined />,      desc: '已轉為正式量產配方' },
+    { key: 'ARCHIVED',  label: '封存',   icon: <InboxOutlined />,       desc: '已封存，不再使用' },
+  ]
+  const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.key === formula.status)
+  const stepStatus = (idx: number): 'finish' | 'process' | 'wait' => {
+    if (idx < currentStepIndex) return 'finish'
+    if (idx === currentStepIndex) return 'process'
+    return 'wait'
+  }
 
   // 成本計算
   const withPrice = formula.ingredients.filter((i) => i.unitPrice != null)
@@ -153,49 +171,16 @@ export default function FormulaDetailPage() {
 
   return (
     <Space direction="vertical" style={{ width: '100%' }}>
+      {/* 基本資料卡片 */}
       <Card
         title={`配方詳情 — ${formula.name}`}
         extra={
-          <Space>
-            {canEdit && (
-              <>
-                <Button icon={<CopyOutlined />} onClick={() => setCopyOpen(true)}>複製</Button>
-                {formula.formulaType !== '正式產品' && (
-                  <Popconfirm
-                    title="確定將此配方轉為正式產品？"
-                    description="此操作將建立新版本並標記為正式產品類型"
-                    onConfirm={handlePromote}
-                  >
-                    <Button icon={<RocketOutlined />}>轉正式</Button>
-                  </Popconfirm>
-                )}
-                {/* 審核流程按鈕：依目前狀態顯示對應操作 */}
-                {['DRAFT', 'ACTIVE', 'PUBLISHED'].includes(formula.status) && (
-                  <Popconfirm title="提交此配方進行審核？" onConfirm={() => handleWorkflow('submit')}>
-                    <Button>提交審核</Button>
-                  </Popconfirm>
-                )}
-                {formula.status === 'REVIEWING' && (user?.role === 'ADMIN' || user?.role === 'MANAGER') && (
-                  <>
-                    <Popconfirm title="核准並發布此配方？" onConfirm={() => handleWorkflow('approve')}>
-                      <Button type="primary" style={{ background: '#52c41a', borderColor: '#52c41a' }}>核准發布</Button>
-                    </Popconfirm>
-                    <Popconfirm title="退回此配方至草稿？" onConfirm={() => handleWorkflow('reject')}>
-                      <Button danger>退回</Button>
-                    </Popconfirm>
-                  </>
-                )}
-                {['PUBLISHED', 'ACTIVE'].includes(formula.status) && user?.role === 'ADMIN' && (
-                  <Popconfirm title="封存此配方？封存後不可再用於新實驗。" onConfirm={() => handleWorkflow('archive')}>
-                    <Button>封存</Button>
-                  </Popconfirm>
-                )}
-                <Button icon={<EditOutlined />} type="primary" onClick={() => navigate(`/formulas/${id}/edit`)}>
-                  編輯
-                </Button>
-              </>
-            )}
-          </Space>
+          canEdit && (
+            <Space>
+              <Button icon={<CopyOutlined />} onClick={() => setCopyOpen(true)}>複製</Button>
+              <Button icon={<EditOutlined />} type="primary" onClick={() => navigate(`/formulas/${id}/edit`)}>編輯</Button>
+            </Space>
+          )
         }
       >
         <Descriptions bordered column={2}>
@@ -215,6 +200,101 @@ export default function FormulaDetailPage() {
           <Descriptions.Item label="建立時間">{dayjs(formula.createdAt).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
           <Descriptions.Item label="最後修改">{dayjs(formula.updatedAt).format('YYYY-MM-DD HH:mm')}</Descriptions.Item>
         </Descriptions>
+      </Card>
+
+      {/* 審核流程卡片 */}
+      <Card title="配方審核流程" size="small">
+        <Steps
+          current={currentStepIndex}
+          style={{ marginBottom: 20 }}
+          items={WORKFLOW_STEPS.map((s, idx) => {
+            const isCurrent = idx === currentStepIndex
+            return {
+              title: (
+                <span style={isCurrent ? { color: '#3b82f6', fontWeight: 700 } : undefined}>
+                  {s.label}
+                  {isCurrent && (
+                    <Tag color="blue" style={{ marginLeft: 6, fontSize: 11, verticalAlign: 'middle' }}>
+                      目前
+                    </Tag>
+                  )}
+                </span>
+              ),
+              description: isCurrent ? (
+                <span style={{ color: '#60a5fa', fontSize: 12 }}>{s.desc}</span>
+              ) : undefined,
+              icon: s.icon,
+              status: stepStatus(idx),
+            }
+          })}
+        />
+
+        {/* 依流程階段顯示對應操作 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 4px' }}>
+
+          {/* 草稿 → 提交審核 */}
+          {canEdit && formula.status === 'DRAFT' && (
+            <Popconfirm title="提交此配方進行審核？" onConfirm={() => handleWorkflow('submit')}>
+              <Button icon={<SendOutlined />}>提交審核</Button>
+            </Popconfirm>
+          )}
+
+          {/* 審核中 → 等待說明（一般人員）／核准或退回（主管） */}
+          {formula.status === 'REVIEWING' && !isManagerOrAdmin && (
+            <Typography.Text type="secondary">審核中，等待主管核准</Typography.Text>
+          )}
+          {formula.status === 'REVIEWING' && isManagerOrAdmin && (
+            <>
+              <Popconfirm title="核准並發布此配方？" onConfirm={() => handleWorkflow('approve')}>
+                <Button type="primary" icon={<CheckCircleOutlined />} style={{ background: '#16a34a', borderColor: '#16a34a' }}>
+                  核准發布
+                </Button>
+              </Popconfirm>
+              <Popconfirm title="退回此配方至草稿？" onConfirm={() => handleWorkflow('reject')}>
+                <Button danger>退回草稿</Button>
+              </Popconfirm>
+            </>
+          )}
+
+          {/* 已發布 → 轉為正式量產（若尚未是正式產品）／封存 */}
+          {formula.status === 'PUBLISHED' && (
+            <>
+              {canEdit && formula.formulaType !== '正式產品' && (
+                <Popconfirm
+                  title="確定將此配方轉為正式產品？"
+                  description="此操作將建立新版本並標記為正式產品類型"
+                  onConfirm={handlePromote}
+                >
+                  <Button icon={<RocketOutlined />}>轉為正式量產</Button>
+                </Popconfirm>
+              )}
+              {user?.role === 'ADMIN' && (
+                <Popconfirm title="封存此配方？封存後不可再用於新實驗。" onConfirm={() => handleWorkflow('archive')}>
+                  <Button icon={<InboxOutlined />}>封存配方</Button>
+                </Popconfirm>
+              )}
+            </>
+          )}
+
+          {/* 量產 → 唯一可做的是封存，或提示走配方變更流程 */}
+          {formula.status === 'ACTIVE' && (
+            <>
+              <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+                配方已進入量產階段。若需修改，請至「表單管理 → 配方變更核准申請書」提出申請。
+              </Typography.Text>
+              {user?.role === 'ADMIN' && (
+                <Popconfirm title="封存此配方？封存後不可再用於新實驗。" onConfirm={() => handleWorkflow('archive')}>
+                  <Button icon={<InboxOutlined />}>封存配方</Button>
+                </Popconfirm>
+              )}
+            </>
+          )}
+
+          {/* 已封存 */}
+          {formula.status === 'ARCHIVED' && (
+            <Typography.Text type="secondary">此配方已封存，不可再用於新實驗。</Typography.Text>
+          )}
+        </div>
       </Card>
 
       <Card>

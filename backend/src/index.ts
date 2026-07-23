@@ -3,6 +3,7 @@ import 'express-async-errors'
 import path from 'path'
 import express from 'express'
 import { ensureBucket } from './db/storage'
+import { ensureCustomTables } from './db/ensureTables'
 import cors from 'cors'
 import authRouter from './routes/auth'
 import usersRouter from './routes/users'
@@ -30,6 +31,8 @@ import productCounterPlansRouter from './routes/productCounterPlans'
 import chemPreparationsRouter from './routes/chemPreparations'
 import productReworksRouter from './routes/productReworks'
 import supplierComplianceAuditsRouter from './routes/supplierComplianceAudits'
+import formulaChangeRouter from './routes/formulaChange'
+import massProductionRouter from './routes/massProduction'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 3000)
@@ -66,6 +69,8 @@ app.use('/api/v1/product-counter-plans', productCounterPlansRouter)
 app.use('/api/v1/chem-preparations', chemPreparationsRouter)
 app.use('/api/v1/product-reworks', productReworksRouter)
 app.use('/api/v1/supplier-compliance-audits', supplierComplianceAuditsRouter)
+app.use('/api/v1/formula-changes', formulaChangeRouter)
+app.use('/api/v1/mass-production-approvals', massProductionRouter)
 
 app.get('/api/v1/health', (_, res) => res.json({ status: 'ok' }))
 
@@ -85,6 +90,7 @@ app.use((err: unknown, _req: express.Request, res: express.Response, _next: expr
 })
 
 app.listen(PORT, async () => {
+  await ensureCustomTables().catch((e) => console.warn('⚠️  ensureCustomTables:', e.message))
   await ensureBucket().catch((e) => console.warn('Storage bucket init:', e.message))
   console.log(`🚀 Server running at http://localhost:${PORT}`)
 })

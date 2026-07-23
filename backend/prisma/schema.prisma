@@ -115,11 +115,13 @@ model Formula {
   currentVersion Int                 @default(1)
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
-  ingredients    FormulaIngredient[]
-  versions       FormulaVersion[]
-  experiments    Experiment[]
-  risks          FormulaRisk[]
-  abnormalEvents AbnormalEvent[]
+  ingredients      FormulaIngredient[]
+  versions         FormulaVersion[]
+  experiments      Experiment[]
+  risks            FormulaRisk[]
+  abnormalEvents   AbnormalEvent[]
+  formulaChanges        FormulaChangeApplication[]
+  massProductionRecords MassProductionApproval[]
 }
 
 model FormulaIngredient {
@@ -678,6 +680,36 @@ model ProductRework {
   updatedAt       DateTime  @updatedAt
 }
 
+// ── 附件6: 配方變更核准申請書 (CMS03-07-3A) ──────────────────────────────────
+
+model FormulaChangeApplication {
+  id              Int       @id @default(autoincrement())
+  no              String?
+  date            DateTime?
+  customerName    String?
+  productName     String?
+  problem         String?   @db.Text
+  oldFormula      String?   @db.Text
+  newFormula      String?   @db.Text
+  productUsage    String?   @db.Text
+  responseContent String?   @db.Text
+  specChanges     Json?
+  notes           String?   @db.Text
+  reportDept      String?
+  reportPerson    String?
+  reportDate      DateTime?
+  reportTime      String?
+  completionProductUsage Boolean @default(false)
+  completionOperation    Boolean @default(false)
+  completionTechConsult  Boolean @default(false)
+  completionTechService  Boolean @default(false)
+  completionOther        Boolean @default(false)
+  formulaId       Int?
+  formula         Formula?  @relation(fields: [formulaId], references: [id], onDelete: SetNull)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
 // ── 附件15: 化學品供應商評鑑資料表 (CMS01-05-2A) ─────────────────────────────
 
 model SupplierComplianceAudit {
@@ -702,6 +734,60 @@ model SupplierComplianceAudit {
   notes               String?   @db.Text
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+}
+
+// ── 附件7: 新配方量產核准紀錄表 (CMS03-07-4A) ────────────────────────────────
+
+model MassProductionApproval {
+  id                   Int       @id @default(autoincrement())
+  no                   String?
+  newFormulaCode       String?
+  oldFormulaCode       String?
+  date                 DateTime?
+  dept                 String?
+  applicant            String?
+  productName          String?
+  customerUsage        String?   @db.Text
+  testCode             String?
+  testContent          String?   @db.Text
+  testTypePhysical     Boolean   @default(false)
+  testTypeStability    Boolean   @default(false)
+  testTypeApplication  Boolean   @default(false)
+  officialFormula      String?   @db.Text
+  specStandards        Json?
+  testSummary          String?   @db.Text
+  meetsInternalSpec    String?
+  testCompletionDate   DateTime?
+  mrsl1                String?
+  mrsl2                String?
+  zdhcMrsl             String?
+  zdhcLevel1Required   Boolean   @default(false)
+  zdhcLevel1Result     String?
+  zdhcLevel3Required   Boolean   @default(false)
+  zdhcLevel3Result     String?
+  zdhcPidCode          String?
+  sdsVersions          Json?
+  tdsVersions          Json?
+  coaResult            String?
+  otherRegulations     String?   @db.Text
+  massProductionDate   DateTime?
+  customerQty          String?
+  officialProductCode  String?
+  officialProductName  String?
+  productionRisks      String?   @db.Text
+  reportDept           String?
+  reportPerson         String?
+  reportDate           DateTime?
+  reportTime           String?
+  completionProductApp  Boolean  @default(false)
+  completionOperation   Boolean  @default(false)
+  completionTechConsult Boolean  @default(false)
+  completionTechService Boolean  @default(false)
+  completionOther       Boolean  @default(false)
+  formulaId            Int?
+  formula              Formula?  @relation(fields: [formulaId], references: [id], onDelete: SetNull)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
 // ── 電子簽核 ─────────────────────────────────────────────────────────────────

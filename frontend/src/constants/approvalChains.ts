@@ -32,4 +32,15 @@ export const APPROVAL_CHAINS: Record<string, ApprovalSlot[]> = {
     { name: '審核',     order: 2, roles: ['MANAGER'] },
     { name: '單位主管', order: 3, roles: ['ADMIN'] },
   ],
+  FormulaChange: [
+    { name: '技術經理', order: 1, roles: ['MANAGER'] },
+    { name: '管理部',   order: 2, roles: ['MANAGER', 'ADMIN'] },
+    { name: '總經理',   order: 3, roles: ['ADMIN'] },
+    { name: '董事長',   order: 4, roles: ['ADMIN'] },
+  ],
+  MassProduction: [
+    { name: '管理部', order: 1, roles: ['MANAGER', 'ADMIN'] },
+    { name: '總經理', order: 2, roles: ['ADMIN'] },
+    { name: '董事長', order: 3, roles: ['ADMIN'] },
+  ],
 }
