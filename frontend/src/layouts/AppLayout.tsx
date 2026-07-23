@@ -153,10 +153,15 @@ export default function AppLayout() {
       icon: <FormOutlined />,
       label: '表單管理',
       children: [
-        { key: '/lab-daily-log',         icon: <CalendarOutlined />, label: '每日工作日誌' },
-        { key: '/sample-submissions',    icon: <TagsOutlined />,     label: '送樣連絡單' },
-        { key: '/chemical-evaluations',  icon: <AuditOutlined />,    label: '化學品評估表' },
-        { key: '/chemical-requests',     icon: <FileAddOutlined />,  label: '化學品需求申請單' },
+        { key: '/lab-daily-log',                icon: <CalendarOutlined />, label: '每日工作日誌' },
+        { key: '/sample-submissions',           icon: <TagsOutlined />,     label: '送樣連絡單' },
+        { key: '/chemical-evaluations',         icon: <AuditOutlined />,    label: '化學品評估表' },
+        { key: '/chemical-requests',            icon: <FileAddOutlined />,  label: '化學品需求申請單' },
+        { key: '/qc-daily-logs',                icon: <CalendarOutlined />, label: 'QC每日工作日誌' },
+        { key: '/product-counter-plans',        icon: <AuditOutlined />,    label: '產品對抗計劃' },
+        { key: '/chem-preparations',            icon: <FileAddOutlined />,  label: '藥劑泡製紀錄' },
+        { key: '/product-reworks',              icon: <FileAddOutlined />,  label: '產品重修紀錄' },
+        { key: '/supplier-compliance-audits',   icon: <AuditOutlined />,    label: '供應商合規評鑑' },
       ],
     },
     { key: '/reports',   icon: <BarChartOutlined />, label: '報表' },
@@ -213,12 +218,17 @@ export default function AppLayout() {
   const selectedKey = '/' + location.pathname.split('/')[1]
 
   const CHILD_PARENT: Record<string, string> = {
-    '/traceability':           '/formulas',
-    '/samples':                '/experiments',
-    '/lab-daily-log':          '/forms',
-    '/sample-submissions':     '/forms',
-    '/chemical-evaluations':   '/forms',
-    '/chemical-requests':      '/forms',
+    '/traceability':                  '/formulas',
+    '/samples':                       '/experiments',
+    '/lab-daily-log':                 '/forms',
+    '/sample-submissions':            '/forms',
+    '/chemical-evaluations':          '/forms',
+    '/chemical-requests':             '/forms',
+    '/qc-daily-logs':                 '/forms',
+    '/product-counter-plans':         '/forms',
+    '/chem-preparations':             '/forms',
+    '/product-reworks':               '/forms',
+    '/supplier-compliance-audits':    '/forms',
   }
 
   const getRequiredOpenKeys = (path: string) => {

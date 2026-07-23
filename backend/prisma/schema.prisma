@@ -331,19 +331,32 @@ model MaterialTransaction {
 // ── 供應商管理 ────────────────────────────────────────────────
 
 model Supplier {
-  id            Int                  @id @default(autoincrement())
-  code          String               @unique
-  name          String
-  contactPerson String               @default("")
-  phone         String               @default("")
-  email         String               @default("")
-  address       String               @default("")
-  supplyItems   String               @default("")
-  status        String               @default("ACTIVE")
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  evaluations   SupplierEvaluation[]
-  purchases     PurchaseRecord[]
+  id               Int                  @id @default(autoincrement())
+  code             String               @unique
+  name             String
+  contactPerson    String               @default("")
+  phone            String               @default("")
+  email            String               @default("")
+  address          String               @default("")
+  supplyItems      String               @default("")
+  status           String               @default("ACTIVE")
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  // 附件14: CMS01-05-1A 化學品供應商資料表（客戶）
+  supplierTypes    Json?
+  factoryAddress   String?              @default("")
+  establishedDate  String?              @default("")
+  hasBizLicense    Boolean?
+  taxNo            String?              @default("")
+  website          String?              @default("")
+  director         String?              @default("")
+  fax              String?              @default("")
+  accountingEmail  String?              @default("")
+  certifications   Json?
+  complianceDocs   Json?
+  tradingProducts  Json?
+  evaluations      SupplierEvaluation[]
+  purchases        PurchaseRecord[]
 }
 
 model SupplierEvaluation {
@@ -584,6 +597,109 @@ model ChemicalRequest {
   supervisorDecision  String?
   ceoDecision         String?
   notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+// ── 附件10: QC每日工作日誌 (CMS01-03-6B) ─────────────────────────────────────
+
+model QcDailyLog {
+  id        Int      @id @default(autoincrement())
+  logDate   DateTime
+  section1  Json?
+  section2  Json?
+  section3  Json?
+  section4  String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ── 附件11: 產品對抗計劃執行明細表 (CMS03-07-5A) ──────────────────────────────
+
+model ProductCounterPlan {
+  id               Int       @id @default(autoincrement())
+  date             DateTime?
+  productModel     String?
+  productName      String?
+  proposingDept    String?
+  measureType      String?
+  clientName       String?
+  proposer         String?
+  expectedDate     DateTime?
+  issueSource      Json?
+  issueDesc        String?   @db.Text
+  abnormalType     Json?
+  counterFormulas  Json?
+  counterMaterials Json?
+  rankings         Json?
+  conclusion       String?   @db.Text
+  executionResult  String?
+  notes            String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+// ── 附件12: 化驗室藥劑泡製紀錄 (CMS03-07-6A) ─────────────────────────────────
+
+model ChemPreparation {
+  id         Int      @id @default(autoincrement())
+  prepDate   DateTime
+  weekday    String?
+  chemName   String?
+  formulaRef String?
+  materials  Json?
+  purpose    String?  @db.Text
+  prepRecord String?  @db.Text
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ── 附件13: 產品重修配置紀錄表 (CMS03-07-7A) ─────────────────────────────────
+
+model ProductRework {
+  id              Int       @id @default(autoincrement())
+  productModel    String?
+  productName     String?
+  originalDate    DateTime?
+  originalLot     String?
+  newLot          String?
+  tank            String?
+  originalQty     Float?
+  reworkQty       Float?
+  reworkReasons   Json?
+  abnormalDesc    String?   @db.Text
+  materialDetails Json?
+  reworkMethod    String?   @db.Text
+  qcResults       Json?
+  finalJudgment   String?
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// ── 附件15: 化學品供應商評鑑資料表 (CMS01-05-2A) ─────────────────────────────
+
+model SupplierComplianceAudit {
+  id                  Int       @id @default(autoincrement())
+  supplierId          Int?
+  supplierName        String?
+  supplierType        String?
+  mainProducts        String?
+  auditDate           DateTime?
+  supplierCategory    String?
+  qualificationResult String?
+  priceResult         String?
+  zdhcGateway         Int?
+  chemCheckReport     Int?
+  mrslDoc             Int?
+  sdsTds              Int?
+  envCertification    Int?
+  complianceSubtotal  Float?
+  advancedAudit       Json?
+  advancedSubtotal    Float?
+  totalScore          Float?
+  notes               String?   @db.Text
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 }

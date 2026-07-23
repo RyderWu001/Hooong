@@ -139,9 +139,14 @@ async function main() {
   await prisma.formula.deleteMany()
   await prisma.purchaseRecord.deleteMany()
   await prisma.supplierEvaluation.deleteMany()
+  await prisma.supplierComplianceAudit.deleteMany()
   await prisma.supplier.deleteMany()
   await prisma.materialInventory.deleteMany()
   await prisma.ingredient.deleteMany()
+  await prisma.qcDailyLog.deleteMany()
+  await prisma.productCounterPlan.deleteMany()
+  await prisma.chemPreparation.deleteMany()
+  await prisma.productRework.deleteMany()
   await prisma.user.deleteMany()
 
   // 下拉選項
@@ -583,6 +588,378 @@ async function main() {
       improvementAction: '已更新標準操作程序 SOP-003',
       clientFeedback: '客戶已確認改善樣品符合要求', clientFeedbackResult: '通過',
       notes: '已通知生產部門更新操作方式', createdAt: new Date('2025-06-21'),
+    },
+  })
+
+  // ── 附件14：供應商資料（含擴充欄位）──────────────────────────
+  const supplier1 = await prisma.supplier.create({
+    data: {
+      name: '台灣化工原料有限公司',
+      code: 'SUP-001',
+      contactPerson: '王大明',
+      phone: '02-2345-6789',
+      email: 'sales@twchem.com.tw',
+      address: '新北市新莊區化工路100號',
+      supplyItems: '均染劑、固色劑、酸性染料',
+      status: '合格',
+      taxNo: '12345678',
+      factoryAddress: '新北市新莊區工業路88號',
+      hasBizLicense: true,
+      supplierTypes: ['助劑供應商', '原料供應商'],
+      certifications: ['ISO 9001', 'ISO 14001'],
+      complianceDocs: { mrsl: true, sds: true, tds: true },
+      tradingProducts: ['均染劑RC-629', '固色劑RC-210', '酸性染料'],
+    },
+  })
+  const supplier2 = await prisma.supplier.create({
+    data: {
+      name: '越南化學材料股份公司',
+      code: 'SUP-002',
+      contactPerson: 'Nguyễn Văn An',
+      phone: '+84-28-3456-7890',
+      email: 'contact@vnchem.vn',
+      address: 'Khu Công Nghiệp Bình Dương, Việt Nam',
+      supplyItems: '酸性黑A-200、酸性藍B-150、分散染料',
+      status: '合格',
+      taxNo: '98765432',
+      factoryAddress: 'Lô B5, KCN Bình Dương, Việt Nam',
+      hasBizLicense: true,
+      supplierTypes: ['原料供應商'],
+      certifications: ['ZDHC Gateway Level 1', 'OEKO-TEX'],
+      complianceDocs: { mrsl: true, sds: true, tds: false },
+      tradingProducts: ['酸性黑A-200', '酸性藍B-150', '分散染料'],
+    },
+  })
+
+  // ── 附件15：供應商合規評鑑 ────────────────────────────────────
+  await prisma.supplierComplianceAudit.create({
+    data: {
+      supplierId: supplier1.id,
+      supplierName: '台灣化工原料有限公司',
+      supplierType: '助劑供應商',
+      mainProducts: '均染劑、固色劑',
+      auditDate: new Date('2025-03-15'),
+      supplierCategory: '化工原料',
+      qualificationResult: '合格',
+      priceResult: '合理',
+      zdhcGateway: 2,
+      chemCheckReport: 2,
+      mrslDoc: 2,
+      sdsTds: 2,
+      envCertification: 1,
+      complianceSubtotal: 9,
+      advancedAudit: {
+        productQuality: 2,
+        deliveryTimeliness: 2,
+        serviceResponse: 1,
+        priceCompetitiveness: 1,
+      },
+      advancedSubtotal: 6,
+      totalScore: 15,
+      notes: '供應商配合度高，文件齊全，建議列為優先供應商',
+    },
+  })
+  await prisma.supplierComplianceAudit.create({
+    data: {
+      supplierId: supplier2.id,
+      supplierName: '越南化學材料股份公司',
+      supplierType: '原料供應商',
+      mainProducts: '酸性染料、分散染料',
+      auditDate: new Date('2025-04-10'),
+      supplierCategory: '染料',
+      qualificationResult: '有條件合格',
+      priceResult: '具競爭力',
+      zdhcGateway: 1,
+      chemCheckReport: 1,
+      mrslDoc: 2,
+      sdsTds: 2,
+      envCertification: 0,
+      complianceSubtotal: 6,
+      advancedAudit: {
+        productQuality: 2,
+        deliveryTimeliness: 1,
+        serviceResponse: 1,
+        priceCompetitiveness: 2,
+      },
+      advancedSubtotal: 6,
+      totalScore: 12,
+      notes: 'ZDHC Gateway尚未達Level 2，建議要求供應商於6個月內完成升級 / Nhà cung cấp chưa đạt ZDHC Gateway Level 2, yêu cầu nâng cấp trong 6 tháng',
+    },
+  })
+
+  // ── 附件10：QC每日工作日誌 ────────────────────────────────────
+  await prisma.qcDailyLog.create({
+    data: {
+      logDate: new Date('2025-06-02'),
+      // section1 欄位對應前端 Section1Row: { no, productionDate, chemCode, lot, ph, brix, solidContent, result }
+      section1: [
+        { no: 1, productionDate: '2025-05-20', chemCode: 'RC-629', lot: 'B250520-01', ph: '6.8', brix: '28.5', solidContent: '28.5%', result: '合格' },
+        { no: 2, productionDate: '2025-05-20', chemCode: 'RC-210', lot: 'B250520-02', ph: '6.2', brix: '35.2', solidContent: '35.2%', result: '合格' },
+        { no: 3, productionDate: '2025-05-18', chemCode: 'A-200', lot: 'B250518-01', ph: '—', brix: '—', solidContent: '95.3%', result: '合格' },
+        { no: 4, productionDate: '2025-05-19', chemCode: 'DF-100', lot: 'B250519-03', ph: '7.0', brix: '—', solidContent: '—', result: '合格' },
+        { no: 5, productionDate: '2025-05-21', chemCode: 'PN-50', lot: 'B250521-01', ph: '6.5', brix: '—', solidContent: '—', result: '合格' },
+        { no: 6, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 7, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 8, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 9, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 10, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+      ],
+      // section2 欄位同 section1
+      section2: [
+        { no: 1, productionDate: '2025-05-10', chemCode: 'B-150', lot: 'RM250510-01', ph: '—', brix: '—', solidContent: '95.8%', result: '合格' },
+        { no: 2, productionDate: '2025-05-15', chemCode: '醋酸', lot: 'RM250515-02', ph: '—', brix: '—', solidContent: '98.5%', result: '合格' },
+        { no: 3, productionDate: '2025-05-12', chemCode: '硫酸銨', lot: 'RM250512-01', ph: '—', brix: '—', solidContent: '99.1%', result: '合格' },
+        { no: 4, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 5, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 6, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 7, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 8, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 9, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 10, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+      ],
+      // section3 欄位對應前端 Section3Row: { no, productionDate, chemCode, lot, quantity, result, notes }
+      section3: [
+        { no: 1, productionDate: '2025-06-01', chemCode: 'RD-2210', lot: 'FG250601-01', quantity: '500KG', result: '合格', notes: '固含量28-32%，pH 6.5-7.5，外觀淡黃透明' },
+        { no: 2, productionDate: '2025-06-01', chemCode: 'RD-3050', lot: 'FG250601-02', quantity: '250KG', result: '合格', notes: '固含量35±2%，外觀微黃液體' },
+        { no: 3, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 4, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 5, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 6, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 7, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 8, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 9, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 10, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+      ],
+      section4: '今日工作順利完成，所有檢測項目均符合規格。建議明日追蹤A-200批次後續色光一致性。',
+    },
+  })
+  await prisma.qcDailyLog.create({
+    data: {
+      logDate: new Date('2025-06-03'),
+      section1: [
+        { no: 1, productionDate: '2025-05-22', chemCode: 'ZN-800', lot: 'B250522-01', ph: '7.2', brix: '—', solidContent: '13.2%', result: '不合格' },
+        { no: 2, productionDate: '2025-05-20', chemCode: 'FW-100', lot: 'B250520-04', ph: '—', brix: '—', solidContent: '—', result: '合格' },
+        { no: 3, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 4, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 5, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 6, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 7, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 8, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 9, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 10, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+      ],
+      section2: [
+        { no: 1, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 2, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 3, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 4, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 5, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 6, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 7, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 8, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 9, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+        { no: 10, productionDate: '', chemCode: '', lot: '', ph: '', brix: '', solidContent: '', result: '' },
+      ],
+      section3: [
+        { no: 1, productionDate: '2025-06-02', chemCode: 'RD-5500', lot: 'FG250602-01', quantity: '1000KG', result: '合格', notes: '防水等級≥4級，外觀乳白色液體' },
+        { no: 2, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 3, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 4, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 5, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 6, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 7, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 8, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 9, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+        { no: 10, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' },
+      ],
+      section4: 'ZN-800 B250522-01批不合格，已通知採購發出不合格品通知單並要求供應商確認原因。其餘項目正常。',
+    },
+  })
+
+  // ── 附件11：產品對抗計劃 ──────────────────────────────────────
+  await prisma.productCounterPlan.create({
+    data: {
+      date: new Date('2025-05-10'),
+      productModel: 'RD-2210',
+      productName: '均染助劑',
+      proposingDept: '業務部',
+      // measureType 對應前端 Radio: 'temporary' | 'permanent'
+      measureType: 'permanent',
+      clientName: '東成染整有限公司',
+      proposer: '張業務',
+      expectedDate: new Date('2025-06-15'),
+      // issueSource 對應前端 Checkbox.Group，值為 ISSUE_SOURCE_OPTIONS 字串陣列
+      issueSource: ['客戶 / Khách hàng'],
+      issueDesc: '客戶現有供應商均染助劑RC-629使用效果不穩定，色花問題時有發生，希望尋找替代品，提升穩定性並降低成本5%以上。',
+      // abnormalType 對應前端 Checkbox.Group，值為 ABNORMAL_TYPE_OPTIONS 字串陣列
+      abnormalType: ['物性 / Vật lý', '穩定性 / Ổn định'],
+      // counterFormulas 對應前端 FormulaEntry[]: [{ label, materials: [{ name, ratio }] }]
+      counterFormulas: [
+        { label: 'CT1-A：直接替代', materials: [{ name: 'RD均染助劑', ratio: '3%' }, { name: '去離子水', ratio: '補至100%' }] },
+        { label: 'CT2-B：加量', materials: [{ name: 'RD均染助劑', ratio: '4%' }, { name: '去離子水', ratio: '補至100%' }] },
+        { label: 'CT3-C：降量', materials: [{ name: 'RD均染助劑', ratio: '2%' }, { name: '去離子水', ratio: '補至100%' }] },
+        { label: 'CT4-D：複配', materials: [{ name: 'RD均染助劑', ratio: '2%' }, { name: '滲透劑PN-50', ratio: '0.5%' }, { name: '去離子水', ratio: '補至100%' }] },
+        { label: '', materials: [{ name: '', ratio: '' }] },
+      ],
+      // counterMaterials 對應前端 CounterMaterial: { supplier, name, model, composition, tds, appearance, solid, ph, brix, ionic, solubility }
+      counterMaterials: [
+        { supplier: '旺隆自製', name: 'RD均染助劑', model: 'RD-2210', composition: '陰離子型聚合物', tds: '有', appearance: '淡黃透明液', solid: '28-32%', ph: '6.5-7.5', brix: '30', ionic: '陰離子', solubility: '水溶' },
+        { supplier: '台灣化工', name: '滲透劑PN-50', model: 'PN-50', composition: '非離子界面活性劑', tds: '有', appearance: '透明液', solid: '—', ph: '6.5', brix: '—', ionic: '非離子', solubility: '水溶' },
+        { supplier: '', name: '', model: '', composition: '', tds: '', appearance: '', solid: '', ph: '', brix: '', ionic: '', solubility: '' },
+        { supplier: '', name: '', model: '', composition: '', tds: '', appearance: '', solid: '', ph: '', brix: '', ionic: '', solubility: '' },
+        { supplier: '', name: '', model: '', composition: '', tds: '', appearance: '', solid: '', ph: '', brix: '', ionic: '', solubility: '' },
+      ],
+      // rankings 對應前端 RankingRow: { rank, supplier, name, model, pros, cons }
+      rankings: [
+        { rank: 1, supplier: '旺隆自製', name: 'RD均染助劑', model: 'RD-2210（CT4-D複配）', pros: '色花率降至0%，成本較對手低7%', cons: '需配合滲透劑使用' },
+        { rank: 2, supplier: '旺隆自製', name: 'RD均染助劑', model: 'RD-2210（CT2-B加量）', pros: '穩定性高', cons: '用量高，成本略高' },
+        { rank: 3, supplier: '旺隆自製', name: 'RD均染助劑', model: 'RD-2210（CT1-A）', pros: '效果可接受', cons: '性價比普通' },
+        { rank: 4, supplier: '', name: '', model: '', pros: '', cons: '' },
+        { rank: 5, supplier: '', name: '', model: '', pros: '', cons: '' },
+      ],
+      conclusion: '建議推薦CT4-D複配方案，達成客戶降低色花異常率及降低成本5%以上的雙重目標。',
+      // executionResult 對應前端 Select: 'effective' | 'ineffective' | 'monitoring'
+      executionResult: 'monitoring',
+      notes: '客戶需於2025/06/30前確認，否則本案延至Q3重啟。',
+    },
+  })
+
+  // ── 附件12：藥劑泡製紀錄 ──────────────────────────────────────
+  await prisma.chemPreparation.create({
+    data: {
+      prepDate: new Date('2025-06-02'),
+      // weekday 對應前端 Select WEEKDAY_OPTIONS: '星期一'~'星期日'
+      weekday: '星期一',
+      chemName: 'RD-2210 均染助劑',
+      formulaRef: 'F-RD2210-Rev3',
+      // materials 對應前端 MaterialEntry: { col: 1|2|3, name, ratio, lot }（3欄佈局）
+      materials: [
+        { col: 1, name: '去離子水', ratio: '60KG', lot: '' },
+        { col: 1, name: '均染主劑A', ratio: '25KG', lot: 'B250501-A' },
+        { col: 1, name: '乳化劑EM-20', ratio: '10KG', lot: 'B250510-EM' },
+        { col: 2, name: '防腐劑KR-15', ratio: '2KG', lot: 'B250505-KR' },
+        { col: 2, name: '醋酸（pH調整）', ratio: '3KG', lot: 'B250508-AC' },
+        { col: 2, name: '', ratio: '', lot: '' },
+        { col: 3, name: '', ratio: '', lot: '' },
+        { col: 3, name: '', ratio: '', lot: '' },
+        { col: 3, name: '', ratio: '', lot: '' },
+      ],
+      purpose: '補充生產庫存，應對東成染整客戶訂單出貨需求',
+      prepRecord: '1. 投入去離子水60KG至配製槽，啟動攪拌（60rpm）\n2. 緩慢加入均染主劑A 25KG，攪拌30分鐘至均勻\n3. 加入乳化劑EM-20 10KG，提升至80rpm攪拌20分鐘\n4. 加入防腐劑KR-15 2KG，持續攪拌10分鐘\n5. 以醋酸調整pH至6.5-7.0，實測pH 6.8\n6. 取樣送QC檢測：固含量28.5%（規格28-32%），合格\n7. 分裝入100KG鐵桶，貼標、入庫',
+      notes: '配製過程順利，產出量100KG，批號FG250602-RD2210-001',
+    },
+  })
+  await prisma.chemPreparation.create({
+    data: {
+      prepDate: new Date('2025-06-04'),
+      weekday: '星期三',
+      chemName: 'RD-3050 固色劑',
+      formulaRef: 'F-RD3050-Rev2',
+      materials: [
+        { col: 1, name: '去離子水', ratio: '55KG', lot: '' },
+        { col: 1, name: '固色主劑B', ratio: '35KG', lot: 'B250520-B' },
+        { col: 1, name: '交聯劑CL-5', ratio: '8KG', lot: 'B250515-CL5' },
+        { col: 2, name: '消泡劑DF-100', ratio: '0.5KG', lot: 'B250518-DF' },
+        { col: 2, name: '醋酸（pH調整）', ratio: '1.5KG', lot: 'B250508-AC' },
+        { col: 2, name: '', ratio: '', lot: '' },
+        { col: 3, name: '', ratio: '', lot: '' },
+        { col: 3, name: '', ratio: '', lot: '' },
+        { col: 3, name: '', ratio: '', lot: '' },
+      ],
+      purpose: '定期補充庫存，維持最低安全庫存量',
+      prepRecord: '1. 投入去離子水55KG\n2. 加入固色主劑B 35KG，攪拌40分鐘\n3. 緩慢加入交聯劑CL-5 8KG（需緩慢加入避免結塊）\n4. 加入消泡劑DF-100 0.5KG\n5. 以醋酸調pH至6.0-6.5，實測pH 6.3，合格\n6. QC檢測：固含量35.2%（規格35±2%），合格\n7. 分裝50KG×2桶，批號FG250604-RD3050-001',
+      notes: 'Ngày 04/06/2025: Chuẩn bị chất cố màu RD-3050, sản lượng 100KG, đạt yêu cầu chất lượng',
+    },
+  })
+  await prisma.chemPreparation.create({
+    data: {
+      prepDate: new Date('2025-06-09'),
+      weekday: '星期一',
+      chemName: 'RD-5500 防水劑',
+      formulaRef: 'F-RD5500-Rev1',
+      materials: [
+        { col: 1, name: '去離子水', ratio: '40KG', lot: '' },
+        { col: 1, name: '氟素防水主劑', ratio: '50KG', lot: 'B250530-FF' },
+        { col: 1, name: '交聯劑CL-10', ratio: '6KG', lot: 'B250525-CL10' },
+        { col: 2, name: '乳化劑EM-10', ratio: '3KG', lot: 'B250520-EM10' },
+        { col: 2, name: '醋酸（pH調整）', ratio: '1KG', lot: 'B250508-AC' },
+        { col: 2, name: '', ratio: '', lot: '' },
+        { col: 3, name: '', ratio: '', lot: '' },
+        { col: 3, name: '', ratio: '', lot: '' },
+        { col: 3, name: '', ratio: '', lot: '' },
+      ],
+      purpose: '客戶訂單出貨，防水劑庫存不足緊急補製',
+      prepRecord: '1. 投入去離子水40KG，加入乳化劑EM-10 3KG預先乳化\n2. 緩慢加入氟素防水主劑50KG，維持攪拌速度80rpm\n3. 攪拌60分鐘至外觀呈均勻乳白色\n4. 加入交聯劑CL-10 6KG\n5. 調整pH至5.5-6.5，實測pH 5.9，合格\n6. QC檢測：防水等級5級（規格≥4級），合格\n7. 產出100KG，分裝入桶，批號FG250609-RD5500-001',
+      notes: '此批次為緊急生產，已優先安排QC當日檢驗',
+    },
+  })
+
+  // ── 附件13：產品重修紀錄 ──────────────────────────────────────
+  await prisma.productRework.create({
+    data: {
+      productModel: 'RD-2210',
+      productName: '均染助劑',
+      originalDate: new Date('2025-05-28'),
+      originalLot: 'FG250528-RD2210-002',
+      newLot: 'FG250603-RD2210-R01',
+      tank: 'A槽（配製槽#1）',
+      originalQty: 200,
+      reworkQty: 200,
+      // reworkReasons 對應前端 Checkbox.Group，值為 REWORK_REASON_OPTIONS 字串陣列
+      reworkReasons: ['固成分不足 / HLCR KHÔNG ĐẠT', '配方誤差 / SAI CT'],
+      abnormalDesc: 'QC檢測固含量26.5%，低於規格28%下限。追查原因為計量誤差，均染主劑A投料量少投2KG（實投23KG，應投25KG）。',
+      // materialDetails 對應前端 MaterialDetail: { no, name, batchNo, barrelNo, originalRatio, adjustQty, totalQty }
+      materialDetails: [
+        { no: 1, name: '均染主劑A', batchNo: 'B250501-A', barrelNo: 'A-03', originalRatio: '25%（25KG）', adjustQty: '+4KG', totalQty: '29KG' },
+        { no: 2, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+        { no: 3, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+        { no: 4, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+        { no: 5, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+        { no: 6, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+      ],
+      reworkMethod: '1. 將不合格品200KG置入配製槽#1\n2. 啟動攪拌（60rpm）\n3. 補投均染主劑A 4KG\n4. 攪拌30分鐘至均勻\n5. 取樣送QC複測',
+      // qcResults 對應前端 QcResult: { item, itemVn, standard, reworkSpec, result }
+      qcResults: [
+        { item: '外觀', itemVn: 'NGOẠI QUAN', standard: '淡黃色透明液體', reworkSpec: '同規格', result: 'OK' },
+        { item: 'pH1%aq', itemVn: 'pH', standard: '6.5-7.5', reworkSpec: '6.8', result: 'OK' },
+        { item: '固成份', itemVn: 'CHẤT RẮN', standard: '28-32%', reworkSpec: '29.1%', result: 'OK' },
+        { item: '糖度值', itemVn: 'ĐỘ Brix', standard: '依規格', reworkSpec: '—', result: 'OK' },
+        { item: '比重', itemVn: 'TỶ TRỌNG', standard: '依規格', reworkSpec: '—', result: 'OK' },
+      ],
+      finalJudgment: '合格，可出貨',
+      notes: '已修訂投料確認表SOP，要求雙人核對計量',
+    },
+  })
+  await prisma.productRework.create({
+    data: {
+      productModel: 'RD-5500',
+      productName: '防水劑',
+      originalDate: new Date('2025-06-01'),
+      originalLot: 'FG250601-RD5500-001',
+      newLot: 'FG250605-RD5500-R01',
+      tank: 'B槽（配製槽#2）',
+      originalQty: 300,
+      reworkQty: 300,
+      reworkReasons: ['生產操作異常 / SX BT'],
+      abnormalDesc: '防水等級實測3級，未達規格4級要求。追查為交聯劑CL-10投料時混入水分（約5KG），導致交聯不足。',
+      materialDetails: [
+        { no: 1, name: '交聯劑CL-10', batchNo: 'B250525-CL10', barrelNo: 'C-07', originalRatio: '6KG（原配方）', adjustQty: '+9KG', totalQty: '15KG' },
+        { no: 2, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+        { no: 3, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+        { no: 4, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+        { no: 5, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+        { no: 6, name: '', batchNo: '', barrelNo: '', originalRatio: '', adjustQty: '', totalQty: '' },
+      ],
+      reworkMethod: '1. 將不合格品300KG置入配製槽#2\n2. 確認槽體及攪拌軸乾燥無積水\n3. 緩慢加入交聯劑CL-10 9KG\n4. 提高攪拌至100rpm，攪拌45分鐘\n5. 靜置30分鐘\n6. 取樣送QC複測防水等級',
+      qcResults: [
+        { item: '外觀', itemVn: 'NGOẠI QUAN', standard: '均勻乳白色液體', reworkSpec: '均勻乳白色', result: 'OK' },
+        { item: 'pH1%aq', itemVn: 'pH', standard: '5.5-6.5', reworkSpec: '5.9', result: 'OK' },
+        { item: '固成份', itemVn: 'CHẤT RẮN', standard: '依規格', reworkSpec: '—', result: 'OK' },
+        { item: '糖度值', itemVn: 'ĐỘ Brix', standard: '依規格', reworkSpec: '—', result: 'OK' },
+        { item: '比重', itemVn: 'TỶ TRỌNG', standard: '≥4級防水', reworkSpec: '4.5級', result: 'OK' },
+      ],
+      finalJudgment: '合格，可出貨',
+      notes: '已更新防水劑配製SOP，要求交聯劑投料前確認槽體完全乾燥並記錄。/ Đã cập nhật SOP pha chế chất chống thấm, yêu cầu kiểm tra bể khô ráo trước khi thêm chất liên kết.',
     },
   })
 

@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Tabs, Table, Button, Modal, Form, Input, InputNumber,
   Space, Popconfirm, message, Select, DatePicker, Tag, Descriptions,
+  Drawer, Checkbox, Divider,
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, ShoppingCartOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined, ShoppingCartOutlined, PrinterOutlined, FileTextOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
 import {
@@ -19,7 +20,136 @@ const LEVEL_COLOR: Record<EvaluationLevel, string> = { A: 'green', B: 'blue', C:
 const PURCHASE_STATUS_COLOR = { PENDING: 'orange', DELIVERED: 'green', CANCELLED: 'red' }
 const PURCHASE_STATUS_LABEL = { PENDING: '待交貨', DELIVERED: '已到貨', CANCELLED: '已取消' }
 
+// ─── 附件14: 印表函數 ─────────────────────────────────────────────────────────
+
+function printSupplierDetail(row: Supplier) {
+  const types = (row as any).supplierTypes ?? []
+  const certs = (row as any).certifications ?? []
+  const products = (row as any).tradingProducts ?? []
+  const compliance = (row as any).complianceDocs ?? {}
+
+  const SUPPLIER_TYPE_OPTIONS = ['原料供應商', '代理商', '貿易商', '製造商', '其他']
+  const CERT_OPTIONS = ['ISO 9001', 'ISO 14001', 'OEKO-TEX', 'ZDHC MRSL', 'REACH', 'Bluesign', 'GHS']
+  const COMPLIANCE_ITEMS = [
+    { key: 'sds', label: 'SDS 安全數據表' },
+    { key: 'tds', label: 'TDS 技術數據表' },
+    { key: 'coa', label: 'COA 品質證書' },
+    { key: 'mrsl', label: 'MRSL 合規聲明' },
+    { key: 'zdhc', label: 'ZDHC Gateway 登錄' },
+  ]
+
+  const productRows = products.map((p: string) => `<tr><td>${p}</td></tr>`).join('')
+  const complianceRows = COMPLIANCE_ITEMS.map(c => `<tr><td>${c.label}</td><td>${compliance[c.key] === 'yes' ? '☑ 有' : compliance[c.key] === 'no' ? '☐ 無' : '☐ 未知'}</td></tr>`).join('')
+
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>化學品供應商資料表 CMS01-05-1A</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
+  .outer { border: 2px solid #000; }
+  .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
+  .header-logo { width: 140px; border-right: 1px solid #000; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
+  .logo-brand { font-size: 16px; font-weight: 900; }
+  .logo-sub { font-size: 9px; color: #333; margin-top: 2px; }
+  .header-title { flex: 1; text-align: center; display: flex; flex-direction: column; justify-content: center; padding: 6px; }
+  .header-title h1 { font-size: 12px; font-weight: 900; }
+  .header-title h2 { font-size: 10px; font-weight: bold; margin-top: 2px; }
+  .header-right { width: 160px; border-left: 1px solid #000; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+  .field { font-size: 9.5px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+  .section-title { background: #e8e8e8; padding: 2px 6px; font-weight: bold; font-size: 10px; border-bottom: 1px solid #000; border-top: 1px solid #000; }
+  .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); border-bottom: 1px solid #000; }
+  .info-cell { padding: 3px 6px; border-right: 1px solid #000; font-size: 9.5px; }
+  .info-cell:nth-child(3n) { border-right: none; }
+  .info-label { color: #555; font-size: 8.5px; margin-bottom: 1px; }
+  .check-grid { padding: 4px 8px; border-bottom: 1px solid #000; display: flex; flex-wrap: wrap; gap: 8px; font-size: 9.5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+  th, td { border: 1px solid #000; padding: 2px 5px; }
+  th { background: #e8e8e8; }
+  .footer { text-align: center; font-size: 9px; padding: 3px; border-top: 1px solid #ccc; }
+  @media print { @page { margin: 6mm; size: A4 portrait; } }
+</style>
+</head>
+<body>
+<div class="outer">
+  <div class="header">
+    <div class="header-logo">
+      <div class="logo-brand">RICH<sup>®</sup></div>
+      <div class="logo-sub">CÔNG TY TNHH WANG LONG</div>
+      <div class="logo-sub">旺隆責任有限公司</div>
+    </div>
+    <div class="header-title">
+      <h1>THÔNG TIN NHÀ CUNG CẤP HÓA CHẤT</h1>
+      <h2>化學品供應商資料表（客戶）</h2>
+    </div>
+    <div class="header-right">
+      <div class="field"><strong>表單編號:</strong> CMS01-05-1A</div>
+      <div class="field"><strong>供應商編號:</strong> ${row.code}</div>
+    </div>
+  </div>
+
+  <div class="section-title">供應商基本資料 / THÔNG TIN CƠ BẢN</div>
+  <div class="info-grid">
+    <div class="info-cell"><div class="info-label">供應商名稱 / TÊN NCC</div>${row.name}</div>
+    <div class="info-cell"><div class="info-label">聯絡人 / NGƯỜI LIÊN HỆ</div>${row.contactPerson}</div>
+    <div class="info-cell"><div class="info-label">電話 / ĐIỆN THOẠI</div>${row.phone}</div>
+    <div class="info-cell"><div class="info-label">Email</div>${row.email}</div>
+    <div class="info-cell"><div class="info-label">地址 / ĐỊA CHỈ</div>${row.address}</div>
+    <div class="info-cell"><div class="info-label">廠址 / NHÀ MÁY</div>${(row as any).factoryAddress ?? ''}</div>
+    <div class="info-cell"><div class="info-label">成立日期 / NGÀY THÀNH LẬP</div>${(row as any).establishedDate ?? ''}</div>
+    <div class="info-cell"><div class="info-label">負責人 / GIÁM ĐỐC</div>${(row as any).director ?? ''}</div>
+    <div class="info-cell"><div class="info-label">統一編號 / MÃ SỐ THUẾ</div>${(row as any).taxNo ?? ''}</div>
+    <div class="info-cell"><div class="info-label">網站 / WEBSITE</div>${(row as any).website ?? ''}</div>
+    <div class="info-cell"><div class="info-label">傳真 / FAX</div>${(row as any).fax ?? ''}</div>
+    <div class="info-cell"><div class="info-label">會計Email</div>${(row as any).accountingEmail ?? ''}</div>
+    <div class="info-cell"><div class="info-label">商業登記 / ĐĂNG KÝ KINH DOANH</div>${(row as any).hasBizLicense ? '☑ 有 / Có' : '☐ 無 / Không'}</div>
+  </div>
+
+  <div class="section-title">供應商類型 / LOẠI HÌNH NCC</div>
+  <div class="check-grid">
+    ${SUPPLIER_TYPE_OPTIONS.map(t => `<span>${types.includes(t) ? '☑' : '☐'} ${t}</span>`).join('')}
+  </div>
+
+  <div class="section-title">已取得認證 / CHỨNG NHẬN ĐÃ ĐẠT ĐƯỢC</div>
+  <div class="check-grid">
+    ${CERT_OPTIONS.map(c => `<span>${certs.includes(c) ? '☑' : '☐'} ${c}</span>`).join('')}
+  </div>
+
+  <div class="section-title">化學品合規文件 / TÀI LIỆU TUÂN THỦ HÓA CHẤT</div>
+  <table>
+    <thead><tr><th>文件名稱 / TÀI LIỆU</th><th>狀態 / TÌNH TRẠNG</th></tr></thead>
+    <tbody>${complianceRows}</tbody>
+  </table>
+
+  <div class="section-title">交易產品清單 / DANH SÁCH SẢN PHẨM GIAO DỊCH</div>
+  <table>
+    <thead><tr><th>產品名稱 / TÊN SẢN PHẨM</th></tr></thead>
+    <tbody>${productRows || '<tr><td>—</td></tr>'}</tbody>
+  </table>
+
+  <div class="footer">(附件14) CMS01-05-1A 化學品供應商資料表（客戶）</div>
+</div>
+<script>window.onload = () => window.print()</script>
+</body>
+</html>`
+
+  const w = window.open('', '_blank')
+  if (w) { w.document.write(html); w.document.close() }
+}
+
 // ─── Tab 1：供應商資料維護 ────────────────────────────────────────────────────
+
+const SUPPLIER_TYPE_OPTIONS = ['原料供應商', '代理商', '貿易商', '製造商', '其他']
+const CERT_OPTIONS_14 = ['ISO 9001', 'ISO 14001', 'OEKO-TEX', 'ZDHC MRSL', 'REACH', 'Bluesign', 'GHS']
+const COMPLIANCE_ITEMS = [
+  { key: 'sds', label: 'SDS 安全數據表' },
+  { key: 'tds', label: 'TDS 技術數據表' },
+  { key: 'coa', label: 'COA 品質證書' },
+  { key: 'mrsl', label: 'MRSL 合規聲明' },
+  { key: 'zdhc', label: 'ZDHC Gateway 登錄' },
+]
 
 function SupplierTab() {
   const { user } = useAuthStore()
@@ -29,6 +159,12 @@ function SupplierTab() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Supplier | null>(null)
   const [form] = Form.useForm()
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [detailSupplier, setDetailSupplier] = useState<Supplier | null>(null)
+  const [detailForm] = Form.useForm()
+  const [tradingProducts, setTradingProducts] = useState<string[]>([])
+  const [complianceDocs, setComplianceDocs] = useState<Record<string, string>>({})
+  const [savingDetail, setSavingDetail] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -40,6 +176,42 @@ function SupplierTab() {
 
   const openAdd = () => { setEditing(null); form.resetFields(); setModalOpen(true) }
   const openEdit = (row: Supplier) => { setEditing(row); form.setFieldsValue(row); setModalOpen(true) }
+
+  const openDetail = (row: Supplier) => {
+    setDetailSupplier(row)
+    const r = row as any
+    detailForm.setFieldsValue({
+      supplierTypes: r.supplierTypes ?? [],
+      factoryAddress: r.factoryAddress ?? '',
+      establishedDate: r.establishedDate ?? '',
+      hasBizLicense: r.hasBizLicense ?? false,
+      taxNo: r.taxNo ?? '',
+      website: r.website ?? '',
+      director: r.director ?? '',
+      fax: r.fax ?? '',
+      accountingEmail: r.accountingEmail ?? '',
+      certifications: r.certifications ?? [],
+    })
+    setTradingProducts(r.tradingProducts ?? [])
+    setComplianceDocs(r.complianceDocs ?? {})
+    setDetailOpen(true)
+  }
+
+  const handleSaveDetail = async () => {
+    const values = await detailForm.validateFields()
+    setSavingDetail(true)
+    try {
+      await updateSupplier(detailSupplier!.id, {
+        ...values,
+        tradingProducts,
+        complianceDocs,
+      } as any)
+      message.success('詳細資料已儲存')
+      setDetailOpen(false)
+      load()
+    } catch { message.error('儲存失敗') }
+    finally { setSavingDetail(false) }
+  }
 
   const handleSave = async (values: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -57,17 +229,22 @@ function SupplierTab() {
     { title: '供應品項', dataIndex: 'supplyItems', key: 'supplyItems' },
     { title: '狀態', dataIndex: 'status', key: 'status', width: 80,
       render: (v) => <Tag color={v === 'ACTIVE' ? 'green' : 'default'}>{v === 'ACTIVE' ? '啟用' : '停用'}</Tag> },
-    ...(canEdit ? [{
-      title: '操作', key: 'action', width: 120,
+    {
+      title: '操作', key: 'action', width: 200,
       render: (_: unknown, row: Supplier) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>
-          <Popconfirm title="確定刪除？" onConfirm={async () => { await deleteSupplier(row.id); message.success('已刪除'); load() }}>
-            <Button size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
+          <Button size="small" icon={<FileTextOutlined />} onClick={() => openDetail(row)}>詳細資料</Button>
+          {canEdit && (
+            <>
+              <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>
+              <Popconfirm title="確定刪除？" onConfirm={async () => { await deleteSupplier(row.id); message.success('已刪除'); load() }}>
+                <Button size="small" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            </>
+          )}
         </Space>
       ),
-    }] : []),
+    },
   ]
 
   return (
@@ -90,6 +267,89 @@ function SupplierTab() {
           )}
         </Form>
       </Modal>
+
+      {/* 附件14: CMS01-05-1A 化學品供應商詳細資料 Drawer */}
+      <Drawer
+        title={
+          <Space>
+            <FileTextOutlined />
+            化學品供應商資料表 (CMS01-05-1A) — {detailSupplier?.name}
+            {detailSupplier && (
+              <Button size="small" icon={<PrinterOutlined />} onClick={() => printSupplierDetail(detailSupplier)}>列印</Button>
+            )}
+          </Space>
+        }
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        width={760}
+        extra={
+          <Button type="primary" loading={savingDetail} onClick={handleSaveDetail}>儲存</Button>
+        }
+      >
+        <Form form={detailForm} layout="vertical">
+          <Divider plain style={{ margin: '0 0 8px', fontSize: 12 }}>供應商類型 / LOẠI HÌNH NCC</Divider>
+          <Form.Item name="supplierTypes">
+            <Checkbox.Group options={SUPPLIER_TYPE_OPTIONS} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }} />
+          </Form.Item>
+
+          <Divider plain style={{ margin: '4px 0 8px', fontSize: 12 }}>詳細基本資料</Divider>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <Form.Item name="factoryAddress" label="廠址 / ĐỊA CHỈ NHÀ MÁY"><Input /></Form.Item>
+            <Form.Item name="establishedDate" label="成立日期 / NGÀY THÀNH LẬP"><Input placeholder="e.g. 2010-01-01" /></Form.Item>
+            <Form.Item name="director" label="負責人 / GIÁM ĐỐC"><Input /></Form.Item>
+            <Form.Item name="taxNo" label="統一編號 / MÃ SỐ THUẾ"><Input /></Form.Item>
+            <Form.Item name="website" label="網站 / WEBSITE"><Input /></Form.Item>
+            <Form.Item name="fax" label="傳真 / FAX"><Input /></Form.Item>
+            <Form.Item name="accountingEmail" label="會計Email"><Input /></Form.Item>
+            <Form.Item name="hasBizLicense" label="商業登記 / ĐĂNG KÝ KINH DOANH" valuePropName="checked">
+              <Checkbox>已取得 / Đã đăng ký</Checkbox>
+            </Form.Item>
+          </div>
+
+          <Divider plain style={{ margin: '4px 0 8px', fontSize: 12 }}>已取得認證 / CHỨNG NHẬN</Divider>
+          <Form.Item name="certifications">
+            <Checkbox.Group options={CERT_OPTIONS_14} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }} />
+          </Form.Item>
+
+          <Divider plain style={{ margin: '4px 0 8px', fontSize: 12 }}>化學品合規文件 / TÀI LIỆU TUÂN THỦ</Divider>
+          {COMPLIANCE_ITEMS.map(item => (
+            <div key={item.key} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+              <span style={{ flex: 1 }}>{item.label}</span>
+              <Select
+                value={complianceDocs[item.key] ?? ''}
+                onChange={v => setComplianceDocs(prev => ({ ...prev, [item.key]: v }))}
+                options={[
+                  { value: '', label: '未知' },
+                  { value: 'yes', label: '有 / Có' },
+                  { value: 'no', label: '無 / Không' },
+                ]}
+                style={{ width: 130 }}
+              />
+            </div>
+          ))}
+
+          <Divider plain style={{ margin: '4px 0 8px', fontSize: 12 }}>交易產品清單 / DANH SÁCH SẢN PHẨM</Divider>
+          {tradingProducts.map((p, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 6 }}>
+              <Input
+                value={p}
+                onChange={e => setTradingProducts(prev => prev.map((x, i) => i === idx ? e.target.value : x))}
+                placeholder={`產品 ${idx + 1}`}
+              />
+              <Button
+                size="small"
+                danger
+                onClick={() => setTradingProducts(prev => prev.filter((_, i) => i !== idx))}
+              >刪除</Button>
+            </div>
+          ))}
+          <Button
+            size="small"
+            onClick={() => setTradingProducts(prev => [...prev, ''])}
+            style={{ marginTop: 4 }}
+          >+ 新增產品</Button>
+        </Form>
+      </Drawer>
     </>
   )
 }

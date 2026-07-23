@@ -34,6 +34,11 @@ import LabDailyLogPage from './pages/forms/LabDailyLogPage'
 import SampleSubmissionPage from './pages/forms/SampleSubmissionPage'
 import ChemicalEvaluationPage from './pages/forms/ChemicalEvaluationPage'
 import ChemicalRequestPage from './pages/forms/ChemicalRequestPage'
+import QcDailyLogPage from './pages/forms/QcDailyLogPage'
+import ProductCounterPlanPage from './pages/forms/ProductCounterPlanPage'
+import ChemPreparationPage from './pages/forms/ChemPreparationPage'
+import ProductReworkPage from './pages/forms/ProductReworkPage'
+import SupplierComplianceAuditPage from './pages/forms/SupplierComplianceAuditPage'
 
 dayjs.locale('zh-tw')
 
@@ -160,6 +165,11 @@ export default function App() {
             <Route path="sample-submissions" element={<SampleSubmissionPage />} />
             <Route path="chemical-evaluations" element={<ChemicalEvaluationPage />} />
             <Route path="chemical-requests" element={<ChemicalRequestPage />} />
+            <Route path="qc-daily-logs" element={<QcDailyLogPage />} />
+            <Route path="product-counter-plans" element={<ProductCounterPlanPage />} />
+            <Route path="chem-preparations" element={<ChemPreparationPage />} />
+            <Route path="product-reworks" element={<ProductReworkPage />} />
+            <Route path="supplier-compliance-audits" element={<SupplierComplianceAuditPage />} />
 
             <Route
               path="users"

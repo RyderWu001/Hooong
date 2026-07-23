@@ -27,8 +27,30 @@ suppliersRouter.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async 
 })
 
 suppliersRouter.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
-  const { name, contactPerson, phone, email, address, supplyItems, status } = req.body
-  const s = await prisma.supplier.update({ where: { id: Number(req.params.id) }, data: { name, contactPerson, phone, email, address, supplyItems, status } })
+  const {
+    name, contactPerson, phone, email, address, supplyItems, status,
+    // 附件14 extended fields
+    supplierTypes, factoryAddress, establishedDate, hasBizLicense, taxNo,
+    website, director, fax, accountingEmail, certifications, complianceDocs, tradingProducts,
+  } = req.body
+  const s = await prisma.supplier.update({
+    where: { id: Number(req.params.id) },
+    data: {
+      name, contactPerson, phone, email, address, supplyItems, status,
+      supplierTypes: supplierTypes ?? undefined,
+      factoryAddress: factoryAddress ?? undefined,
+      establishedDate: establishedDate ?? undefined,
+      hasBizLicense: hasBizLicense ?? undefined,
+      taxNo: taxNo ?? undefined,
+      website: website ?? undefined,
+      director: director ?? undefined,
+      fax: fax ?? undefined,
+      accountingEmail: accountingEmail ?? undefined,
+      certifications: certifications ?? undefined,
+      complianceDocs: complianceDocs ?? undefined,
+      tradingProducts: tradingProducts ?? undefined,
+    },
+  })
   res.json({ success: true, data: s })
 })
 

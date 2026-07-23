@@ -25,6 +25,11 @@ import commissionScanRouter from './routes/commissionScan'
 import chemicalEvaluationsRouter from './routes/chemicalEvaluations'
 import chemicalRequestsRouter from './routes/chemicalRequests'
 import formSignaturesRouter from './routes/formSignatures'
+import qcDailyLogsRouter from './routes/qcDailyLogs'
+import productCounterPlansRouter from './routes/productCounterPlans'
+import chemPreparationsRouter from './routes/chemPreparations'
+import productReworksRouter from './routes/productReworks'
+import supplierComplianceAuditsRouter from './routes/supplierComplianceAudits'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 3000)
@@ -56,6 +61,11 @@ app.use('/api/v1/commission-scan', commissionScanRouter)
 app.use('/api/v1/chemical-evaluations', chemicalEvaluationsRouter)
 app.use('/api/v1/chemical-requests', chemicalRequestsRouter)
 app.use('/api/v1/form-signatures', formSignaturesRouter)
+app.use('/api/v1/qc-daily-logs', qcDailyLogsRouter)
+app.use('/api/v1/product-counter-plans', productCounterPlansRouter)
+app.use('/api/v1/chem-preparations', chemPreparationsRouter)
+app.use('/api/v1/product-reworks', productReworksRouter)
+app.use('/api/v1/supplier-compliance-audits', supplierComplianceAuditsRouter)
 
 app.get('/api/v1/health', (_, res) => res.json({ status: 'ok' }))
 
