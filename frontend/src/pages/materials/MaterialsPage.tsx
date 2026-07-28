@@ -164,7 +164,7 @@ function printQCReport(
 <meta charset="UTF-8">
 <title>進料品質檢驗分析報告書</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{font-family:'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif;font-size:11px;color:#000;background:#fff;padding:10px}
   table{width:100%;border-collapse:collapse}
   td,th{border:1px solid #000;padding:3px 5px;vertical-align:middle}

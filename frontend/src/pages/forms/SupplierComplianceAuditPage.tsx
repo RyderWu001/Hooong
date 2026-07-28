@@ -59,7 +59,7 @@ function scoreLabel(v: number | null): string {
 }
 
 function printAudit(row: SupplierComplianceAudit) {
-  const adv = row.advancedAudit ?? DEFAULT_ADVANCED_AUDIT()
+  const adv = Array.isArray(row.advancedAudit) && row.advancedAudit.length ? row.advancedAudit : DEFAULT_ADVANCED_AUDIT()
   const advRows = adv.map(a => `<tr><td class="left">${a.item}</td><td>${scoreLabel(a.score)}</td></tr>`).join('')
 
   const html = `<!DOCTYPE html>
@@ -68,7 +68,7 @@ function printAudit(row: SupplierComplianceAudit) {
 <meta charset="UTF-8">
 <title>化學品供應商評鑑資料表 CMS01-05-2A</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }

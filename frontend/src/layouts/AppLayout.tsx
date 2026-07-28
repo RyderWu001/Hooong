@@ -253,7 +253,7 @@ export default function AppLayout() {
 
   return (
     <Layout className={styles.root}>
-      <Sider trigger={null} collapsible collapsed={collapsed} theme="dark" width={220}>
+      <Sider trigger={null} collapsible collapsed={collapsed} theme="light" width={220}>
         <div className={styles.siderInner}>
           <div className={styles.siderLogo} style={{ cursor: 'pointer' }} onClick={() => navigate('/login')}>
             <div className={styles.logoIcon}>H</div>
@@ -269,7 +269,7 @@ export default function AppLayout() {
 
           <div className={styles.siderMenuWrap}>
             <Menu
-              theme="dark"
+              theme="light"
               mode="inline"
               selectedKeys={[selectedKey]}
               openKeys={openKeys}
@@ -281,7 +281,7 @@ export default function AppLayout() {
 
           <div className={styles.siderBottom}>
             <Menu
-              theme="dark"
+              theme="light"
               mode="inline"
               selectable={false}
               items={[

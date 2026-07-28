@@ -73,7 +73,7 @@ function printFormulaChange(row: FormulaChange, formulaName?: string) {
 <meta charset="UTF-8">
 <title>配方變更核准申請書 CMS03-07-3A</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: 'Microsoft JhengHei','Times New Roman',Arial,sans-serif; font-size: 11px; color: #000; padding: 10mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }

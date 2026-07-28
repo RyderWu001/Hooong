@@ -48,6 +48,7 @@ function printLog(log: LabDailyLog, sigSupervisor: string | null, sigLabTech: st
   .sig-box { flex: 1; border: 1px solid #000; min-height: 60px; padding: 4px; text-align: center; }
   .sig-label { font-size: 11px; margin-bottom: 4px; }
   .procedure-area { border: 1px solid #000; min-height: 120px; padding: 8px; white-space: pre-wrap; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @media print { @page { margin: 15mm; } }
 </style>
 </head>

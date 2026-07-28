@@ -9,7 +9,8 @@
   height: 100vh;
   position: sticky;
   top: 0;
-  background: #0c1525;
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
 }
 
 .siderLogo {
@@ -18,9 +19,9 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  border-bottom: 1px solid #1e2d45;
+  border-bottom: 1px solid #e2e8f0;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #0c1525 0%, #162032 100%);
+  background: #ffffff;
 }
 
 .logoIcon {
@@ -35,11 +36,11 @@
   font-size: 16px;
   color: #fff;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
 }
 
 .logoText {
-  color: #e2e8f0;
+  color: #1e293b;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -77,24 +78,24 @@
   background: transparent;
 }
 .siderMenuWrap::-webkit-scrollbar-thumb {
-  background: #2d3f55;
+  background: #cbd5e1;
   border-radius: 2px;
 }
 
 .siderBottom {
   flex-shrink: 0;
-  border-top: 1px solid #1e2d45;
+  border-top: 1px solid #e2e8f0;
 }
 
 /* Header */
 .header {
-  background: #1a2744 !important;
+  background: #ffffff !important;
   padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #2d3f55;
-  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -103,15 +104,15 @@
 .collapseBtn {
   cursor: pointer;
   font-size: 18px;
-  color: #94a3b8;
+  color: #64748b;
   transition: color 0.2s;
   padding: 4px 8px;
   border-radius: 4px;
 }
 
 .collapseBtn:hover {
-  color: #e2e8f0;
-  background: rgba(255, 255, 255, 0.08);
+  color: #1e293b;
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .headerRight {
@@ -131,7 +132,7 @@
 }
 
 .userInfo:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 /* Content */
@@ -142,12 +143,12 @@
 
 /* Page breadcrumb / title area styling applied globally via :global */
 :global(.ant-card-head) {
-  border-bottom: 1px solid #2d3f55 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 :global(.ant-card-head-title) {
   font-weight: 600;
-  color: #e2e8f0 !important;
+  color: #1e293b !important;
   font-size: 15px;
 }
 

@@ -117,6 +117,7 @@ function printSubmission(sub: SampleSubmission, chainSigs: FormSignatureRecord[]
   .sig-label { font-size: 10px; border-bottom: 1px solid #ccc; margin-bottom: 2px; }
   .pkg-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 8px; }
   .pkg-item { border: 1px solid #999; padding: 3px; text-align: center; font-size: 10px; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @media print { @page { margin: 10mm; size: A4 portrait; } }
 </style>
 </head>

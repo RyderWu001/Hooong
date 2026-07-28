@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(ellipse at 50% 30%, #162540 0%, #0c1525 50%, #0f172a 100%);
+  background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 50%, #f1f5f9 100%);
 }
 
 /* ── 外框卡片 ── */
@@ -101,12 +101,12 @@
 /* ── 右側表單區 ── */
 .formPanel {
   flex: 1;
-  background: #1e293b;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 52px 48px;
-  border-left: 1px solid #2d3f55;
+  border-left: 1px solid #e2e8f0;
 }
 
 .formTitle {

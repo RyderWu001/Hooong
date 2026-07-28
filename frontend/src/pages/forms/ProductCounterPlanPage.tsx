@@ -74,7 +74,7 @@ function printProductCounterPlan(row: ProductCounterPlan) {
 <meta charset="UTF-8">
 <title>產品對抗計劃執行明細表 CMS03-07-5A</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 9.5px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }

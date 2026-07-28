@@ -86,7 +86,7 @@ function printRequest(row: ChemRequest) {
 <meta charset="UTF-8">
 <title>化學品需求申請單 CMS01-01-2B</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10.5px; color: #000; padding: 10mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
