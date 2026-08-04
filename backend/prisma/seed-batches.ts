@@ -31,7 +31,18 @@ async function main() {
     })
   }
 
-  // 1. 待驗收 — 沒有 qcItems
+  // 刪除舊批次避免重複（依批號後綴識別）
+  await prisma.ingredientBatch.deleteMany({
+    where: { batchNo: { endsWith: '-2507001' } },
+  })
+  await prisma.ingredientBatch.deleteMany({
+    where: { batchNo: { endsWith: '-2507002' } },
+  })
+  await prisma.ingredientBatch.deleteMany({
+    where: { batchNo: { endsWith: '-2507003' } },
+  })
+
+  // 1. 待驗收 — 沒有 qcItems，效期設為未來日期
   const b1 = await prisma.ingredientBatch.create({
     data: {
       ingredientId: ing1.id,
@@ -39,7 +50,7 @@ async function main() {
       supplierBatch: 'SUP-2025-A001',
       arrivalDate: new Date('2025-07-10'),
       mfgDate: new Date('2025-06-20'),
-      expiryDate: new Date('2026-06-20'),
+      expiryDate: new Date('2027-06-20'),
       quantity: 50,
       unit: ing1.unit,
       status: '正常',
@@ -48,7 +59,7 @@ async function main() {
   })
   console.log(`✅ 建立「待驗收」批次：${b1.batchNo}`)
 
-  // 2. 驗收失敗 — qcItems 有 NG 項目
+  // 2. 驗收失敗 — qcItems 有 NG，效期設為未來日期
   const b2 = await prisma.ingredientBatch.create({
     data: {
       ingredientId: ing2.id,
@@ -56,17 +67,21 @@ async function main() {
       supplierBatch: 'SUP-2025-B002',
       arrivalDate: new Date('2025-07-12'),
       mfgDate: new Date('2025-05-15'),
-      expiryDate: new Date('2026-05-15'),
+      expiryDate: new Date('2027-05-15'),
       quantity: 30,
       unit: ing2.unit,
       status: '異常',
       acceptanceNo: 'ACC-2025-002',
       orderDate: new Date('2025-07-05'),
       qcItems: [
-        { name: '外觀', standard: '澄清透明液體', result: 'OK', note: '' },
-        { name: 'pH值', standard: '5.5 ~ 6.5', result: 'NG', note: '實測 pH 7.2，超出範圍' },
-        { name: '固含量(%)', standard: '≥ 25%', result: 'NG', note: '實測 21%，未達標準' },
-        { name: '黏度(cps)', standard: '< 500', result: 'OK', note: '' },
+        { item: '外觀',       supplierStd: '澄清透明液體', actualValue: '澄清透明', confirmedValue: '',           result: 'OK', equipment: '目視' },
+        { item: 'PH(1%)',    supplierStd: '5.5 ~ 6.5',   actualValue: '7.2',      confirmedValue: '7.2',        result: 'NG', equipment: 'PH計' },
+        { item: '固成分',     supplierStd: '≥ 25%',       actualValue: '21%',      confirmedValue: '21%',        result: 'NG', equipment: '3g×105℃×2hr' },
+        { item: '黏度(cps)', supplierStd: '< 500',        actualValue: '420',      confirmedValue: '',           result: 'OK', equipment: '黏度計 CPS' },
+        { item: '比重',       supplierStd: '',             actualValue: '',         confirmedValue: '',           result: 'OK', equipment: '比重計' },
+        { item: '醣度',       supplierStd: '',             actualValue: '',         confirmedValue: '',           result: 'OK', equipment: '醣度計 % BRIX' },
+        { item: '導電度(mmho/cm)', supplierStd: '',        actualValue: '',         confirmedValue: '',           result: 'OK', equipment: '導電度計' },
+        { item: 'COD(mg/L)', supplierStd: '',             actualValue: '',         confirmedValue: '',           result: 'OK', equipment: 'COD測試儀' },
       ],
       qcNotes: '批次 pH 值及固含量不符規格，建議退貨或重新確認規格書。',
       notes: '驗收失敗，聯絡供應商處理中',
@@ -74,7 +89,7 @@ async function main() {
   })
   console.log(`✅ 建立「驗收失敗」批次：${b2.batchNo}`)
 
-  // 3. 驗收成功 — qcItems 全部 OK + 建立 3 筆簽核紀錄
+  // 3. 驗收成功 — qcItems 全部 OK + 建立 3 筆簽核紀錄，效期設為未來日期
   const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true, username: true } })
   const managerUser = await prisma.user.findFirst({ where: { role: 'MANAGER' }, select: { id: true, username: true } })
   const labUser = await prisma.user.findFirst({ where: { role: 'LAB_STAFF' }, select: { id: true, username: true } })
@@ -86,17 +101,21 @@ async function main() {
       supplierBatch: 'SUP-2025-C003',
       arrivalDate: new Date('2025-07-08'),
       mfgDate: new Date('2025-04-10'),
-      expiryDate: new Date('2026-04-10'),
+      expiryDate: new Date('2027-04-10'),
       quantity: 100,
       unit: ing3.unit,
       status: '正常',
       acceptanceNo: 'ACC-2025-003',
       orderDate: new Date('2025-07-01'),
       qcItems: [
-        { name: '外觀', standard: '澄清透明液體', result: 'OK', note: '' },
-        { name: 'pH值', standard: '5.0 ~ 7.0', result: 'OK', note: '實測 pH 5.8' },
-        { name: '固含量(%)', standard: '≥ 30%', result: 'OK', note: '實測 32%' },
-        { name: '黏度(cps)', standard: '100 ~ 300', result: 'OK', note: '實測 185 cps' },
+        { item: '外觀',       supplierStd: '澄清透明液體',  actualValue: '澄清透明', confirmedValue: '',     result: 'OK', equipment: '目視' },
+        { item: 'PH(1%)',    supplierStd: '5.0 ~ 7.0',    actualValue: '5.8',      confirmedValue: '5.8',  result: 'OK', equipment: 'PH計' },
+        { item: '固成分',     supplierStd: '≥ 30%',        actualValue: '32%',      confirmedValue: '32%',  result: 'OK', equipment: '3g×105℃×2hr' },
+        { item: '黏度(cps)', supplierStd: '100 ~ 300',     actualValue: '185',      confirmedValue: '185',  result: 'OK', equipment: '黏度計 CPS' },
+        { item: '比重',       supplierStd: '1.05 ~ 1.10',  actualValue: '1.07',     confirmedValue: '',     result: 'OK', equipment: '比重計' },
+        { item: '醣度',       supplierStd: '',              actualValue: '',         confirmedValue: '',     result: 'OK', equipment: '醣度計 % BRIX' },
+        { item: '導電度(mmho/cm)', supplierStd: '',         actualValue: '',         confirmedValue: '',     result: 'OK', equipment: '導電度計' },
+        { item: 'COD(mg/L)', supplierStd: '< 500',         actualValue: '285',      confirmedValue: '',     result: 'OK', equipment: 'COD測試儀' },
       ],
       qcNotes: '各項檢驗均符合規格，可正式入庫使用。',
       notes: '驗收完成，入庫使用',
