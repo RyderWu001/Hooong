@@ -121,13 +121,13 @@ router.delete('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
   res.json({ success: true, message: '已刪除' })
 })
 
-// POST /formulas/:id/submit — 提交審核 (DRAFT/ACTIVE → REVIEWING)
+// POST /formulas/:id/submit — 提交審核 (DRAFT → REVIEWING)
 router.post('/:id/submit', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
   const id = Number(req.params.id)
   const f = await prisma.formula.findUnique({ where: { id } })
   if (!f) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到配方' } }); return }
-  if (!['DRAFT', 'ACTIVE', 'PUBLISHED'].includes(f.status)) {
-    res.status(400).json({ success: false, error: { code: 'INVALID_STATUS', message: '僅草稿/已發布狀態可提交審核' } }); return
+  if (f.status !== 'DRAFT') {
+    res.status(400).json({ success: false, error: { code: 'INVALID_STATUS', message: '僅草稿狀態可提交審核' } }); return
   }
   const updated = await prisma.formula.update({ where: { id }, data: { status: 'REVIEWING' }, include: formulaInclude })
   res.json({ success: true, data: formatFormula(updated) })
@@ -186,7 +186,7 @@ router.post('/:id/copy', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (
       formulaType: source.formulaType,
       productType: source.productType,
       description: source.description,
-      status: 'ACTIVE',
+      status: 'DRAFT',
       ingredients: {
         create: source.ingredients.map((fi) => ({
           ingredientId: fi.ingredientId, ratio: fi.ratio, unit: fi.unit,

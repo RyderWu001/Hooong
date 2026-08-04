@@ -83,6 +83,15 @@ export default function FormulaFormPage() {
       message.warning('請至少加入一項原料')
       return
     }
+    const incompleteRows = rows.filter((r) => r.ingredientId && (!r.ratio || !r.unit))
+    if (incompleteRows.length > 0) {
+      message.warning(`${incompleteRows.length} 列原料未填完整（缺少比例或單位），已自動略過，請確認是否正確。`)
+    }
+    const dupIds = ingList.map((r) => r.ingredientId).filter((v, i, a) => a.indexOf(v) !== i)
+    if (dupIds.length > 0) {
+      message.error('有重複的原料，請移除重複項後再儲存')
+      return
+    }
     setLoading(true)
     try {
       const ingredientPayload = ingList.map((r) => ({
@@ -102,16 +111,17 @@ export default function FormulaFormPage() {
           ingredients: ingredientPayload,
         })
         message.success('配方已更新')
+        navigate(`/formulas/${id}`)
       } else {
-        await createFormula({
+        const res = await createFormula({
           ...values,
           category: values.category ?? null,
           formulaType: values.formulaType ?? null,
           ingredients: ingredientPayload,
         })
         message.success('配方已建立')
+        navigate(`/formulas/${res.data.data.id}`)
       }
-      navigate('/formulas')
     } catch {
       message.error('儲存失敗')
     } finally {

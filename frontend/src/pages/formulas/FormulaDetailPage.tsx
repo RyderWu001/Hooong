@@ -17,7 +17,7 @@ import dayjs from 'dayjs'
 
 const STATUS_COLOR: Record<FormulaStatus, string> = {
   DRAFT: 'default', REVIEWING: 'gold', PUBLISHED: 'green', ARCHIVED: 'volcano',
-  ACTIVE: 'green', INACTIVE: 'orange', DELETED: 'red',
+  ACTIVE: 'cyan', INACTIVE: 'orange', DELETED: 'red',
 }
 const STATUS_LABEL: Record<FormulaStatus, string> = {
   DRAFT: '草稿', REVIEWING: '審核中', PUBLISHED: '已發布', ARCHIVED: '已封存',
@@ -120,6 +120,7 @@ export default function FormulaDetailPage() {
 
   const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
   const isManagerOrAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER'
+  const isTerminated = formula.status === 'DELETED' || formula.status === 'INACTIVE'
 
   // 審核流程步驟對應
   const WORKFLOW_STEPS = [
@@ -178,7 +179,9 @@ export default function FormulaDetailPage() {
           canEdit && (
             <Space>
               <Button icon={<CopyOutlined />} onClick={() => setCopyOpen(true)}>複製</Button>
-              <Button icon={<EditOutlined />} type="primary" onClick={() => navigate(`/formulas/${id}/edit`)}>編輯</Button>
+              {formula.status !== 'DELETED' && (
+                <Button icon={<EditOutlined />} type="primary" onClick={() => navigate(`/formulas/${id}/edit`)}>編輯</Button>
+              )}
             </Space>
           )
         }
@@ -204,7 +207,18 @@ export default function FormulaDetailPage() {
 
       {/* 審核流程卡片 */}
       <Card title="配方審核流程" size="small">
-        <Steps
+        {isTerminated && (
+          <Alert
+            type={formula.status === 'DELETED' ? 'error' : 'warning'}
+            showIcon
+            message={formula.status === 'DELETED' ? '此配方已刪除' : '此配方已停用'}
+            description={formula.status === 'DELETED'
+              ? '配方已被移除，無法再用於實驗或量產。若需重新使用，請以「複製」功能建立新配方。'
+              : '配方目前停用中，如需恢復請聯繫管理員。'}
+            style={{ marginBottom: 16 }}
+          />
+        )}
+        {!isTerminated && <Steps
           current={currentStepIndex}
           style={{ marginBottom: 20 }}
           items={WORKFLOW_STEPS.map((s, idx) => {
@@ -227,10 +241,10 @@ export default function FormulaDetailPage() {
               status: stepStatus(idx),
             }
           })}
-        />
+        />}
 
         {/* 依流程階段顯示對應操作 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 4px' }}>
+        {!isTerminated && <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 4px' }}>
 
           {/* 草稿 → 提交審核 */}
           {canEdit && formula.status === 'DRAFT' && (
@@ -294,7 +308,7 @@ export default function FormulaDetailPage() {
           {formula.status === 'ARCHIVED' && (
             <Typography.Text type="secondary">此配方已封存，不可再用於新實驗。</Typography.Text>
           )}
-        </div>
+        </div>}
       </Card>
 
       <Card>

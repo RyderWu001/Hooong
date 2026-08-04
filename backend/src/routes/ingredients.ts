@@ -208,16 +208,13 @@ router.put('/batches/:batchId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), 
   { name: 'qcPhotoAppearance', maxCount: 1 },
   { name: 'qcPhotoSolid', maxCount: 1 },
 ]), async (req: AuthRequest, res) => {
-  const {
-    batchNo, supplierBatch, mfgDate, expiryDate,
-    arrivalDate, warehousingDate, usageDate, usageQuantity, remainingQty,
-    openedDate, openedExpiry, quantity, unit, status, notes,
-    acceptanceNo, orderDate, qcItems, qcNotes,
-  } = req.body
+  const body = req.body as Record<string, string | undefined>
   const files = req.files as Record<string, Express.Multer.File[]> | undefined
   const existing = await prisma.ingredientBatch.findUnique({ where: { id: Number(req.params.batchId) } })
-  let qcPhotoAppearanceUrl = existing?.qcPhotoAppearance ?? null
-  let qcPhotoSolidUrl = existing?.qcPhotoSolid ?? null
+  if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到批號' } }); return }
+
+  let qcPhotoAppearanceUrl = existing.qcPhotoAppearance
+  let qcPhotoSolidUrl = existing.qcPhotoSolid
   if (files?.qcPhotoAppearance?.[0]) {
     const f = files.qcPhotoAppearance[0]
     qcPhotoAppearanceUrl = await uploadToStorage(f.buffer, f.originalname, f.mimetype)
@@ -226,28 +223,33 @@ router.put('/batches/:batchId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), 
     const f = files.qcPhotoSolid[0]
     qcPhotoSolidUrl = await uploadToStorage(f.buffer, f.originalname, f.mimetype)
   }
-  const batch = await prisma.ingredientBatch.update({
-    where: { id: Number(req.params.batchId) },
-    data: {
-      batchNo, supplierBatch: supplierBatch ?? null,
-      mfgDate: mfgDate ? new Date(mfgDate) : null,
-      expiryDate: expiryDate ? new Date(expiryDate) : null,
-      arrivalDate: arrivalDate ? new Date(arrivalDate) : null,
-      warehousingDate: warehousingDate ? new Date(warehousingDate) : null,
-      usageDate: usageDate ? new Date(usageDate) : null,
-      usageQuantity: usageQuantity != null ? Number(usageQuantity) : null,
-      remainingQty: remainingQty != null ? Number(remainingQty) : null,
-      openedDate: openedDate ? new Date(openedDate) : null,
-      openedExpiry: openedExpiry != null ? Number(openedExpiry) : null,
-      quantity: Number(quantity), unit, status, notes,
-      acceptanceNo: acceptanceNo ?? null,
-      orderDate: orderDate ? new Date(orderDate) : null,
-      qcItems: qcItems ? JSON.parse(qcItems) : null,
-      qcNotes: qcNotes ?? null,
-      qcPhotoAppearance: qcPhotoAppearanceUrl,
-      qcPhotoSolid: qcPhotoSolidUrl,
-    },
-  })
+
+  // Only update fields that were actually sent — undefined means "not sent, keep existing value"
+  const data: Record<string, unknown> = {
+    qcPhotoAppearance: qcPhotoAppearanceUrl,
+    qcPhotoSolid: qcPhotoSolidUrl,
+  }
+  if (body.batchNo !== undefined)        data.batchNo = body.batchNo
+  if (body.supplierBatch !== undefined)  data.supplierBatch = body.supplierBatch || null
+  if (body.mfgDate !== undefined)        data.mfgDate = body.mfgDate ? new Date(body.mfgDate) : null
+  if (body.expiryDate !== undefined)     data.expiryDate = body.expiryDate ? new Date(body.expiryDate) : null
+  if (body.arrivalDate !== undefined)    data.arrivalDate = body.arrivalDate ? new Date(body.arrivalDate) : null
+  if (body.warehousingDate !== undefined) data.warehousingDate = body.warehousingDate ? new Date(body.warehousingDate) : null
+  if (body.usageDate !== undefined)      data.usageDate = body.usageDate ? new Date(body.usageDate) : null
+  if (body.usageQuantity !== undefined)  data.usageQuantity = body.usageQuantity != null ? Number(body.usageQuantity) : null
+  if (body.remainingQty !== undefined)   data.remainingQty = body.remainingQty != null ? Number(body.remainingQty) : null
+  if (body.openedDate !== undefined)     data.openedDate = body.openedDate ? new Date(body.openedDate) : null
+  if (body.openedExpiry !== undefined)   data.openedExpiry = body.openedExpiry != null ? Number(body.openedExpiry) : null
+  if (body.quantity !== undefined)       data.quantity = Number(body.quantity)
+  if (body.unit !== undefined)           data.unit = body.unit
+  if (body.status !== undefined)         data.status = body.status
+  if (body.notes !== undefined)          data.notes = body.notes
+  if (body.acceptanceNo !== undefined)   data.acceptanceNo = body.acceptanceNo || null
+  if (body.orderDate !== undefined)      data.orderDate = body.orderDate ? new Date(body.orderDate) : null
+  if (body.qcItems !== undefined)        data.qcItems = body.qcItems ? JSON.parse(body.qcItems) : null
+  if (body.qcNotes !== undefined)        data.qcNotes = body.qcNotes || null
+
+  const batch = await prisma.ingredientBatch.update({ where: { id: Number(req.params.batchId) }, data })
   res.json({ success: true, data: batch })
 })
 

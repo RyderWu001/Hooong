@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Table, Button, Input, Select, Space, Tag, Popconfirm, message, Card, Modal, Radio, Divider, Typography, Descriptions } from 'antd'
+import { Table, Button, Input, Select, Space, Tag, Popconfirm, message, Card, Modal, Radio, Divider, Typography, Descriptions, Alert } from 'antd'
 import { PlusOutlined, SearchOutlined, BarChartOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { getFormulas, deleteFormula } from '../../api/formulas'
@@ -18,7 +18,7 @@ const STATUS_COLOR: Record<FormulaStatus, string> = {
   REVIEWING: 'gold',
   PUBLISHED: 'green',
   ARCHIVED: 'volcano',
-  ACTIVE: 'green',
+  ACTIVE: 'cyan',
   INACTIVE: 'orange',
   DELETED: 'red',
 }
@@ -116,7 +116,7 @@ export default function FormulaListPage() {
   const handleDelete = async (id: number) => {
     try {
       await deleteFormula(id)
-      message.success('已停用')
+      message.success('已刪除')
       fetchData()
     } catch {
       message.error('操作失敗')
@@ -147,12 +147,16 @@ export default function FormulaListPage() {
       render: (_: unknown, record: Formula) => (
         <Space>
           <Button size="small" onClick={() => navigate(`/formulas/${record.id}`)}>查看</Button>
-          {canEdit && (
+          {canEdit && record.status !== 'DELETED' && (
             <Button size="small" type="primary" onClick={() => navigate(`/formulas/${record.id}/edit`)}>編輯</Button>
           )}
           {canDelete && record.status !== 'DELETED' && (
-            <Popconfirm title="確定停用此配方？" onConfirm={() => handleDelete(record.id)}>
-              <Button size="small" danger>停用</Button>
+            <Popconfirm
+              title="確定刪除此配方？"
+              description="刪除後無法復原，若需重新使用請改用「複製」功能。"
+              onConfirm={() => handleDelete(record.id)}
+            >
+              <Button size="small" danger>刪除</Button>
             </Popconfirm>
           )}
         </Space>
@@ -213,9 +217,8 @@ export default function FormulaListPage() {
             { value: 'DRAFT', label: '草稿' },
             { value: 'REVIEWING', label: '審核中' },
             { value: 'PUBLISHED', label: '已發布' },
+            { value: 'ACTIVE', label: '量產中' },
             { value: 'ARCHIVED', label: '已封存' },
-            { value: 'ACTIVE', label: '啟用（舊）' },
-            { value: 'INACTIVE', label: '停用' },
             { value: 'DELETED', label: '已刪除' },
           ]}
         />
@@ -226,6 +229,7 @@ export default function FormulaListPage() {
         loading={loading}
         columns={columns}
         dataSource={data}
+        locale={{ emptyText: filters.name || filters.category || filters.formulaType || filters.status ? '找不到符合篩選條件的配方' : '尚無配方，點擊右上角「新增配方」開始建立' }}
         pagination={{
           current: filters.page,
           pageSize: filters.limit,
@@ -274,27 +278,34 @@ export default function FormulaListPage() {
 
           <Divider style={{ margin: '4px 0' }} />
 
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 6 }}>套用篩選條件</Text>
-            <Descriptions size="small" column={1} bordered>
-              <Descriptions.Item label="配方名稱">
-                {filters.name ?? <Text type="secondary">全部</Text>}
-              </Descriptions.Item>
-              <Descriptions.Item label="類別">
-                {filters.category ?? <Text type="secondary">全部</Text>}
-              </Descriptions.Item>
-              <Descriptions.Item label="類型">
-                {filters.formulaType ?? <Text type="secondary">全部</Text>}
-              </Descriptions.Item>
-              <Descriptions.Item label="狀態">
-                {filters.status ? STATUS_LABEL[filters.status] : <Text type="secondary">全部</Text>}
-              </Descriptions.Item>
-              <Descriptions.Item label="目前筆數">
-                <Text strong>{total}</Text> 筆
-                {reportType === 'usage' && <Text type="secondary">（使用統計報表涵蓋所有配方）</Text>}
-              </Descriptions.Item>
-            </Descriptions>
-          </div>
+          {reportType === 'list' ? (
+            <div>
+              <Text strong style={{ display: 'block', marginBottom: 6 }}>套用篩選條件</Text>
+              <Descriptions size="small" column={1} bordered>
+                <Descriptions.Item label="配方名稱">
+                  {filters.name ?? <Text type="secondary">全部</Text>}
+                </Descriptions.Item>
+                <Descriptions.Item label="類別">
+                  {filters.category ?? <Text type="secondary">全部</Text>}
+                </Descriptions.Item>
+                <Descriptions.Item label="類型">
+                  {filters.formulaType ?? <Text type="secondary">全部</Text>}
+                </Descriptions.Item>
+                <Descriptions.Item label="狀態">
+                  {filters.status ? STATUS_LABEL[filters.status] : <Text type="secondary">全部</Text>}
+                </Descriptions.Item>
+                <Descriptions.Item label="目前筆數">
+                  <Text strong>{total}</Text> 筆
+                </Descriptions.Item>
+              </Descriptions>
+            </div>
+          ) : (
+            <Alert
+              type="info"
+              showIcon
+              message="使用統計報表涵蓋所有配方，不受目前篩選條件影響。"
+            />
+          )}
 
           <Divider style={{ margin: '4px 0' }} />
 
