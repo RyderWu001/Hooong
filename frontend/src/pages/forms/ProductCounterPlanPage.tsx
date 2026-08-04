@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, Input, DatePicker,
@@ -52,6 +53,7 @@ const DEFAULT_COUNTER_MATERIAL = (): CounterMaterial => ({
 const DEFAULT_RANKING = (rank: number): RankingRow => ({ rank, supplier: '', name: '', model: '', pros: '', cons: '' })
 
 function printProductCounterPlan(row: ProductCounterPlan) {
+  row = escapeDeep(row)
   const issueSrc = Array.isArray(row.issueSource) ? row.issueSource : []
   const abnType = Array.isArray(row.abnormalType) ? row.abnormalType : []
   const cFormulas = Array.isArray(row.counterFormulas) && row.counterFormulas.length ? row.counterFormulas : Array.from({ length: 5 }, (_, i) => ({ label: `CT${i + 1}`, materials: [] as MaterialRow[] }))
@@ -68,14 +70,9 @@ function printProductCounterPlan(row: ProductCounterPlan) {
 
   const cb = (opts: string[], val: string) => opts.includes(val) ? '☑' : '☐'
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>產品對抗計劃執行明細表 CMS03-07-5A</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 9.5px; color: #000; padding: 8mm; }
+  if (!openPrintWindow({
+    title: '產品對抗計劃執行明細表 CMS03-07-5A',
+    css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 9.5px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
   .header-logo { width: 140px; border-right: 1px solid #000; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
@@ -103,11 +100,8 @@ function printProductCounterPlan(row: ProductCounterPlan) {
   .sig-cell:last-child { border-right: none; }
   .sig-label { font-size: 8.5px; font-weight: bold; margin-bottom: 4px; }
   .footer { text-align: center; font-size: 8px; padding: 3px; border-top: 1px solid #ccc; }
-  @media print { @page { margin: 6mm; size: A4 landscape; } }
-</style>
-</head>
-<body>
-<div class="outer">
+  @media print { @page { margin: 6mm; size: A4 landscape; } }`,
+    body: `<div class="outer">
   <div class="header">
     <div class="header-logo">
       <div class="logo-brand">RICH<sup>®</sup></div>
@@ -197,13 +191,8 @@ function printProductCounterPlan(row: ProductCounterPlan) {
   </div>
 
   <div class="footer">(附件11) CMS03-07-5A 產品對抗計劃執行明細表</div>
-</div>
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 export default function ProductCounterPlanPage() {

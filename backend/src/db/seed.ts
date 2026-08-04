@@ -116,7 +116,24 @@ const DROPDOWN_SEED = [
   },
 ]
 
+// 這支腳本會清空全部業務資料表後重建測試資料，對正式資料庫執行等同全站刪檔。
+// 需要在正式環境重跑時，必須明確帶入 ALLOW_PRODUCTION_SEED=yes 並自行確認已備份。
+function assertSafeToSeed() {
+  const isProduction = process.env.NODE_ENV === 'production'
+  const override = process.env.ALLOW_PRODUCTION_SEED === 'yes'
+  if (isProduction && !override) {
+    throw new Error(
+      '拒絕執行：NODE_ENV=production。此腳本會清空所有資料表，' +
+      '確定要執行請設定 ALLOW_PRODUCTION_SEED=yes 並先完成備份。'
+    )
+  }
+  const dbUrl = process.env.DATABASE_URL ?? ''
+  const host = dbUrl.replace(/^.*@/, '').replace(/[/?].*$/, '')
+  console.log(`⚠️  即將清空並重建資料庫：${host || '(未知)'}`)
+}
+
 async function main() {
+  assertSafeToSeed()
   console.log('🌱 開始匯入種子資料...')
 
   // 清空資料（依外鍵相依順序）

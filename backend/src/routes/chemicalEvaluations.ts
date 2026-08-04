@@ -1,15 +1,19 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
+import { requirePermission } from '../middleware/permission'
+import { parsePagination, parseId, patchData, patchDates } from '../lib/query'
 
 const router = Router()
 
-router.get('/', requireAuth, async (req, res) => {
-  const page = Number(req.query.page ?? 1)
-  const limit = Number(req.query.limit ?? 20)
+const FIELDS = ['no', 'supplierCode', 'supplierName', 'chemicalName', 'batchNo', 'unitPrice', 'usage', 'certifications', 'hazardClassification', 'substanceType', 'pureSubstance', 'mixtures', 'cod', 'bod', 'phWater', 'appearance', 'solidContent', 'ph1pct', 'density', 'sugarDegree', 'ionProperty', 'testRecord', 'solidPhoto', 'zdhcMrsl', 'chemAppendix1', 'chemAppendix2', 'result', 'issue', 'notes', 'conclusion'] as const
+const DATE_FIELDS = ['date'] as const
+
+router.get('/', requireAuth, requirePermission('forms', 'view'), async (req, res) => {
+  const { page, limit, skip } = parsePagination(req.query)
   const [data, total] = await Promise.all([
     prisma.chemicalEvaluation.findMany({
-      skip: (page - 1) * limit,
+      skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
     }),
@@ -18,13 +22,15 @@ router.get('/', requireAuth, async (req, res) => {
   res.json({ success: true, data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })
 })
 
-router.get('/:id', requireAuth, async (req, res) => {
-  const data = await prisma.chemicalEvaluation.findUnique({ where: { id: Number(req.params.id) } })
+router.get('/:id', requireAuth, requirePermission('forms', 'view'), async (req, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
+  const data = await prisma.chemicalEvaluation.findUnique({ where: { id } })
   if (!data) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到資料' } }); return }
   res.json({ success: true, data })
 })
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requirePermission('forms', 'create'), async (req, res) => {
   const body = req.body
   const data = await prisma.chemicalEvaluation.create({
     data: {
@@ -64,49 +70,23 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json({ success: true, data })
 })
 
-router.put('/:id', requireAuth, async (req, res) => {
-  const body = req.body
+router.put('/:id', requireAuth, requirePermission('forms', 'edit'), async (req, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
   const data = await prisma.chemicalEvaluation.update({
-    where: { id: Number(req.params.id) },
+    where: { id },
     data: {
-      no: body.no ?? null,
-      date: body.date ? new Date(body.date) : null,
-      supplierCode: body.supplierCode ?? null,
-      supplierName: body.supplierName ?? null,
-      chemicalName: body.chemicalName ?? null,
-      batchNo: body.batchNo ?? null,
-      unitPrice: body.unitPrice ?? null,
-      usage: body.usage ?? null,
-      certifications: body.certifications ?? null,
-      hazardClassification: body.hazardClassification ?? null,
-      substanceType: body.substanceType ?? null,
-      pureSubstance: body.pureSubstance ?? null,
-      mixtures: body.mixtures ?? null,
-      cod: body.cod ?? null,
-      bod: body.bod ?? null,
-      phWater: body.phWater ?? null,
-      appearance: body.appearance ?? null,
-      solidContent: body.solidContent ?? null,
-      ph1pct: body.ph1pct ?? null,
-      density: body.density ?? null,
-      sugarDegree: body.sugarDegree ?? null,
-      ionProperty: body.ionProperty ?? null,
-      testRecord: body.testRecord ?? null,
-      solidPhoto: body.solidPhoto ?? null,
-      zdhcMrsl: body.zdhcMrsl ?? null,
-      chemAppendix1: body.chemAppendix1 ?? null,
-      chemAppendix2: body.chemAppendix2 ?? null,
-      result: body.result ?? null,
-      issue: body.issue ?? null,
-      notes: body.notes ?? null,
-      conclusion: body.conclusion ?? null,
+      ...patchData(req.body, FIELDS),
+      ...patchDates(req.body, DATE_FIELDS),
     },
   })
   res.json({ success: true, data })
 })
 
-router.delete('/:id', requireAuth, async (req, res) => {
-  await prisma.chemicalEvaluation.delete({ where: { id: Number(req.params.id) } })
+router.delete('/:id', requireAuth, requirePermission('forms', 'delete'), async (req, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
+  await prisma.chemicalEvaluation.delete({ where: { id } })
   res.json({ success: true, message: '已刪除' })
 })
 

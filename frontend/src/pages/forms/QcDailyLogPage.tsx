@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, DatePicker,
@@ -30,6 +31,7 @@ const DEFAULT_S3_ROWS = (): Section3Row[] =>
   Array.from({ length: 10 }, (_, i) => ({ no: i + 1, productionDate: '', chemCode: '', lot: '', quantity: '', result: '', notes: '' }))
 
 function printQcDailyLog(row: QcDailyLog) {
+  row = escapeDeep(row)
   const s1 = row.section1 ?? DEFAULT_S1_ROWS()
   const s2 = row.section2 ?? DEFAULT_S1_ROWS()
   const s3 = row.section3 ?? DEFAULT_S3_ROWS()
@@ -38,14 +40,9 @@ function printQcDailyLog(row: QcDailyLog) {
   const s2Rows = s2.map(r => `<tr><td>${r.no}</td><td>${r.productionDate}</td><td>${r.chemCode}</td><td>${r.lot}</td><td>${r.ph}</td><td>${r.brix}</td><td>${r.solidContent}</td><td>${r.result}</td></tr>`).join('')
   const s3Rows = s3.map(r => `<tr><td>${r.no}</td><td>${r.productionDate}</td><td>${r.chemCode}</td><td>${r.lot}</td><td>${r.quantity}</td><td>${r.result}</td><td>${r.notes}</td></tr>`).join('')
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>化驗室QC每日工作日誌 CMS01-03-6B</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
+  if (!openPrintWindow({
+    title: '化驗室QC每日工作日誌 CMS01-03-6B',
+    css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
   .header-logo { width: 140px; border-right: 1px solid #000; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
@@ -67,11 +64,8 @@ function printQcDailyLog(row: QcDailyLog) {
   .sig-cell:last-child { border-right: none; }
   .sig-label { font-size: 9.5px; font-weight: bold; margin-bottom: 4px; }
   .footer { text-align: center; font-size: 9px; color: #555; padding: 3px; border-top: 1px solid #ccc; }
-  @media print { @page { margin: 6mm; size: A4 portrait; } }
-</style>
-</head>
-<body>
-<div class="outer">
+  @media print { @page { margin: 6mm; size: A4 portrait; } }`,
+    body: `<div class="outer">
   <div class="header">
     <div class="header-logo">
       <div class="logo-brand">RICH<sup>®</sup></div>
@@ -149,13 +143,8 @@ function printQcDailyLog(row: QcDailyLog) {
   </div>
 
   <div class="footer">(附件10) CMS01-03-6B 化驗室QC每日工作日誌</div>
-</div>
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 function Section1Table({ rows, onChange }: { rows: Section1Row[]; onChange: (rows: Section1Row[]) => void }) {

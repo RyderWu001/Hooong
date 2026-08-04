@@ -1,15 +1,19 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
+import { requirePermission } from '../middleware/permission'
+import { parsePagination, parseId, patchData, patchDates } from '../lib/query'
 
 const router = Router()
 
-router.get('/', requireAuth, async (req, res) => {
-  const page = Number(req.query.page ?? 1)
-  const limit = Number(req.query.limit ?? 20)
+const FIELDS = ['productModel', 'productName', 'proposingDept', 'measureType', 'clientName', 'proposer', 'issueSource', 'issueDesc', 'abnormalType', 'counterFormulas', 'counterMaterials', 'rankings', 'conclusion', 'executionResult', 'notes'] as const
+const DATE_FIELDS = ['date', 'expectedDate'] as const
+
+router.get('/', requireAuth, requirePermission('forms', 'view'), async (req, res) => {
+  const { page, limit, skip } = parsePagination(req.query)
   const [data, total] = await Promise.all([
     prisma.productCounterPlan.findMany({
-      skip: (page - 1) * limit,
+      skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
     }),
@@ -18,13 +22,15 @@ router.get('/', requireAuth, async (req, res) => {
   res.json({ success: true, data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })
 })
 
-router.get('/:id', requireAuth, async (req, res) => {
-  const data = await prisma.productCounterPlan.findUnique({ where: { id: Number(req.params.id) } })
+router.get('/:id', requireAuth, requirePermission('forms', 'view'), async (req, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
+  const data = await prisma.productCounterPlan.findUnique({ where: { id } })
   if (!data) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到資料' } }); return }
   res.json({ success: true, data })
 })
 
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, requirePermission('forms', 'create'), async (req, res) => {
   const body = req.body
   const data = await prisma.productCounterPlan.create({
     data: {
@@ -50,35 +56,23 @@ router.post('/', requireAuth, async (req, res) => {
   res.status(201).json({ success: true, data })
 })
 
-router.put('/:id', requireAuth, async (req, res) => {
-  const body = req.body
+router.put('/:id', requireAuth, requirePermission('forms', 'edit'), async (req, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
   const data = await prisma.productCounterPlan.update({
-    where: { id: Number(req.params.id) },
+    where: { id },
     data: {
-      date: body.date ? new Date(body.date) : null,
-      productModel: body.productModel ?? null,
-      productName: body.productName ?? null,
-      proposingDept: body.proposingDept ?? null,
-      measureType: body.measureType ?? null,
-      clientName: body.clientName ?? null,
-      proposer: body.proposer ?? null,
-      expectedDate: body.expectedDate ? new Date(body.expectedDate) : null,
-      issueSource: body.issueSource ?? null,
-      issueDesc: body.issueDesc ?? null,
-      abnormalType: body.abnormalType ?? null,
-      counterFormulas: body.counterFormulas ?? null,
-      counterMaterials: body.counterMaterials ?? null,
-      rankings: body.rankings ?? null,
-      conclusion: body.conclusion ?? null,
-      executionResult: body.executionResult ?? null,
-      notes: body.notes ?? null,
+      ...patchData(req.body, FIELDS),
+      ...patchDates(req.body, DATE_FIELDS),
     },
   })
   res.json({ success: true, data })
 })
 
-router.delete('/:id', requireAuth, async (req, res) => {
-  await prisma.productCounterPlan.delete({ where: { id: Number(req.params.id) } })
+router.delete('/:id', requireAuth, requirePermission('forms', 'delete'), async (req, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
+  await prisma.productCounterPlan.delete({ where: { id } })
   res.json({ success: true, message: '已刪除' })
 })
 

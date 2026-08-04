@@ -170,7 +170,8 @@ export default function ReportsPage() {
       let experiments = (res.data.data ?? []) as Experiment[]
 
       if (formulaIds && formulaIds.length > 1) {
-        experiments = experiments.filter((e) => formulaIds!.includes(e.formulaId))
+        // 實驗可以不綁定配方，此時 formulaId 為 null，不應納入配方篩選結果
+        experiments = experiments.filter((e) => e.formulaId !== null && formulaIds!.includes(e.formulaId))
       }
       if (formulaIds?.length === 0) experiments = []
 

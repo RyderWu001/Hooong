@@ -1,13 +1,14 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
+import { validateNumericParams, parsePagination } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 // GET /results  — 跨實驗的結果列表
 router.get('/', requireAuth, async (req, res) => {
-  const page = Number(req.query.page ?? 1)
-  const limit = Number(req.query.limit ?? 20)
+  const { page, limit, skip } = parsePagination(req.query, 20)
   const { experimentCode, formulaName, experimenterId, status, dateFrom, dateTo } = req.query
 
   const where: any = {}
@@ -30,14 +31,14 @@ router.get('/', requireAuth, async (req, res) => {
   }
 
   const [data, total] = await Promise.all([
-    prisma.experimentResult.findMany({ where, skip: (page - 1) * limit, take: limit, include, orderBy: { createdAt: 'desc' } }),
+    prisma.experimentResult.findMany({ where, skip, take: limit, include, orderBy: { createdAt: 'desc' } }),
     prisma.experimentResult.count({ where }),
   ])
 
   const formatted = data.map((r) => ({
     ...r,
     experimentCode: r.experiment.code,
-    formulaName: r.experiment.formula.name,
+    formulaName: r.experiment.formula?.name ?? '—',
     experimenterName: r.experiment.experimenter.username,
     experiment: undefined,
   }))

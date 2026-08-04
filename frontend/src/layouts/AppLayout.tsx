@@ -137,7 +137,7 @@ export default function AppLayout() {
         { key: '/traceability', icon: <ApartmentOutlined />, label: '溯源管理' },
       ],
     },
-    { key: '/materials', icon: <ShopOutlined />, label: '原物料管理' },
+    { key: '/materials', icon: <ShopOutlined />, label: '原料管理' },
     {
       key: '/experiments',
       icon: <ExperimentOutlined />,
@@ -153,15 +153,17 @@ export default function AppLayout() {
       icon: <FormOutlined />,
       label: '表單管理',
       children: [
-        { key: '/lab-daily-log',               icon: <CalendarOutlined />, label: '每日工作日誌' },
+        // 名稱對齊需求文件的正式表單名稱
+        { key: '/lab-daily-log',               icon: <CalendarOutlined />, label: '化驗室每日工作日誌' },
         { key: '/sample-submissions',          icon: <TagsOutlined />,     label: '送樣連絡單' },
         { key: '/chemical-evaluations',        icon: <AuditOutlined />,    label: '化學品評估表' },
         { key: '/chemical-requests',           icon: <FileAddOutlined />,  label: '化學品需求申請單' },
         { key: '/qc-daily-logs',               icon: <CalendarOutlined />, label: 'QC每日工作日誌' },
-        { key: '/product-counter-plans',       icon: <AuditOutlined />,    label: '產品對抗計劃' },
-        { key: '/chem-preparations',           icon: <FileAddOutlined />,  label: '藥劑泡製紀錄' },
-        { key: '/product-reworks',             icon: <FileAddOutlined />,  label: '產品重修紀錄' },
-        { key: '/supplier-compliance-audits',  icon: <AuditOutlined />,    label: '供應商合規評鑑' },
+        { key: '/product-counter-plans',       icon: <AuditOutlined />,    label: '產品對抗計劃執行明細表' },
+        { key: '/chem-preparations',           icon: <FileAddOutlined />,  label: '化驗室藥劑泡製紀錄' },
+        { key: '/product-reworks',             icon: <FileAddOutlined />,  label: '產品重修配置紀錄表' },
+        { key: '/suppliers',                   icon: <ShopOutlined />,     label: '化學品供應商資料表' },
+        { key: '/supplier-compliance-audits',  icon: <AuditOutlined />,    label: '化學品供應商評鑑資料表' },
         { key: '/formula-changes',             icon: <FormOutlined />,     label: '配方變更核准申請書' },
         { key: '/mass-production-approvals',   icon: <AuditOutlined />,    label: '新配方量產核准紀錄表' },
       ],
@@ -230,6 +232,7 @@ export default function AppLayout() {
     '/product-counter-plans':      '/forms',
     '/chem-preparations':          '/forms',
     '/product-reworks':            '/forms',
+    '/suppliers':                  '/forms',
     '/supplier-compliance-audits': '/forms',
     '/formula-changes':            '/forms',
     '/mass-production-approvals':  '/forms',
@@ -336,7 +339,7 @@ export default function AppLayout() {
           </Descriptions.Item>
         </Descriptions>
 
-        <Divider orientation="left" style={{ fontSize: 13, margin: '16px 0 10px' }}>我的電子簽名</Divider>
+        <Divider titlePlacement="left" style={{ fontSize: 13, margin: '16px 0 10px' }}>我的電子簽名</Divider>
 
         {mySignature ? (
           <div style={{ border: '1px solid #333', borderRadius: 6, padding: 12, textAlign: 'center', background: '#111', marginBottom: 10 }}>

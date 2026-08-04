@@ -1,9 +1,11 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { validateNumericParams } from '../lib/query'
 
 // ── Suppliers (/api/v1/suppliers) ─────────────────────────────
 export const suppliersRouter = Router()
+validateNumericParams(suppliersRouter)
 
 suppliersRouter.get('/', requireAuth, async (req, res) => {
   const { name, status } = req.query
@@ -70,6 +72,7 @@ suppliersRouter.get('/:id/evaluations', requireAuth, async (req, res) => {
 
 // ── Evaluations (/api/v1/evaluations) ─────────────────────────
 export const evaluationsRouter = Router()
+validateNumericParams(evaluationsRouter)
 
 evaluationsRouter.get('/', requireAuth, async (req, res) => {
   const { supplierId } = req.query
@@ -95,6 +98,7 @@ evaluationsRouter.post('/', requireAuth, async (req: AuthRequest, res) => {
 
 // ── Purchases (/api/v1/purchases) ─────────────────────────────
 export const purchasesRouter = Router()
+validateNumericParams(purchasesRouter)
 
 purchasesRouter.get('/', requireAuth, async (req, res) => {
   const { supplierId, status, ingredientName, dateFrom, dateTo } = req.query

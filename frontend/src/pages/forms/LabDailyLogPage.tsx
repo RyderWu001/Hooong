@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, DatePicker, Input,
@@ -29,15 +30,14 @@ interface LabDailyLog {
 }
 
 function printLog(log: LabDailyLog, sigSupervisor: string | null, sigLabTech: string | null) {
+  log = escapeDeep(log)
+  sigSupervisor = escapeDeep(sigSupervisor)
+  sigLabTech = escapeDeep(sigLabTech)
   const entries = log.testEntries ?? []
   const rows = [...entries, ...Array(Math.max(0, 8 - entries.length)).fill({ target: '', result: '' })]
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>化驗室每日工作日誌</title>
-<style>
-  body { font-family: 'Microsoft JhengHei', sans-serif; font-size: 12px; margin: 20px; color: #000; }
+  if (!openPrintWindow({
+    title: '化驗室每日工作日誌',
+    css: `  body { font-family: 'Microsoft JhengHei', sans-serif; font-size: 12px; margin: 20px; color: #000; }
   h2 { text-align: center; font-size: 16px; margin-bottom: 4px; }
   .form-no { text-align: right; font-size: 11px; margin-bottom: 8px; }
   .header-row { display: flex; gap: 20px; margin-bottom: 12px; }
@@ -48,12 +48,8 @@ function printLog(log: LabDailyLog, sigSupervisor: string | null, sigLabTech: st
   .sig-box { flex: 1; border: 1px solid #000; min-height: 60px; padding: 4px; text-align: center; }
   .sig-label { font-size: 11px; margin-bottom: 4px; }
   .procedure-area { border: 1px solid #000; min-height: 120px; padding: 8px; white-space: pre-wrap; }
-  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  @media print { @page { margin: 15mm; } }
-</style>
-</head>
-<body>
-<div class="form-no">CMS01-03-3B</div>
+  @media print { @page { margin: 15mm; } }`,
+    body: `<div class="form-no">CMS01-03-3B</div>
 <h2>化驗室每日工作日誌</h2>
 <div class="header-row">
   <span>日期：${dayjs(log.logDate).format('YYYY 年 MM 月 DD 日')}</span>
@@ -78,12 +74,8 @@ function printLog(log: LabDailyLog, sigSupervisor: string | null, sigLabTech: st
     <div class="sig-label">化驗員</div>
     ${sigLabTech ? `<img src="${sigLabTech}" style="max-height:50px;max-width:100px">` : ''}
   </div>
-</div>
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 export default function LabDailyLogPage() {
@@ -99,7 +91,6 @@ export default function LabDailyLogPage() {
   // signature images stored in browser only
   const [sigSupervisor, setSigSupervisor] = useState<string | null>(null)
   const [sigLabTech, setSigLabTech] = useState<string | null>(null)
-  const [printTarget, setPrintTarget] = useState<LabDailyLog | null>(null)
 
   const load = useCallback(async (p = 1) => {
     setLoading(true)
@@ -195,7 +186,7 @@ export default function LabDailyLogPage() {
       render: (_, row) => (
         <Space>
           <Button size="small" icon={<PrinterOutlined />}
-            onClick={() => { setPrintTarget(row); printLog(row, sigSupervisor, sigLabTech) }}>列印</Button>
+            onClick={() => printLog(row, sigSupervisor, sigLabTech)}>列印</Button>
           <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)} />
           <Popconfirm title="確定刪除？" onConfirm={() => handleDelete(row.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />

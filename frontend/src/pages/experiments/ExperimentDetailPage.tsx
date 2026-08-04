@@ -1133,6 +1133,7 @@ export default function ExperimentDetailPage() {
           label: pendingClientInfo?.clientContact ?? '',
           sampleDate: pendingClientInfo?.expDate ?? new Date().toISOString(),
           targetItem: '',
+          notes: '',
           sampleType: '客戶來樣品',
           status: '確認中',
         })

@@ -1,87 +1,90 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
+import { requirePermission } from '../middleware/permission'
+import { parsePagination, parseId } from '../lib/query'
 
 const router = Router()
 
-router.get('/', requireAuth, async (_req, res) => {
-  const data = await prisma.massProductionApproval.findMany({ orderBy: { createdAt: 'desc' } })
-  res.json({ success: true, data })
+const TEXT_FIELDS = [
+  'no', 'newFormulaCode', 'oldFormulaCode', 'dept', 'applicant', 'productName',
+  'customerUsage', 'testCode', 'testContent', 'officialFormula', 'specStandards',
+  'testSummary', 'meetsInternalSpec', 'mrsl1', 'mrsl2', 'zdhcMrsl',
+  'zdhcLevel1Result', 'zdhcLevel3Result', 'zdhcPidCode',
+  'sdsVersions', 'tdsVersions', 'coaResult', 'otherRegulations',
+  'customerQty', 'officialProductCode', 'officialProductName', 'productionRisks',
+  'reportDept', 'reportPerson', 'reportTime',
+] as const
+
+const BOOL_FIELDS = [
+  'testTypePhysical', 'testTypeStability', 'testTypeApplication',
+  'zdhcLevel1Required', 'zdhcLevel3Required',
+  'completionProductApp', 'completionOperation',
+  'completionTechConsult', 'completionTechService', 'completionOther',
+] as const
+
+const DATE_FIELDS = [
+  'date', 'testCompletionDate', 'massProductionDate', 'reportDate',
+] as const
+
+/** 新增用：未提供的欄位一律給預設值。 */
+function buildCreate(b: Record<string, unknown>) {
+  const out: Record<string, unknown> = {}
+  for (const f of TEXT_FIELDS) out[f] = b[f] ?? null
+  for (const f of BOOL_FIELDS) out[f] = !!b[f]
+  for (const f of DATE_FIELDS) out[f] = b[f] ? new Date(b[f] as string) : null
+  out.formulaId = b.formulaId ? Number(b.formulaId) : null
+  return out
+}
+
+/** 更新用：只寫入請求有帶的欄位，避免部分更新把其他欄位清空。 */
+function buildUpdate(b: Record<string, unknown>) {
+  const out: Record<string, unknown> = { updatedAt: new Date() }
+  for (const f of TEXT_FIELDS) if (b[f] !== undefined) out[f] = b[f]
+  for (const f of BOOL_FIELDS) if (b[f] !== undefined) out[f] = !!b[f]
+  for (const f of DATE_FIELDS) if (b[f] !== undefined) out[f] = b[f] ? new Date(b[f] as string) : null
+  if (b.formulaId !== undefined) out.formulaId = b.formulaId ? Number(b.formulaId) : null
+  return out
+}
+
+router.get('/', requireAuth, requirePermission('forms', 'view'), async (req, res) => {
+  // 前端一次載入全部並自行分頁，預設值放寬以維持既有行為，同時仍受 MAX_PAGE_SIZE 箝制
+  const { page, limit, skip } = parsePagination(req.query, 200)
+  const [data, total] = await Promise.all([
+    prisma.massProductionApproval.findMany({ skip, take: limit, orderBy: { createdAt: 'desc' } }),
+    prisma.massProductionApproval.count(),
+  ])
+  res.json({ success: true, data, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })
 })
 
-router.get('/:id', requireAuth, async (req, res) => {
-  const record = await prisma.massProductionApproval.findUnique({ where: { id: Number(req.params.id) } })
-  if (!record) { res.status(404).json({ success: false, error: { message: '找不到記錄' } }); return }
+router.get('/:id', requireAuth, requirePermission('forms', 'view'), async (req, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
+  const record = await prisma.massProductionApproval.findUnique({ where: { id } })
+  if (!record) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到記錄' } }); return }
   res.json({ success: true, data: record })
 })
 
-router.post('/', requireAuth, async (req, res) => {
-  const data = await prisma.massProductionApproval.create({ data: sanitize(req.body) })
+router.post('/', requireAuth, requirePermission('forms', 'create'), async (req, res) => {
+  const data = await prisma.massProductionApproval.create({ data: buildCreate(req.body) as never })
   res.status(201).json({ success: true, data })
 })
 
-router.put('/:id', requireAuth, async (req, res) => {
+router.put('/:id', requireAuth, requirePermission('forms', 'edit'), async (req, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
   const data = await prisma.massProductionApproval.update({
-    where: { id: Number(req.params.id) },
-    data: sanitize(req.body),
+    where: { id },
+    data: buildUpdate(req.body) as never,
   })
   res.json({ success: true, data })
 })
 
-router.delete('/:id', requireAuth, async (req, res) => {
-  await prisma.massProductionApproval.delete({ where: { id: Number(req.params.id) } })
+router.delete('/:id', requireAuth, requirePermission('forms', 'delete'), async (req, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
+  await prisma.massProductionApproval.delete({ where: { id } })
   res.json({ success: true, message: '已刪除' })
 })
-
-function sanitize(b: any) {
-  return {
-    no: b.no ?? null,
-    newFormulaCode: b.newFormulaCode ?? null,
-    oldFormulaCode: b.oldFormulaCode ?? null,
-    date: b.date ? new Date(b.date) : null,
-    dept: b.dept ?? null,
-    applicant: b.applicant ?? null,
-    productName: b.productName ?? null,
-    customerUsage: b.customerUsage ?? null,
-    testCode: b.testCode ?? null,
-    testContent: b.testContent ?? null,
-    testTypePhysical: !!b.testTypePhysical,
-    testTypeStability: !!b.testTypeStability,
-    testTypeApplication: !!b.testTypeApplication,
-    officialFormula: b.officialFormula ?? null,
-    specStandards: b.specStandards ?? null,
-    testSummary: b.testSummary ?? null,
-    meetsInternalSpec: b.meetsInternalSpec ?? null,
-    testCompletionDate: b.testCompletionDate ? new Date(b.testCompletionDate) : null,
-    mrsl1: b.mrsl1 ?? null,
-    mrsl2: b.mrsl2 ?? null,
-    zdhcMrsl: b.zdhcMrsl ?? null,
-    zdhcLevel1Required: !!b.zdhcLevel1Required,
-    zdhcLevel1Result: b.zdhcLevel1Result ?? null,
-    zdhcLevel3Required: !!b.zdhcLevel3Required,
-    zdhcLevel3Result: b.zdhcLevel3Result ?? null,
-    zdhcPidCode: b.zdhcPidCode ?? null,
-    sdsVersions: b.sdsVersions ?? null,
-    tdsVersions: b.tdsVersions ?? null,
-    coaResult: b.coaResult ?? null,
-    otherRegulations: b.otherRegulations ?? null,
-    massProductionDate: b.massProductionDate ? new Date(b.massProductionDate) : null,
-    customerQty: b.customerQty ?? null,
-    officialProductCode: b.officialProductCode ?? null,
-    officialProductName: b.officialProductName ?? null,
-    productionRisks: b.productionRisks ?? null,
-    reportDept: b.reportDept ?? null,
-    reportPerson: b.reportPerson ?? null,
-    reportDate: b.reportDate ? new Date(b.reportDate) : null,
-    reportTime: b.reportTime ?? null,
-    completionProductApp: !!b.completionProductApp,
-    completionOperation: !!b.completionOperation,
-    completionTechConsult: !!b.completionTechConsult,
-    completionTechService: !!b.completionTechService,
-    completionOther: !!b.completionOther,
-    formulaId: b.formulaId ? Number(b.formulaId) : null,
-    updatedAt: new Date(),
-  }
-}
 
 export default router

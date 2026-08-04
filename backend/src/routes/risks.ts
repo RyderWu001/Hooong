@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { validateNumericParams } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 // ── Formula Risks ──────────────────────────────────────────────
 router.get('/formulas', requireAuth, async (req, res) => {

@@ -1,10 +1,11 @@
 import { Router } from 'express'
-import multer from 'multer'
+import { uploadPdf } from '../middleware/upload'
 import { PDFParse } from 'pdf-parse'
 import { requireAuth } from '../middleware/auth'
+import { validateNumericParams } from '../lib/query'
 
 const router = Router()
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } })
+validateNumericParams(router)
 
 function extractField(text: string, ...patterns: RegExp[]): string | null {
   for (const p of patterns) {
@@ -124,7 +125,7 @@ function parseCommissionPDF(rawText: string) {
   }
 }
 
-router.post('/', requireAuth, upload.single('pdf'), async (req, res) => {
+router.post('/', requireAuth, uploadPdf.single('pdf'), async (req, res) => {
   const file = req.file
   if (!file) {
     res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '請上傳 PDF 檔案' } })

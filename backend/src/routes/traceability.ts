@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
+import { validateNumericParams } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 // GET /traceability/formula/:id — 配方版本溯源
 router.get('/formula/:id', requireAuth, async (req, res) => {

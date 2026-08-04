@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { validateNumericParams, parsePagination } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 const formulaInclude = {
   ingredients: { include: { ingredient: true } },
@@ -33,8 +35,7 @@ function buildSnapshot(ingredients: any[]) {
 
 // GET /formulas
 router.get('/', requireAuth, async (req, res) => {
-  const page = Number(req.query.page ?? 1)
-  const limit = Number(req.query.limit ?? 20)
+  const { page, limit, skip } = parsePagination(req.query, 20)
   const status = req.query.status as string | undefined
   const category = req.query.category as string | undefined
   const formulaType = req.query.formulaType as string | undefined
@@ -47,7 +48,7 @@ router.get('/', requireAuth, async (req, res) => {
   if (name) where.name = { contains: name, mode: 'insensitive' }
 
   const [data, total] = await Promise.all([
-    prisma.formula.findMany({ where, skip: (page - 1) * limit, take: limit, include: formulaInclude, orderBy: { createdAt: 'desc' } }),
+    prisma.formula.findMany({ where, skip, take: limit, include: formulaInclude, orderBy: { createdAt: 'desc' } }),
     prisma.formula.count({ where }),
   ])
   res.json({ success: true, data: data.map(formatFormula), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })

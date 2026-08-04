@@ -1,7 +1,8 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, Input, DatePicker,
-  Popconfirm, message, Typography, Tag, Divider, Checkbox, InputNumber,
+  Popconfirm, message, Typography, Divider, Checkbox, InputNumber,
 } from 'antd'
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, PrinterOutlined, FileTextOutlined, AuditOutlined,
@@ -67,6 +68,8 @@ const DEFAULT_TRACKING: TrackingResult = { week1: '', week2: '', week3: '', conc
 const DEFAULT_ORDER: OrderInfo = { orderTime: '', massProductionModel: '', orderQty: '', formulaNo: '' }
 
 function printSubmission(sub: SampleSubmission, chainSigs: FormSignatureRecord[] = []) {
+  sub = escapeDeep(sub)
+  chainSigs = escapeDeep(chainSigs)
   const items = sub.sampleItems ?? DEFAULT_SAMPLE_ITEMS
   const pkgs = sub.packaging ?? []
   const fabrics = sub.customerFabric ?? { color: '', yarnType: '', material: '', hasReport: false }
@@ -95,13 +98,9 @@ function printSubmission(sub: SampleSubmission, chainSigs: FormSignatureRecord[]
     </tr>`
   ).join('')
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>送樣連絡單</title>
-<style>
-  body { font-family: 'Microsoft JhengHei', sans-serif; font-size: 11px; margin: 15px; color: #000; }
+  if (!openPrintWindow({
+    title: '送樣連絡單',
+    css: `  body { font-family: 'Microsoft JhengHei', sans-serif; font-size: 11px; margin: 15px; color: #000; }
   h2 { text-align: center; font-size: 15px; margin: 0 0 6px; }
   .form-no { text-align: right; font-size: 10px; }
   .header-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; margin-bottom: 8px; }
@@ -117,12 +116,8 @@ function printSubmission(sub: SampleSubmission, chainSigs: FormSignatureRecord[]
   .sig-label { font-size: 10px; border-bottom: 1px solid #ccc; margin-bottom: 2px; }
   .pkg-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 8px; }
   .pkg-item { border: 1px solid #999; padding: 3px; text-align: center; font-size: 10px; }
-  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  @media print { @page { margin: 10mm; size: A4 portrait; } }
-</style>
-</head>
-<body>
-<div class="form-no">CMS03-03-1B No. ${sub.formNo ?? ''}</div>
+  @media print { @page { margin: 10mm; size: A4 portrait; } }`,
+    body: `<div class="form-no">CMS03-03-1B No. ${sub.formNo ?? ''}</div>
 <h2>送樣連絡單</h2>
 <div class="header-grid">
   <div class="field"><div class="field-label">公司名稱</div>${sub.companyName}</div>
@@ -197,12 +192,8 @@ function printSubmission(sub: SampleSubmission, chainSigs: FormSignatureRecord[]
   <div class="field"><div class="field-label">配方編號</div>${order.formulaNo}</div>
 </div>
 
-<div class="sig-row">${sigBoxes}</div>
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+<div class="sig-row">${sigBoxes}</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 export default function SampleSubmissionPage() {

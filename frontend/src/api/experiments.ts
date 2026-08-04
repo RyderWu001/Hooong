@@ -33,7 +33,7 @@ export const getGroups = (experimentId: number) =>
   client.get(`/experiments/${experimentId}/groups`)
 
 export const createGroup = (experimentId: number, data: {
-  name: string; experimentType?: string | null
+  name: string; groupOrder?: number; experimentType?: string | null
   bathRatio?: string | null; startPH?: number | null; endPH?: number | null
   acidMethod?: string | null; tempRate?: string | null; holdTime?: number | null
   burningCondition?: string | null; washCondition?: string | null; dyeAuxiliaries?: string[] | null

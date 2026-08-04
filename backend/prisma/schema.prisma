@@ -29,6 +29,8 @@ model User {
   createdIngredients    Ingredient[]         @relation("IngredientCreator")
   knowledgeArticles     KnowledgeArticle[]
   formSignatures        FormSignature[]
+
+  @@index([createdAt])
 }
 
 model Ingredient {
@@ -60,6 +62,9 @@ model Ingredient {
   abnormalEvents   AbnormalEvent[]
   documents        IngredientDocument[]
   batches          IngredientBatch[]
+
+  @@index([createdAt])
+  @@index([createdById])
 }
 
 model IngredientDocument {
@@ -72,6 +77,9 @@ model IngredientDocument {
   uploadedAt   DateTime   @default(now())
   uploadedBy   User       @relation(fields: [uploadedById], references: [id])
   uploadedById Int
+
+  @@index([ingredientId])
+  @@index([uploadedById])
 }
 
 model IngredientBatch {
@@ -101,6 +109,9 @@ model IngredientBatch {
   qcPhotoAppearance String?
   qcPhotoSolid      String?
   createdAt         DateTime   @default(now())
+
+  @@index([ingredientId])
+  @@index([createdAt])
 }
 
 model Formula {
@@ -122,6 +133,8 @@ model Formula {
   abnormalEvents   AbnormalEvent[]
   formulaChanges        FormulaChangeApplication[]
   massProductionRecords MassProductionApproval[]
+
+  @@index([createdAt])
 }
 
 model FormulaIngredient {
@@ -132,6 +145,9 @@ model FormulaIngredient {
   ingredientId Int
   ratio        Float
   unit         String
+
+  @@index([formulaId])
+  @@index([ingredientId])
 }
 
 model FormulaVersion {
@@ -144,6 +160,10 @@ model FormulaVersion {
   createdAt           DateTime @default(now())
   createdBy           User     @relation(fields: [userId], references: [id])
   userId              Int
+
+  @@index([formulaId])
+  @@index([createdAt])
+  @@index([userId])
 }
 
 model Experiment {
@@ -175,6 +195,11 @@ model Experiment {
   samples          Sample[]
   result           ExperimentResult?
   transactions     MaterialTransaction[]
+
+  @@index([formulaId])
+  @@index([experimenterId])
+  @@index([experimentDate])
+  @@index([createdAt])
 }
 
 model ExperimentGroup {
@@ -214,6 +239,9 @@ model ExperimentGroup {
   steps             ExperimentGroupStep[]
   attachments       Attachment[]
   samples           Sample[]
+
+  @@index([experimentId])
+  @@index([createdAt])
 }
 
 model ExperimentGroupStep {
@@ -225,6 +253,8 @@ model ExperimentGroupStep {
   notes       String          @default("")
   isHighlight Boolean         @default(false)
   attachments Attachment[]
+
+  @@index([groupId])
 }
 
 model Sample {
@@ -252,6 +282,9 @@ model Sample {
   retentionLocation String?          // 留樣位置
   storageCondition  String?          // 保存條件（常溫/冷藏/避光）
   attachments       Attachment[]
+
+  @@index([experimentId])
+  @@index([groupId])
 }
 
 model Attachment {
@@ -271,6 +304,13 @@ model Attachment {
   resultId                Int?
   sample                  Sample?               @relation(fields: [sampleId], references: [id], onDelete: Cascade)
   sampleId                Int?
+
+  @@index([createdAt])
+  @@index([experimentId])
+  @@index([experimentGroupId])
+  @@index([experimentGroupStepId])
+  @@index([resultId])
+  @@index([sampleId])
 }
 
 model ExperimentResult {
@@ -300,6 +340,8 @@ model ExperimentResult {
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
   attachments          Attachment[]
+
+  @@index([createdAt])
 }
 
 // ── 原物料管理 ────────────────────────────────────────────────
@@ -328,6 +370,11 @@ model MaterialTransaction {
   operatorId            Int
   note                  String            @default("")
   createdAt             DateTime          @default(now())
+
+  @@index([inventoryId])
+  @@index([relatedExperimentId])
+  @@index([operatorId])
+  @@index([createdAt])
 }
 
 // ── 供應商管理 ────────────────────────────────────────────────
@@ -359,6 +406,8 @@ model Supplier {
   tradingProducts  Json?
   evaluations      SupplierEvaluation[]
   purchases        PurchaseRecord[]
+
+  @@index([createdAt])
 }
 
 model SupplierEvaluation {
@@ -376,6 +425,10 @@ model SupplierEvaluation {
   evaluator      User     @relation(fields: [evaluatorId], references: [id])
   evaluatorId    Int
   createdAt      DateTime @default(now())
+
+  @@index([supplierId])
+  @@index([evaluatorId])
+  @@index([createdAt])
 }
 
 model PurchaseRecord {
@@ -392,6 +445,10 @@ model PurchaseRecord {
   status       String    @default("PENDING")
   notes        String    @default("")
   createdAt    DateTime  @default(now())
+
+  @@index([supplierId])
+  @@index([ingredientId])
+  @@index([createdAt])
 }
 
 // ── 下拉選項管理 ─────────────────────────────────────────────
@@ -412,6 +469,9 @@ model DropdownOption {
   sortOrder  Int              @default(0)
   isActive   Boolean          @default(true)
   createdAt  DateTime         @default(now())
+
+  @@index([categoryId])
+  @@index([createdAt])
 }
 
 // ── 風險管理 ──────────────────────────────────────────────────
@@ -428,6 +488,9 @@ model FormulaRisk {
   assessedById Int
   assessedAt  DateTime @default(now())
   nextReviewAt DateTime
+
+  @@index([formulaId])
+  @@index([assessedById])
 }
 
 model IngredientRisk {
@@ -442,6 +505,9 @@ model IngredientRisk {
   assessedBy          User       @relation(fields: [assessedById], references: [id])
   assessedById        Int
   assessedAt          DateTime   @default(now())
+
+  @@index([ingredientId])
+  @@index([assessedById])
 }
 
 model AbnormalEvent {
@@ -465,6 +531,13 @@ model AbnormalEvent {
   resolvedById        Int?
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
+
+  @@index([relatedFormulaId])
+  @@index([relatedIngredientId])
+  @@index([occurredAt])
+  @@index([reportedById])
+  @@index([resolvedById])
+  @@index([createdAt])
 }
 
 // ── 附件4: 送樣連絡單 (CMS03-03-1B) ─────────────────────────────────────────
@@ -489,6 +562,9 @@ model SampleSubmission {
   orderInfo            Json?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+
+  @@index([formDate])
+  @@index([createdAt])
 }
 
 // ── 附件5: 化驗室每日工作日誌 (CMS01-03-3B) ─────────────────────────────────
@@ -501,6 +577,9 @@ model LabDailyLog {
   procedureRecords String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  @@index([logDate])
+  @@index([createdAt])
 }
 
 // ── 知識庫 ────────────────────────────────────────────────────
@@ -515,6 +594,9 @@ model KnowledgeArticle {
   createdById Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([createdById])
+  @@index([createdAt])
 }
 
 // ── 細粒度權限 ─────────────────────────────────────────────────
@@ -568,6 +650,9 @@ model ChemicalEvaluation {
   conclusion           String?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+
+  @@index([date])
+  @@index([createdAt])
 }
 
 // ── 附件9: 化學品需求申請單 (CMS01-01-2B) ────────────────────────────────────
@@ -601,6 +686,9 @@ model ChemicalRequest {
   notes               String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  @@index([date])
+  @@index([createdAt])
 }
 
 // ── 附件10: QC每日工作日誌 (CMS01-03-6B) ─────────────────────────────────────
@@ -614,6 +702,9 @@ model QcDailyLog {
   section4  String?  @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([logDate])
+  @@index([createdAt])
 }
 
 // ── 附件11: 產品對抗計劃執行明細表 (CMS03-07-5A) ──────────────────────────────
@@ -639,6 +730,9 @@ model ProductCounterPlan {
   notes            String?   @db.Text
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  @@index([date])
+  @@index([createdAt])
 }
 
 // ── 附件12: 化驗室藥劑泡製紀錄 (CMS03-07-6A) ─────────────────────────────────
@@ -655,6 +749,9 @@ model ChemPreparation {
   notes      String?  @db.Text
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([prepDate])
+  @@index([createdAt])
 }
 
 // ── 附件13: 產品重修配置紀錄表 (CMS03-07-7A) ─────────────────────────────────
@@ -678,6 +775,9 @@ model ProductRework {
   notes           String?   @db.Text
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@index([originalDate])
+  @@index([createdAt])
 }
 
 // ── 附件6: 配方變更核准申請書 (CMS03-07-3A) ──────────────────────────────────
@@ -708,6 +808,10 @@ model FormulaChangeApplication {
   formula         Formula?  @relation(fields: [formulaId], references: [id], onDelete: SetNull)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@index([date])
+  @@index([formulaId])
+  @@index([createdAt])
 }
 
 // ── 附件15: 化學品供應商評鑑資料表 (CMS01-05-2A) ─────────────────────────────
@@ -734,6 +838,10 @@ model SupplierComplianceAudit {
   notes               String?   @db.Text
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  @@index([supplierId])
+  @@index([auditDate])
+  @@index([createdAt])
 }
 
 // ── 附件7: 新配方量產核准紀錄表 (CMS03-07-4A) ────────────────────────────────
@@ -788,6 +896,10 @@ model MassProductionApproval {
   formula              Formula?  @relation(fields: [formulaId], references: [id], onDelete: SetNull)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+
+  @@index([date])
+  @@index([formulaId])
+  @@index([createdAt])
 }
 
 // ── 電子簽核 ─────────────────────────────────────────────────────────────────
@@ -806,4 +918,8 @@ model FormSignature {
   createdAt    DateTime  @default(now())
 
   @@unique([formType, formId, slotName])
+
+  @@index([formId])
+  @@index([signedById])
+  @@index([createdAt])
 }

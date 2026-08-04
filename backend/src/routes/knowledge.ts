@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { validateNumericParams } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 // GET /knowledge — 列表 + 搜尋
 router.get('/', requireAuth, async (req, res) => {
@@ -94,6 +96,11 @@ router.post('/ai-chat', requireAuth, async (req, res) => {
     res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '請輸入問題' } })
     return
   }
+  // 每次呼叫都會產生外部 API 費用，長度需設上限
+  if (String(question).length > 2000) {
+    res.status(400).json({ success: false, error: { code: 'QUESTION_TOO_LONG', message: '問題長度上限 2000 字' } })
+    return
+  }
 
   // 從混合中英文問題中提取關鍵字（bigram + ASCII word）
   function extractKeywords(text: string): string[] {
@@ -150,20 +157,37 @@ router.post('/ai-chat', requireAuth, async (req, res) => {
     { role: 'user', content: `${question}${contextText}` },
   ]
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1500,
-      system: systemPrompt,
-      messages,
-    }),
-  })
+  // 無 timeout 時，上游若無回應會讓此請求一直懸著並佔用連線
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 30_000)
+
+  let response: Response
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages,
+      }),
+      signal: controller.signal,
+    })
+  } catch (e) {
+    const aborted = (e as Error)?.name === 'AbortError'
+    res.status(504).json({
+      success: false,
+      error: { code: 'AI_TIMEOUT', message: aborted ? 'AI 服務逾時，請稍後再試' : 'AI 服務連線失敗' },
+    })
+    return
+  } finally {
+    clearTimeout(timer)
+  }
 
   if (!response.ok) {
     res.status(502).json({ success: false, error: { code: 'AI_ERROR', message: `AI 服務異常 (${response.status})` } })

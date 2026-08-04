@@ -1,8 +1,10 @@
 import { Router, NextFunction, Request, Response } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { validateNumericParams } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 const inventoryInclude = {
   ingredient: { select: { name: true, unit: true } },
@@ -131,7 +133,7 @@ router.get('/traceability/:ingredientId', requireAuth, async (req, res) => {
         formulaId: f.formula.id, formulaCode: f.formula.code, formulaName: f.formula.name, ratio: f.ratio, unit: f.unit,
       })),
       usedInExperiments: experimentUses.map((e) => ({
-        experimentId: e.id, experimentCode: e.code, formulaName: e.formula.name, experimentDate: e.experimentDate,
+        experimentId: e.id, experimentCode: e.code, formulaName: e.formula?.name ?? '—', experimentDate: e.experimentDate,
       })),
     },
   })

@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import {
   Card, Tabs, Table, Button, Modal, Form, Input, InputNumber,
@@ -31,7 +32,7 @@ import type {
 import { useAuthStore } from '../../stores/authStore'
 import DropdownSelect from '../../components/DropdownSelect'
 import ApprovalChain from '../../components/ApprovalChain'
-import { getFormSignatures, type FormSignatureRecord } from '../../api/formSignatures'
+import { getFormSignatures, getFormSignatureCounts } from '../../api/formSignatures'
 
 const { Text } = Typography
 
@@ -131,6 +132,16 @@ function printQCReport(
   photoSolidUrl: string | null,
   chainSigs: Array<{ slotName: string; signatureImg: string | null; signedByName: string | null; signedAt: string | null }> = [],
 ) {
+  batch = escapeDeep(batch)
+  ingredient = escapeDeep(ingredient)
+  acceptanceNo = escapeDeep(acceptanceNo)
+  orderDate = escapeDeep(orderDate)
+  qcItems = escapeDeep(qcItems)
+  qcNotes = escapeDeep(qcNotes)
+  photoAppearanceUrl = escapeDeep(photoAppearanceUrl)
+  photoSolidUrl = escapeDeep(photoSolidUrl)
+  chainSigs = escapeDeep(chainSigs)
+
   const sigFor = (name: string) => chainSigs.find(s => s.slotName === name)
   const arrivalStr = batch.arrivalDate ? dayjs(batch.arrivalDate).format('YYYY-MM-DD') : ''
 
@@ -158,25 +169,17 @@ function printQCReport(
     </tr>`
   }).join('')
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>進料品質檢驗分析報告書</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  body{font-family:'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif;font-size:11px;color:#000;background:#fff;padding:10px}
+  if (!openPrintWindow({
+    title: '進料品質檢驗分析報告書',
+    css: `  body{font-family:'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif;font-size:11px;color:#000;background:#fff;padding:10px}
   table{width:100%;border-collapse:collapse}
   td,th{border:1px solid #000;padding:3px 5px;vertical-align:middle}
   .zh{font-weight:bold;font-size:11px;display:block}
   .vi{font-size:8.5px;color:#444;display:block;margin-top:1px}
   .outer{border:2px solid #000}
   .no-t{border-top:none}.no-b{border-bottom:none}.no-l{border-left:none}.no-r{border-right:none}
-  @media print{body{padding:4px}@page{margin:6mm;size:A4 portrait}}
-</style>
-</head>
-<body>
-
+  @media print{body{padding:4px}@page{margin:6mm;size:A4 portrait}}`,
+    body: `
 <!-- ═══ 整體外框（單一2px粗線包住全部）═══ -->
 <table class="outer">
 
@@ -357,13 +360,8 @@ function printQCReport(
 <!-- 頁腳（表框外，置中小字）-->
 <div style="text-align:center;font-size:9px;color:#555;margin-top:5px">
   (附件2)CMS03-07-2B 進料品質檢驗分析報告書
-</div>
-
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 function QCReportModal({
@@ -476,7 +474,7 @@ function QCReportModal({
       <Space direction="vertical" style={{ width: '100%' }} size={12}>
         {/* Header */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-          {[
+          {([
             ['驗收單號', acceptanceNo, (v: string) => setAcceptanceNo(v)],
             ['訂貨日期', orderDateStr, (v: string) => setOrderDateStr(v)],
             ['進貨日期', batch.arrivalDate ? dayjs(batch.arrivalDate).format('YYYY-MM-DD') : '—', null],
@@ -485,11 +483,11 @@ function QCReportModal({
             ['原料代碼', ingredient.code ?? '—', null],
             ['批號', batch.batchNo, null],
             [`數量(${batch.unit})`, String(batch.quantity), null],
-          ].map(([label, value, onChange]) => (
-            <div key={String(label)}>
+          ] as [string, string, ((v: string) => void) | null][]).map(([label, value, onChange]) => (
+            <div key={label}>
               <Text type="secondary" style={{ fontSize: 11 }}>{label}</Text>
               {onChange
-                ? <Input size="small" value={String(value)} onChange={e => (onChange as (v: string) => void)(e.target.value)} />
+                ? <Input size="small" value={value} onChange={e => onChange(e.target.value)} />
                 : <div style={{ padding: '1px 0', fontSize: 13 }}><Text>{value}</Text></div>
               }
             </div>
@@ -563,7 +561,7 @@ function IngredientDetailDrawer({
 }) {
   const [docs, setDocs] = useState<IngredientDocument[]>([])
   const [batches, setBatches] = useState<IngredientBatch[]>([])
-  const [batchSigsMap, setBatchSigsMap] = useState<Record<number, FormSignatureRecord[]>>({})
+  const [batchSigCounts, setBatchSigCounts] = useState<Record<number, number>>({})
   const [uploading, setUploading] = useState(false)
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [docType, setDocType] = useState('SDS')
@@ -578,14 +576,10 @@ function IngredientDetailDrawer({
     setDocs(res.data.data ?? [])
   }, [ingredient?.id])
 
-  const loadBatchSigs = useCallback(async (list: IngredientBatch[]) => {
-    const entries = await Promise.all(
-      list.map(async b => {
-        const sigs = await getFormSignatures('QcReport', b.id).catch(() => [])
-        return [b.id, sigs] as const
-      })
-    )
-    setBatchSigsMap(Object.fromEntries(entries))
+  // 列表只需要每批的已簽核數量，用批次端點一次取得，不必逐批查詢
+  const loadBatchSigs = useCallback(async () => {
+    const counts = await getFormSignatureCounts('QcReport').catch(() => ({}))
+    setBatchSigCounts(counts)
   }, [])
 
   const loadBatches = useCallback(async () => {
@@ -593,7 +587,7 @@ function IngredientDetailDrawer({
     const res = await getIngredientBatches(ingredient.id)
     const list: IngredientBatch[] = res.data.data ?? []
     setBatches(list)
-    loadBatchSigs(list)
+    loadBatchSigs()
   }, [ingredient?.id, loadBatchSigs])
 
   useEffect(() => {
@@ -753,8 +747,7 @@ function IngredientDetailDrawer({
       render: (_: unknown, row: IngredientBatch) => {
         const hasQC = !!(row.qcItems && row.qcItems.length > 0)
         const ngCount = hasQC ? row.qcItems!.filter((i: any) => i.result === 'NG').length : 0
-        const sigs = batchSigsMap[row.id] ?? []
-        const signedCount = sigs.filter(s => s.signedAt).length
+        const signedCount = batchSigCounts[row.id] ?? 0
         const TOTAL_SLOTS = 3  // QcReport：檢測員 / 審核 / 單位主管
         const allSigned = signedCount >= TOTAL_SLOTS
 
@@ -915,7 +908,7 @@ function IngredientDetailDrawer({
         onClose={() => { setQcBatch(null); loadBatches() }}
         batch={qcBatch}
         ingredient={ingredient}
-        onSigUpdate={() => qcBatch && loadBatchSigs(batches)}
+        onSigUpdate={() => qcBatch && loadBatchSigs()}
       />
 
       <Modal
@@ -1211,7 +1204,7 @@ function IngredientTab() {
           <Form.Item name="description" label="說明">
             <Input.TextArea rows={2} />
           </Form.Item>
-          <Divider orientation="left" style={{ fontSize: 13, margin: '4px 0 8px' }}>
+          <Divider titlePlacement="left" style={{ fontSize: 13, margin: '4px 0 8px' }}>
             進料驗收供應商標準（附件2自動帶入）
           </Divider>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 12px' }}>

@@ -1,14 +1,9 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole } from '../middleware/auth'
+import { MODULES, invalidatePermissionCache } from '../middleware/permission'
 
 const router = Router()
-
-const MODULES = [
-  'formulas', 'materials', 'suppliers', 'risks',
-  'experiments', 'results', 'samples', 'reports',
-  'traceability', 'knowledge',
-]
 
 const DEFAULT_PERMISSIONS = [
   // LAB_STAFF
@@ -33,12 +28,27 @@ const DEFAULT_PERMISSIONS = [
   { role: 'MANAGER', module: 'reports',         canView: true,  canCreate: false, canEdit: false, canDelete: false },
   { role: 'MANAGER', module: 'traceability',    canView: true,  canCreate: false, canEdit: false, canDelete: false },
   { role: 'MANAGER', module: 'knowledge',       canView: true,  canCreate: true,  canEdit: true,  canDelete: false },
+  // 表單管理（13 張附件表單）
+  { role: 'LAB_STAFF', module: 'forms',         canView: true,  canCreate: true,  canEdit: true,  canDelete: false },
+  { role: 'MANAGER', module: 'forms',           canView: true,  canCreate: true,  canEdit: true,  canDelete: false },
 ]
 
-async function ensureSeeded() {
-  const count = await prisma.rolePermission.count()
-  if (count === 0) {
-    await prisma.rolePermission.createMany({ data: DEFAULT_PERMISSIONS })
+/**
+ * 補齊缺少的權限列。
+ *
+ * 權限判斷改為預設拒絕後，若只在資料表為空時才寫入預設值，既有安裝會因為缺少
+ * 新模組（如 forms）的設定而突然失去存取權。改為補齊缺漏，同時保留管理者
+ * 已調整過的既有設定。
+ */
+export async function ensureSeeded() {
+  const existing = await prisma.rolePermission.findMany({
+    select: { role: true, module: true },
+  })
+  const have = new Set(existing.map((p) => `${p.role}:${p.module}`))
+  const missing = DEFAULT_PERMISSIONS.filter((p) => !have.has(`${p.role}:${p.module}`))
+  if (missing.length > 0) {
+    await prisma.rolePermission.createMany({ data: missing, skipDuplicates: true })
+    invalidatePermissionCache()
   }
 }
 
@@ -72,21 +82,29 @@ router.put('/', requireAuth, requireRole('ADMIN'), async (req, res) => {
   const { permissions } = req.body as {
     permissions: { role: string; module: string; canView: boolean; canCreate: boolean; canEdit: boolean; canDelete: boolean }[]
   }
-  for (const p of permissions) {
-    if (p.role === 'ADMIN') continue
-    await prisma.rolePermission.upsert({
-      where: { role_module: { role: p.role, module: p.module } },
-      create: p,
-      update: { canView: p.canView, canCreate: p.canCreate, canEdit: p.canEdit, canDelete: p.canDelete },
-    })
-  }
+  // 整批寫入包在單一交易，避免部分成功造成權限狀態不一致
+  await prisma.$transaction(
+    permissions
+      .filter((p) => p.role !== 'ADMIN')
+      .map((p) =>
+        prisma.rolePermission.upsert({
+          where: { role_module: { role: p.role, module: p.module } },
+          create: p,
+          update: { canView: p.canView, canCreate: p.canCreate, canEdit: p.canEdit, canDelete: p.canDelete },
+        })
+      )
+  )
+  invalidatePermissionCache()
   res.json({ success: true })
 })
 
 // POST /permissions/reset — reset to defaults
 router.post('/reset', requireAuth, requireRole('ADMIN'), async (_req, res) => {
-  await prisma.rolePermission.deleteMany({ where: { role: { in: ['LAB_STAFF', 'MANAGER'] } } })
-  await prisma.rolePermission.createMany({ data: DEFAULT_PERMISSIONS })
+  await prisma.$transaction([
+    prisma.rolePermission.deleteMany({ where: { role: { in: ['LAB_STAFF', 'MANAGER'] } } }),
+    prisma.rolePermission.createMany({ data: DEFAULT_PERMISSIONS }),
+  ])
+  invalidatePermissionCache()
   res.json({ success: true })
 })
 

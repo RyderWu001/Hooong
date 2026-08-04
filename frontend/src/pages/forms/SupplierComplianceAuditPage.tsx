@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, Input, DatePicker,
@@ -59,17 +60,13 @@ function scoreLabel(v: number | null): string {
 }
 
 function printAudit(row: SupplierComplianceAudit) {
+  row = escapeDeep(row)
   const adv = Array.isArray(row.advancedAudit) && row.advancedAudit.length ? row.advancedAudit : DEFAULT_ADVANCED_AUDIT()
   const advRows = adv.map(a => `<tr><td class="left">${a.item}</td><td>${scoreLabel(a.score)}</td></tr>`).join('')
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>化學品供應商評鑑資料表 CMS01-05-2A</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
+  if (!openPrintWindow({
+    title: '化學品供應商評鑑資料表 CMS01-05-2A',
+    css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
   .header-logo { width: 140px; border-right: 1px solid #000; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
@@ -94,11 +91,8 @@ function printAudit(row: SupplierComplianceAudit) {
   .total-row { border-top: 2px solid #000; padding: 4px 8px; font-size: 11px; font-weight: bold; }
   .free-text { padding: 4px 8px; min-height: 40px; white-space: pre-wrap; font-size: 10px; border-top: 1px solid #000; }
   .footer { text-align: center; font-size: 9px; padding: 3px; border-top: 1px solid #ccc; }
-  @media print { @page { margin: 6mm; size: A4 portrait; } }
-</style>
-</head>
-<body>
-<div class="outer">
+  @media print { @page { margin: 6mm; size: A4 portrait; } }`,
+    body: `<div class="outer">
   <div class="header">
     <div class="header-logo">
       <div class="logo-brand">RICH<sup>®</sup></div>
@@ -169,13 +163,8 @@ function printAudit(row: SupplierComplianceAudit) {
   </div>
 
   <div class="footer">(附件15) CMS01-05-2A 化學品供應商評鑑資料表（內部稽核）</div>
-</div>
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 export default function SupplierComplianceAuditPage() {

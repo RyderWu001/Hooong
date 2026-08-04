@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Tabs, Table, Button, Modal, Form, Input, InputNumber,
@@ -23,6 +24,7 @@ const PURCHASE_STATUS_LABEL = { PENDING: '待交貨', DELIVERED: '已到貨', CA
 // ─── 附件14: 印表函數 ─────────────────────────────────────────────────────────
 
 function printSupplierDetail(row: Supplier) {
+  row = escapeDeep(row)
   const types = (row as any).supplierTypes ?? []
   const certs = (row as any).certifications ?? []
   const products = (row as any).tradingProducts ?? []
@@ -41,14 +43,9 @@ function printSupplierDetail(row: Supplier) {
   const productRows = products.map((p: string) => `<tr><td>${p}</td></tr>`).join('')
   const complianceRows = COMPLIANCE_ITEMS.map(c => `<tr><td>${c.label}</td><td>${compliance[c.key] === 'yes' ? '☑ 有' : compliance[c.key] === 'no' ? '☐ 無' : '☐ 未知'}</td></tr>`).join('')
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>化學品供應商資料表 CMS01-05-1A</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
+  if (!openPrintWindow({
+    title: '化學品供應商資料表 CMS01-05-1A',
+    css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
   .header-logo { width: 140px; border-right: 1px solid #000; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
@@ -69,11 +66,8 @@ function printSupplierDetail(row: Supplier) {
   th, td { border: 1px solid #000; padding: 2px 5px; }
   th { background: #e8e8e8; }
   .footer { text-align: center; font-size: 9px; padding: 3px; border-top: 1px solid #ccc; }
-  @media print { @page { margin: 6mm; size: A4 portrait; } }
-</style>
-</head>
-<body>
-<div class="outer">
+  @media print { @page { margin: 6mm; size: A4 portrait; } }`,
+    body: `<div class="outer">
   <div class="header">
     <div class="header-logo">
       <div class="logo-brand">RICH<sup>®</sup></div>
@@ -130,13 +124,8 @@ function printSupplierDetail(row: Supplier) {
   </table>
 
   <div class="footer">(附件14) CMS01-05-1A 化學品供應商資料表（客戶）</div>
-</div>
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 // ─── Tab 1：供應商資料維護 ────────────────────────────────────────────────────

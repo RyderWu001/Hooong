@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
+import { validateNumericParams } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 function dateWhere(dateFrom?: string, dateTo?: string) {
   if (!dateFrom && !dateTo) return undefined
@@ -28,7 +30,7 @@ router.get('/experiments', requireAuth, async (req, res) => {
   })
   res.json({
     success: true,
-    data: data.map((e) => ({ ...e, formulaName: e.formula.name, experimenterName: e.experimenter.username, formula: undefined, experimenter: undefined })),
+    data: data.map((e) => ({ ...e, formulaName: e.formula?.name ?? '—', experimenterName: e.experimenter.username, formula: undefined, experimenter: undefined })),
     pagination: { page: 1, limit: data.length, total: data.length, totalPages: 1 },
   })
 })
@@ -88,7 +90,7 @@ router.get('/results/summary', requireAuth, async (req, res) => {
   const detail = results.map((r) => ({
     ...r,
     experimentCode: r.experiment.code,
-    formulaName: r.experiment.formula.name,
+    formulaName: r.experiment.formula?.name ?? '—',
     experimenterName: r.experiment.experimenter.username,
     experiment: undefined,
   }))
@@ -151,7 +153,7 @@ router.get('/custom', requireAuth, async (req, res) => {
     })
     res.json({
       success: true,
-      data: results.map((r) => ({ ...r, experimentCode: r.experiment.code, formulaName: r.experiment.formula.name, experimenterName: r.experiment.experimenter.username, experiment: undefined })),
+      data: results.map((r) => ({ ...r, experimentCode: r.experiment.code, formulaName: r.experiment.formula?.name ?? '—', experimenterName: r.experiment.experimenter.username, experiment: undefined })),
     })
     return
   }
@@ -169,7 +171,7 @@ router.get('/custom', requireAuth, async (req, res) => {
   })
   res.json({
     success: true,
-    data: exps.map((e) => ({ ...e, formulaName: e.formula.name, experimenterName: e.experimenter.username, formula: undefined, experimenter: undefined })),
+    data: exps.map((e) => ({ ...e, formulaName: e.formula?.name ?? '—', experimenterName: e.experimenter.username, formula: undefined, experimenter: undefined })),
   })
 })
 

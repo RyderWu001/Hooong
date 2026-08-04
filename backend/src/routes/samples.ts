@@ -1,13 +1,14 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
+import { validateNumericParams, parsePagination } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 // GET /samples — 跨實驗全域樣品列表
 router.get('/', requireAuth, async (req, res) => {
-  const page = Number(req.query.page ?? 1)
-  const limit = Number(req.query.limit ?? 20)
+  const { page, limit, skip } = parsePagination(req.query, 20)
   const { category, status, clientName, sampleCode } = req.query
 
   const where: any = {}
@@ -23,7 +24,7 @@ router.get('/', requireAuth, async (req, res) => {
         experiment: { select: { id: true, code: true, experimentDate: true } },
       },
       orderBy: { sampleDate: 'desc' },
-      skip: (page - 1) * limit,
+      skip,
       take: limit,
     }),
     prisma.sample.count({ where }),

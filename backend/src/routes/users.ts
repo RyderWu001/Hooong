@@ -1,9 +1,11 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import prisma from '../db/client'
-import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { requireAuth, requireRole, invalidateUserStatus, type AuthRequest } from '../middleware/auth'
+import { validateNumericParams, parsePagination } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 // GET /users/me/signature
 router.get('/me/signature', requireAuth, async (req: AuthRequest, res) => {
@@ -26,11 +28,10 @@ router.put('/me/signature', requireAuth, async (req: AuthRequest, res) => {
 
 // GET /users
 router.get('/', requireAuth, async (req, res) => {
-  const page = Number(req.query.page ?? 1)
-  const limit = Number(req.query.limit ?? 20)
+  const { page, limit, skip } = parsePagination(req.query, 20)
   const [data, total] = await Promise.all([
     prisma.user.findMany({
-      skip: (page - 1) * limit, take: limit,
+      skip, take: limit,
       select: { id: true, username: true, email: true, role: true, isActive: true },
     }),
     prisma.user.count(),
@@ -56,6 +57,8 @@ router.put('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
     data: { username, role, isActive },
     select: { id: true, username: true, email: true, role: true, isActive: true },
   })
+  // 停用或改角色後需立即失效，不等快取自然過期
+  invalidateUserStatus(user.id)
   res.json({ success: true, data: user })
 })
 
@@ -67,6 +70,8 @@ router.patch('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
     data: { username, role, isActive },
     select: { id: true, username: true, email: true, role: true, isActive: true },
   })
+  // 停用或改角色後需立即失效，不等快取自然過期
+  invalidateUserStatus(user.id)
   res.json({ success: true, data: user })
 })
 
@@ -78,7 +83,7 @@ router.put('/:id/password', requireAuth, async (req: AuthRequest, res) => {
     return
   }
   const { password } = req.body
-  await prisma.user.update({ where: { id: targetId }, data: { password: bcrypt.hashSync(password, 10) } })
+  await prisma.user.update({ where: { id: targetId }, data: { password: await bcrypt.hash(password, 10) } })
   res.json({ success: true, message: '密碼已更新' })
 })
 

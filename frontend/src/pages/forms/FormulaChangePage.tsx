@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, Input, DatePicker,
@@ -13,7 +14,7 @@ import {
   getFormulaChanges, createFormulaChange, updateFormulaChange, deleteFormulaChange,
 } from '../../api/formulaChange'
 import { getFormulas } from '../../api/formulas'
-import { getFormSignatures } from '../../api/formSignatures'
+import { getFormSignatureCounts } from '../../api/formSignatures'
 import ApprovalChain from '../../components/ApprovalChain'
 
 const { TextArea } = Input
@@ -55,6 +56,8 @@ const DEFAULT_SPEC_ROWS: SpecRow[] = Array(5).fill(null).map(() => ({
 }))
 
 function printFormulaChange(row: FormulaChange, formulaName?: string) {
+  row = escapeDeep(row)
+  formulaName = escapeDeep(formulaName)
   const specs = (row.specChanges && row.specChanges.length > 0) ? row.specChanges : DEFAULT_SPEC_ROWS
   const specRows = specs.map(s => `
     <tr>
@@ -67,14 +70,9 @@ function printFormulaChange(row: FormulaChange, formulaName?: string) {
 
   const ck = (v: boolean) => v ? '☑' : '☐'
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>配方變更核准申請書 CMS03-07-3A</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Microsoft JhengHei','Times New Roman',Arial,sans-serif; font-size: 11px; color: #000; padding: 10mm; }
+  if (!openPrintWindow({
+    title: '配方變更核准申請書 CMS03-07-3A',
+    css: `  body { font-family: 'Microsoft JhengHei','Times New Roman',Arial,sans-serif; font-size: 11px; color: #000; padding: 10mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
   .header-logo { width: 150px; min-width: 150px; border-right: 1px solid #000; padding: 6px 10px; display: flex; flex-direction: column; justify-content: center; }
@@ -108,11 +106,8 @@ function printFormulaChange(row: FormulaChange, formulaName?: string) {
   .sig-cell:last-child { border-right: none; }
   .sig-label { font-size: 10px; font-weight: bold; margin-bottom: 4px; }
   .footer { text-align: center; font-size: 9px; color: #555; padding: 3px; border-top: 1px solid #ccc; }
-  @media print { @page { margin: 8mm; size: A4 portrait; } }
-</style>
-</head>
-<body>
-<div class="outer">
+  @media print { @page { margin: 8mm; size: A4 portrait; } }`,
+    body: `<div class="outer">
   <div class="header">
     <div class="header-logo">
       <div class="logo-brand">RICH<sup>®</sup></div>
@@ -237,16 +232,9 @@ function printFormulaChange(row: FormulaChange, formulaName?: string) {
   </div>
 
   <div class="footer">CMS03-07-3A｜泓利廣實驗室系統</div>
-</div>
-</body>
-</html>`
-
-  const w = window.open('', '_blank')
-  if (!w) { message.error('請允許彈出視窗'); return }
-  w.document.write(html)
-  w.document.close()
-  w.focus()
-  setTimeout(() => w.print(), 600)
+</div>`,
+    printDelayMs: 600,
+  })) message.error('請允許彈出視窗')
 }
 
 export default function FormulaChangePage() {
@@ -267,14 +255,7 @@ export default function FormulaChangePage() {
       const res = await getFormulaChanges()
       const list: FormulaChange[] = res.data.data ?? []
       setRecords(list)
-      // load sig counts for all records
-      const counts: Record<number, number> = {}
-      await Promise.all(list.map(async r => {
-        try {
-          const sigs = await getFormSignatures('FormulaChange', r.id)
-          counts[r.id] = (sigs ?? []).length
-        } catch { counts[r.id] = 0 }
-      }))
+      const counts = await getFormSignatureCounts('FormulaChange').catch(() => ({}))
       setSigCountMap(counts)
     } catch {
       message.error('載入失敗')

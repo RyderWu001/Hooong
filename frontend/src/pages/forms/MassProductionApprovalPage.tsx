@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, Input, DatePicker,
@@ -13,7 +14,7 @@ import {
   updateMassProductionApproval, deleteMassProductionApproval,
 } from '../../api/massProduction'
 import { getFormulas } from '../../api/formulas'
-import { getFormSignatures } from '../../api/formSignatures'
+import { getFormSignatureCounts } from '../../api/formSignatures'
 import ApprovalChain from '../../components/ApprovalChain'
 
 const { TextArea } = Input
@@ -61,18 +62,15 @@ function ck(v: boolean) { return v ? '☑' : '☐' }
 function radio(val: string | null, opt: string) { return val === opt ? '◉' : '○' }
 
 function printMPA(row: MPA, formulaName?: string) {
+  row = escapeDeep(row)
+  formulaName = escapeDeep(formulaName)
   const spec = row.specStandards ?? DEFAULT_SPEC
   const sds = row.sdsVersions ?? DEFAULT_DOC
   const tds = row.tdsVersions ?? DEFAULT_DOC
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>新配方量產核准紀錄表 CMS03-07-4A</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Microsoft JhengHei','Times New Roman',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
+  if (!openPrintWindow({
+    title: '新配方量產核准紀錄表 CMS03-07-4A',
+    css: `  body { font-family: 'Microsoft JhengHei','Times New Roman',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: center; padding: 6px 10px; border-bottom: 2px solid #000; gap: 10px; }
   .logo-brand { font-size: 22px; font-weight: 900; }
@@ -126,11 +124,8 @@ function printMPA(row: MPA, formulaName?: string) {
   .sig-date-row { display: flex; }
   .sig-date-cell { flex: 1; padding: 3px 6px; border-right: 1px solid #000; font-size: 9px; text-align: center; }
   .sig-date-cell:last-child { border-right: none; }
-  @media print { @page { margin: 6mm; size: A4 portrait; } }
-</style>
-</head>
-<body>
-<div class="outer">
+  @media print { @page { margin: 6mm; size: A4 portrait; } }`,
+    body: `<div class="outer">
   <!-- Header -->
   <div class="header">
     <div>
@@ -309,16 +304,9 @@ function printMPA(row: MPA, formulaName?: string) {
   </div>
 
   <div style="text-align:center; font-size:8.5px; color:#555; padding:2px; border-top:1px solid #ccc">CMS03-07-4A｜泓利廣實驗室系統</div>
-</div>
-</body>
-</html>`
-
-  const w = window.open('', '_blank')
-  if (!w) { message.error('請允許彈出視窗'); return }
-  w.document.write(html)
-  w.document.close()
-  w.focus()
-  setTimeout(() => w.print(), 600)
+</div>`,
+    printDelayMs: 600,
+  })) message.error('請允許彈出視窗')
 }
 
 interface FormulaOption { id: number; code: string; name: string }
@@ -339,13 +327,7 @@ export default function MassProductionApprovalPage() {
       const res = await getMassProductionApprovals()
       const list: MPA[] = res.data.data ?? []
       setRecords(list)
-      const counts: Record<number, number> = {}
-      await Promise.all(list.map(async r => {
-        try {
-          const sigs = await getFormSignatures('MassProduction', r.id)
-          counts[r.id] = (sigs ?? []).length
-        } catch { counts[r.id] = 0 }
-      }))
+      const counts = await getFormSignatureCounts('MassProduction').catch(() => ({}))
       setSigCountMap(counts)
     } catch { message.error('載入失敗') }
     finally { setLoading(false) }
@@ -527,7 +509,7 @@ export default function MassProductionApprovalPage() {
             <TextArea rows={4} />
           </Form.Item>
 
-          <Divider orientation="left" style={{ fontSize: 12 }}>規格標準 (TIÊU CHUẨN)</Divider>
+          <Divider titlePlacement="left" style={{ fontSize: 12 }}>規格標準 (TIÊU CHUẨN)</Divider>
           <Row gutter={12}>
             <Col span={8}><Form.Item label="外觀 (NGOẠI QUAN)" name="specAppearance"><Input /></Form.Item></Col>
             <Col span={8}><Form.Item label="pH (1%aq)" name="specPh"><Input /></Form.Item></Col>

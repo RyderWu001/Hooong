@@ -110,7 +110,7 @@ const HANDLERS: [RegExp, Handler][] = [
       })
     const formulaIds = usedInFormulas.map((f) => f.formulaId)
     const usedInExperiments = mockExperiments
-      .filter((e) => formulaIds.includes(e.formulaId))
+      .filter((e) => e.formulaId !== null && formulaIds.includes(e.formulaId))
       .map((e) => ({ experimentId: e.id, experimentCode: e.code, formulaName: e.formulaName ?? '', experimentDate: e.experimentDate }))
     return ok({ ingredientId: id, ingredientName: ingredient?.name ?? '', usedInFormulas, usedInExperiments })
   }],

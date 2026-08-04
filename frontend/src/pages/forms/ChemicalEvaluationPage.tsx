@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, Input, DatePicker,
@@ -70,6 +71,7 @@ function cb(val: string | null | undefined): string {
 }
 
 function printEvaluation(row: ChemEval) {
+  row = escapeDeep(row)
   const certs = row.certifications ?? []
   const certCheck = (c: string) => certs.includes(c) ? '☑' : '☐'
   const pure = row.pureSubstance ?? DEFAULT_SUBSTANCE_ROWS
@@ -78,14 +80,9 @@ function printEvaluation(row: ChemEval) {
   const pureRows = pure.map(r => `<tr><td>${r.name}</td><td>${r.casNo}</td><td>${r.percentage}</td></tr>`).join('')
   const mixRows = mix.map(r => `<tr><td>${r.name}</td><td>${r.casNo}</td><td>${r.percentage}</td></tr>`).join('')
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>化學品評估表 CMS01-01-1B</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10.5px; color: #000; padding: 10mm; }
+  if (!openPrintWindow({
+    title: '化學品評估表 CMS01-01-1B',
+    css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10.5px; color: #000; padding: 10mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
   .header-logo { width: 140px; min-width: 140px; border-right: 1px solid #000; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
@@ -135,11 +132,8 @@ function printEvaluation(row: ChemEval) {
   .sig-cell:last-child { border-right: none; }
   .sig-label { font-size: 9.5px; font-weight: bold; margin-bottom: 4px; }
   .footer { text-align: center; font-size: 9px; color: #555; padding: 3px; border-top: 1px solid #ccc; }
-  @media print { @page { margin: 8mm; size: A4 portrait; } }
-</style>
-</head>
-<body>
-<div class="outer">
+  @media print { @page { margin: 8mm; size: A4 portrait; } }`,
+    body: `<div class="outer">
   <!-- Header -->
   <div class="header">
     <div class="header-logo">
@@ -315,13 +309,8 @@ function printEvaluation(row: ChemEval) {
 
   <!-- 頁腳 -->
   <div class="footer">(附件8) CMS01-01-1B 化學品評估表</div>
-</div>
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 export default function ChemicalEvaluationPage() {

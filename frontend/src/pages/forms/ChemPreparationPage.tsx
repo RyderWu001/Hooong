@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, Input, DatePicker,
@@ -31,6 +32,7 @@ const DEFAULT_MATERIALS = (): MaterialEntry[] =>
   Array.from({ length: 9 }, (_, i) => ({ col: Math.floor(i / 3) + 1, name: '', ratio: '', lot: '' }))
 
 function printChemPreparation(row: ChemPreparation) {
+  row = escapeDeep(row)
   const mats = Array.isArray(row.materials) && row.materials.length ? row.materials : DEFAULT_MATERIALS()
   const col1 = mats.filter(m => m.col === 1)
   const col2 = mats.filter(m => m.col === 2)
@@ -48,14 +50,9 @@ function printChemPreparation(row: ChemPreparation) {
     </tr>`
   }).join('')
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>化驗室藥劑泡製紀錄 CMS03-07-6A</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
+  if (!openPrintWindow({
+    title: '化驗室藥劑泡製紀錄 CMS03-07-6A',
+    css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
   .header-logo { width: 140px; border-right: 1px solid #000; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
@@ -82,11 +79,8 @@ function printChemPreparation(row: ChemPreparation) {
   .sig-cell:last-child { border-right: none; }
   .sig-label { font-size: 9.5px; font-weight: bold; margin-bottom: 4px; }
   .footer { text-align: center; font-size: 9px; padding: 3px; border-top: 1px solid #ccc; }
-  @media print { @page { margin: 6mm; size: A4 portrait; } }
-</style>
-</head>
-<body>
-<div class="outer">
+  @media print { @page { margin: 6mm; size: A4 portrait; } }`,
+    body: `<div class="outer">
   <div class="header">
     <div class="header-logo">
       <div class="logo-brand">RICH<sup>®</sup></div>
@@ -144,13 +138,8 @@ function printChemPreparation(row: ChemPreparation) {
   </div>
 
   <div class="footer">(附件12) CMS03-07-6A 化驗室藥劑泡製紀錄</div>
-</div>
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 export default function ChemPreparationPage() {

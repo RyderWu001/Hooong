@@ -1,11 +1,13 @@
 import { Router } from 'express'
-import multer from 'multer'
 import prisma from '../db/client'
 import { uploadToStorage } from '../db/storage'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { validateNumericParams, parsePagination } from '../lib/query'
+
+import { upload } from '../middleware/upload'
 
 const router = Router()
-const upload = multer({ storage: multer.memoryStorage() })
+validateNumericParams(router)
 
 const decodeFilename = (raw: string) => Buffer.from(raw, 'latin1').toString('utf8')
 
@@ -38,8 +40,7 @@ function formatExp(e: any) {
 // ── Experiments ──────────────────────────────────────────────────────────────
 
 router.get('/', requireAuth, async (req, res) => {
-  const page = Number(req.query.page ?? 1)
-  const limit = Number(req.query.limit ?? 20)
+  const { page, limit, skip } = parsePagination(req.query, 20)
   const { code, formulaId, experimenterId, dateFrom, dateTo, category } = req.query
 
   const where: any = {}
@@ -54,7 +55,7 @@ router.get('/', requireAuth, async (req, res) => {
   }
 
   const [data, total] = await Promise.all([
-    prisma.experiment.findMany({ where, skip: (page - 1) * limit, take: limit, include: EXP_INCLUDE, orderBy: { experimentDate: 'desc' } }),
+    prisma.experiment.findMany({ where, skip, take: limit, include: EXP_INCLUDE, orderBy: { experimentDate: 'desc' } }),
     prisma.experiment.count({ where }),
   ])
   res.json({ success: true, data: data.map(formatExp), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })
@@ -502,7 +503,7 @@ router.get('/:id/result', requireAuth, async (req, res) => {
   })
   if (!r) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '尚未建立結果' } }); return }
   const exp = await prisma.experiment.findUnique({ where: { id: Number(req.params.id) }, include: { formula: true, experimenter: true } })
-  res.json({ success: true, data: { ...r, experimentCode: exp?.code, formulaName: exp?.formula.name, experimenterName: exp?.experimenter.username } })
+  res.json({ success: true, data: { ...r, experimentCode: exp?.code, formulaName: exp?.formula?.name ?? '—', experimenterName: exp?.experimenter.username } })
 })
 
 router.post('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {

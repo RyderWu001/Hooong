@@ -5,6 +5,9 @@ import { requireAuth, requireRole, signToken, type AuthRequest } from '../middle
 
 const router = Router()
 
+/** 供帳號不存在時做等時比對用的固定雜湊，本身無法比對成功。 */
+const DUMMY_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'
+
 // POST /auth/login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body
@@ -13,7 +16,12 @@ router.post('/login', async (req, res) => {
     return
   }
   const user = await prisma.user.findUnique({ where: { email } })
-  if (!user || !bcrypt.compareSync(password, user.password)) {
+
+  // 帳號不存在時仍執行一次雜湊比對，避免回應時間洩漏該 email 是否已註冊
+  const hashToCheck = user?.password ?? DUMMY_HASH
+  const passwordOk = await bcrypt.compare(password, hashToCheck)
+
+  if (!user || !passwordOk) {
     res.status(401).json({ success: false, error: { code: 'INVALID_CREDENTIALS', message: '帳號或密碼錯誤' } })
     return
   }
@@ -40,8 +48,17 @@ router.get('/me', requireAuth, async (req: AuthRequest, res) => {
   res.json({ success: true, data: { id: user.id, username: user.username, email: user.email, role: user.role, isActive: user.isActive } })
 })
 
-// POST /auth/register — 公開，自行註冊（固定 LAB_STAFF）
+// POST /auth/register — 自行註冊（固定 LAB_STAFF）
+// 內部系統預設關閉：任何人都能開帳號後，搭配權限矩陣的預設值即可讀取實驗資料。
+// 若確實需要開放，於 .env 設定 ALLOW_SELF_REGISTER=yes。
 router.post('/register', async (req, res) => {
+  if (process.env.ALLOW_SELF_REGISTER !== 'yes') {
+    res.status(403).json({
+      success: false,
+      error: { code: 'REGISTER_DISABLED', message: '系統未開放自行註冊，請洽管理員建立帳號' },
+    })
+    return
+  }
   const { username, email, password } = req.body
   if (!username || !email || !password) {
     res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '缺少必填欄位' } })
@@ -57,7 +74,7 @@ router.post('/register', async (req, res) => {
     return
   }
   const user = await prisma.user.create({
-    data: { username, email, password: bcrypt.hashSync(password, 10), role: 'LAB_STAFF' },
+    data: { username, email, password: await bcrypt.hash(password, 10), role: 'LAB_STAFF' },
   })
   const token = signToken({ id: user.id, role: user.role, email: user.email })
   res.status(201).json({
@@ -79,11 +96,11 @@ router.post('/change-password', requireAuth, async (req: AuthRequest, res) => {
   }
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } })
   if (!user) { res.status(404).json({ success: false }); return }
-  if (!bcrypt.compareSync(currentPassword, user.password)) {
+  if (!(await bcrypt.compare(currentPassword, user.password))) {
     res.status(400).json({ success: false, error: { code: 'WRONG_PASSWORD', message: '目前密碼錯誤' } })
     return
   }
-  await prisma.user.update({ where: { id: user.id }, data: { password: bcrypt.hashSync(newPassword, 10) } })
+  await prisma.user.update({ where: { id: user.id }, data: { password: await bcrypt.hash(newPassword, 10) } })
   res.json({ success: true, message: '密碼已更新' })
 })
 
@@ -100,7 +117,7 @@ router.post('/admin/register', requireAuth, requireRole('ADMIN'), async (req, re
     return
   }
   const user = await prisma.user.create({
-    data: { username, email, password: bcrypt.hashSync(password, 10), role: role ?? 'LAB_STAFF' },
+    data: { username, email, password: await bcrypt.hash(password, 10), role: role ?? 'LAB_STAFF' },
   })
   res.status(201).json({ success: true, data: { id: user.id, username: user.username, email: user.email, role: user.role } })
 })

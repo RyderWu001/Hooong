@@ -1,38 +1,65 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth, type AuthRequest } from '../middleware/auth'
+import { requirePermission } from '../middleware/permission'
+import { parseId } from '../lib/query'
 
 const router = Router()
 
 // GET /form-signatures?formType=X&formId=Y
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('forms', 'view'), async (req, res) => {
   const { formType, formId } = req.query
-  if (!formType || !formId) {
-    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'formType and formId are required' } })
+  const fid = Number(formId)
+  if (!formType || !Number.isInteger(fid) || fid < 1) {
+    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'formType 與有效的 formId 為必填' } })
     return
   }
   const data = await prisma.formSignature.findMany({
-    where: { formType: String(formType), formId: Number(formId), signedAt: { not: null } },
+    where: { formType: String(formType), formId: fid, signedAt: { not: null } },
     orderBy: { slotOrder: 'asc' },
   })
   res.json({ success: true, data })
 })
 
+/**
+ * GET /form-signatures/counts?formType=X
+ *
+ * 回傳該表單類型所有紀錄的簽核數量，格式為 { [formId]: count }。
+ * 列表頁需要顯示每筆的簽核進度，逐筆查詢會讓 N 筆資料產生 N 次請求。
+ */
+router.get('/counts', requireAuth, requirePermission('forms', 'view'), async (req, res) => {
+  const { formType } = req.query
+  if (!formType) {
+    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: 'formType 為必填' } })
+    return
+  }
+  const rows = await prisma.formSignature.groupBy({
+    by: ['formId'],
+    where: { formType: String(formType), signedAt: { not: null } },
+    _count: { _all: true },
+  })
+  const counts: Record<number, number> = {}
+  for (const r of rows) counts[r.formId] = r._count._all
+  res.json({ success: true, data: counts })
+})
+
 // POST /form-signatures  – apply a signature to a slot
-router.post('/', requireAuth, async (req: AuthRequest, res) => {
+router.post('/', requireAuth, requirePermission('forms', 'edit'), async (req: AuthRequest, res) => {
   const { formType, formId, slotName, slotOrder, signatureImg } = req.body
-  if (!formType || !formId || !slotName || slotOrder == null) {
-    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '缺少必要欄位' } })
+  const fid = Number(formId)
+  const order = Number(slotOrder)
+  if (!formType || !slotName || !Number.isInteger(fid) || fid < 1 || !Number.isInteger(order) || order < 1) {
+    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '缺少必要欄位或格式不正確' } })
     return
   }
 
   // Enforce sequential: the immediately preceding slot must already be signed
-  if (Number(slotOrder) > 1) {
+  if (order > 1) {
     const prevSigned = await prisma.formSignature.findFirst({
       where: {
         formType,
-        formId: Number(formId),
-        slotOrder: Number(slotOrder) - 1,
+        formId: fid,
+        slotOrder: order - 1,
         signedAt: { not: null },
       },
     })
@@ -49,12 +76,12 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
   const signedByName = userRecord?.username ?? null
 
   const data = await prisma.formSignature.upsert({
-    where: { formType_formId_slotName: { formType, formId: Number(formId), slotName } },
+    where: { formType_formId_slotName: { formType, formId: fid, slotName } },
     create: {
       formType,
-      formId: Number(formId),
+      formId: fid,
       slotName,
-      slotOrder: Number(slotOrder),
+      slotOrder: order,
       signedById: req.user!.id,
       signedByName,
       signatureImg: signatureImg ?? null,
@@ -71,8 +98,10 @@ router.post('/', requireAuth, async (req: AuthRequest, res) => {
 })
 
 // DELETE /form-signatures/:id  – retract a signature
-router.delete('/:id', requireAuth, async (req: AuthRequest, res) => {
-  const sig = await prisma.formSignature.findUnique({ where: { id: Number(req.params.id) } })
+router.delete('/:id', requireAuth, requirePermission('forms', 'edit'), async (req: AuthRequest, res) => {
+  const id = parseId(req.params.id, res)
+  if (id === null) return
+  const sig = await prisma.formSignature.findUnique({ where: { id } })
   if (!sig) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到簽核記錄' } }); return }
 
   // Only the signer or admin may retract

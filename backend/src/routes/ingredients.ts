@@ -1,11 +1,13 @@
 import { Router } from 'express'
-import multer from 'multer'
 import prisma from '../db/client'
 import { uploadToStorage } from '../db/storage'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { validateNumericParams, parsePagination } from '../lib/query'
+
+import { upload } from '../middleware/upload'
 
 const router = Router()
-const upload = multer({ storage: multer.memoryStorage() })
+validateNumericParams(router)
 
 const ING_INCLUDE = { createdBy: { select: { username: true } } } as const
 
@@ -15,8 +17,7 @@ function formatIng(i: any) {
 
 // GET /ingredients
 router.get('/', requireAuth, async (req, res) => {
-  const page = Number(req.query.page ?? 1)
-  const limit = Number(req.query.limit ?? 50)
+  const { page, limit, skip } = parsePagination(req.query, 50)
   const name = req.query.name as string | undefined
   const category = req.query.category as string | undefined
   const status = req.query.status as string | undefined
@@ -27,7 +28,7 @@ router.get('/', requireAuth, async (req, res) => {
   if (status) where.status = status
 
   const [data, total] = await Promise.all([
-    prisma.ingredient.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: { createdAt: 'desc' }, include: ING_INCLUDE }),
+    prisma.ingredient.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' }, include: ING_INCLUDE }),
     prisma.ingredient.count({ where }),
   ])
   res.json({ success: true, data: data.map(formatIng), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })

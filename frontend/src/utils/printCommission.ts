@@ -8,7 +8,6 @@ const COMMISSION_TYPE_LABEL: Record<string, string> = {
   O: 'O : Others 其他',
 }
 
-const ALL_PURPOSES = ['ΔE', 'Water repellence', 'Quick dry', 'Wicking', 'Handle', 'Tear Strength', 'Density', 'PH', 'Appearance', 'Other']
 
 function renderTestRow(item: CommissionTestItem): string {
   const purposes = (item.testPurposes ?? []).join('、')

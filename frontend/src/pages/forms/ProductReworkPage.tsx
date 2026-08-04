@@ -1,3 +1,4 @@
+import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Table, Button, Space, Modal, Form, Input, DatePicker,
@@ -65,6 +66,7 @@ const DEFAULT_QC_RESULTS = (): QcResult[] => [
 ]
 
 function printProductRework(row: ProductRework) {
+  row = escapeDeep(row)
   const reasons = Array.isArray(row.reworkReasons) ? row.reworkReasons : []
   const matDetails = Array.isArray(row.materialDetails) && row.materialDetails.length ? row.materialDetails : DEFAULT_MATERIAL_DETAILS()
   const qcResults = Array.isArray(row.qcResults) && row.qcResults.length ? row.qcResults : DEFAULT_QC_RESULTS()
@@ -93,14 +95,9 @@ function printProductRework(row: ProductRework) {
       <td></td>
     </tr>`).join('')
 
-  const html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
-<title>產品重修配置紀錄表 CMS03-07-7A</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 9.5px; color: #000; padding: 8mm; }
+  if (!openPrintWindow({
+    title: '產品重修配置紀錄表 CMS03-07-7A',
+    css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 9.5px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
   .header-logo { width: 140px; border-right: 1px solid #000; padding: 6px 8px; display: flex; flex-direction: column; justify-content: center; }
@@ -127,11 +124,8 @@ function printProductRework(row: ProductRework) {
   .sig-cell:last-child { border-right: none; }
   .sig-label { font-size: 8.5px; font-weight: bold; margin-bottom: 4px; }
   .footer { text-align: center; font-size: 8px; padding: 3px; border-top: 1px solid #ccc; }
-  @media print { @page { margin: 6mm; size: A4 portrait; } }
-</style>
-</head>
-<body>
-<div class="outer">
+  @media print { @page { margin: 6mm; size: A4 portrait; } }`,
+    body: `<div class="outer">
   <div class="header">
     <div class="header-logo">
       <div class="logo-brand">RICH<sup>®</sup></div>
@@ -205,13 +199,8 @@ function printProductRework(row: ProductRework) {
   </div>
 
   <div class="footer">(附件13) CMS03-07-7A 產品重修配置紀錄表</div>
-</div>
-<script>window.onload = () => window.print()</script>
-</body>
-</html>`
-
-  const w = window.open('', '_blank')
-  if (w) { w.document.write(html); w.document.close() }
+</div>`,
+  })) message.error('請允許彈出視窗')
 }
 
 export default function ProductReworkPage() {

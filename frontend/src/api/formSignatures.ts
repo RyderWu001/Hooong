@@ -18,6 +18,16 @@ export function getFormSignatures(formType: string, formId: number) {
   ).then(r => r.data.data)
 }
 
+/**
+ * 一次取得某類表單所有紀錄的簽核數量，回傳 { [formId]: count }。
+ * 列表頁用這支取代逐筆呼叫 getFormSignatures，避免 N 筆資料發出 N 次請求。
+ */
+export function getFormSignatureCounts(formType: string) {
+  return axios.get<{ success: boolean; data: Record<number, number> }>(
+    `/form-signatures/counts?formType=${formType}`
+  ).then(r => r.data.data)
+}
+
 export function applySignature(payload: {
   formType: string
   formId: number

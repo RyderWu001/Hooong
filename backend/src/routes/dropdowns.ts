@@ -1,8 +1,10 @@
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole } from '../middleware/auth'
+import { validateNumericParams } from '../lib/query'
 
 const router = Router()
+validateNumericParams(router)
 
 // GET /dropdowns — 取得所有類別與選項
 router.get('/', requireAuth, async (_req, res) => {
