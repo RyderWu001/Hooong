@@ -34,6 +34,17 @@ router.get('/', requireAuth, async (req, res) => {
   res.json({ success: true, data: data.map(formatIng), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })
 })
 
+// GET /ingredients/find-by-batch/:batchId（MUST be before /:id）
+router.get('/find-by-batch/:batchId', requireAuth, async (req, res) => {
+  const batchId = Number(req.params.batchId)
+  const batch = await prisma.ingredientBatch.findUnique({
+    where: { id: batchId },
+    include: { ingredient: { include: ING_INCLUDE } },
+  })
+  if (!batch) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到批次' } }); return }
+  res.json({ success: true, data: formatIng(batch.ingredient) })
+})
+
 // GET /ingredients/batches/expiring（MUST be before /:id）
 router.get('/batches/expiring', requireAuth, async (req, res) => {
   const days = Number(req.query.days ?? 30)

@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { Popover, Badge, List, Tag, Button, Empty, Spin, Divider, Typography } from 'antd'
+import { useState, useCallback, useMemo } from 'react'
+import { Popover, Badge, List, Tag, Button, Empty, Spin, Divider, Typography, Tooltip } from 'antd'
 import {
   BellOutlined,
   WarningOutlined,
@@ -9,6 +9,7 @@ import {
   FileDoneOutlined,
   DashboardOutlined,
   ReloadOutlined,
+  CloseOutlined,
 } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -45,6 +46,26 @@ const CATEGORY_I18N: Record<AlertCategory, string> = {
 
 /** pendingSignature 的 titleParams 帶 formKey（i18n key），detailParams 帶 slotKey（i18n key）
  *  但模板期待 {{form}} 和 {{slot}}，需要先解析一層再傳入 t()。*/
+// ── 忽略通知（當日有效，隔天自動重置）──────────────────────────────────────────
+const DISMISS_KEY = 'inbox_dismissed'
+
+function loadDismissed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DISMISS_KEY)
+    if (!raw) return new Set()
+    const { date, ids } = JSON.parse(raw)
+    if (date !== new Date().toDateString()) return new Set()
+    return new Set(ids as string[])
+  } catch { return new Set() }
+}
+
+function saveDismissed(ids: Set<string>) {
+  localStorage.setItem(DISMISS_KEY, JSON.stringify({
+    date: new Date().toDateString(),
+    ids: Array.from(ids),
+  }))
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resolveAlertParams(item: AlertItem, t: (key: string, opts?: any) => string) {
   if (item.category !== 'pendingSignature') {
@@ -68,6 +89,20 @@ export default function NotificationInbox() {
   const [open, setOpen] = useState(false)
   const [items, setItems] = useState<AlertItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(loadDismissed)
+
+  const visibleItems = useMemo(
+    () => items.filter(i => !dismissedIds.has(i.id)),
+    [items, dismissedIds]
+  )
+
+  const handleDismiss = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const next = new Set(dismissedIds)
+    next.add(id)
+    setDismissedIds(next)
+    saveDismissed(next)
+  }
 
   const loadAlerts = useCallback(async () => {
     setLoading(true)
@@ -99,7 +134,8 @@ export default function NotificationInbox() {
     refresh()
   }
 
-  const criticalCount = items.filter(i => i.severity === 'critical').length
+  const criticalCount = visibleItems.filter(i => i.severity === 'critical').length
+  const badgeCount = Math.max(0, alertTotal - dismissedIds.size)
 
   const content = (
     <div style={{ width: 380 }}>
@@ -107,8 +143,8 @@ export default function NotificationInbox() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 8px' }}>
         <Typography.Text strong style={{ fontSize: 15 }}>
           待處理提醒
-          {alertTotal > 0 && (
-            <Tag color="red" style={{ marginLeft: 8, fontSize: 12 }}>{alertTotal} 筆</Tag>
+          {visibleItems.length > 0 && (
+            <Tag color="red" style={{ marginLeft: 8, fontSize: 12 }}>{visibleItems.length} 筆</Tag>
           )}
         </Typography.Text>
         <Button
@@ -137,7 +173,7 @@ export default function NotificationInbox() {
           <div style={{ padding: 32, textAlign: 'center' }}>
             <Spin />
           </div>
-        ) : items.length === 0 ? (
+        ) : visibleItems.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
             description="目前無待處理提醒"
@@ -146,7 +182,7 @@ export default function NotificationInbox() {
         ) : (
           <List
             size="small"
-            dataSource={items}
+            dataSource={visibleItems}
             renderItem={(item) => {
               const { titleParams, detailParams } = resolveAlertParams(item, t)
               return (
@@ -184,6 +220,15 @@ export default function NotificationInbox() {
                       >
                         {t(CATEGORY_I18N[item.category])}
                       </Tag>
+                      <Tooltip title="今日忽略">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<CloseOutlined style={{ fontSize: 10 }} />}
+                          style={{ flexShrink: 0, color: '#94a3b8', padding: '0 2px', height: 20 }}
+                          onClick={(e) => handleDismiss(item.id, e)}
+                        />
+                      </Tooltip>
                     </div>
                     <Typography.Text
                       type="secondary"
@@ -245,12 +290,12 @@ export default function NotificationInbox() {
       overlayInnerStyle={{ padding: 0, borderRadius: 10, overflow: 'hidden' }}
       overlayStyle={{ paddingTop: 4 }}
     >
-      <Badge count={alertTotal} size="small" overflowCount={99}>
+      <Badge count={badgeCount} size="small" overflowCount={99}>
         <span
           style={{
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             width: 32, height: 32, borderRadius: 8, cursor: 'pointer',
-            color: alertTotal > 0 ? '#f59e0b' : undefined,
+            color: badgeCount > 0 ? '#f59e0b' : undefined,
             transition: 'background 0.15s',
           }}
           className="bell-btn"

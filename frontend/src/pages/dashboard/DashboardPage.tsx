@@ -7,7 +7,7 @@ import {
 import {
   WarningOutlined, ClockCircleOutlined, InboxOutlined, AuditOutlined,
   ExperimentOutlined, RiseOutlined, FallOutlined, ReloadOutlined,
-  CheckCircleOutlined, FileTextOutlined,
+  CheckCircleOutlined, FileTextOutlined, BarChartOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import {
@@ -53,7 +53,10 @@ export default function DashboardPage() {
   const [alerts, setAlerts] = useState<AlertSummary | null>(null)
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<AlertCategory | 'all'>('all')
+  // MANAGER / LAB_STAFF 預設顯示「待簽核」，ADMIN 顯示全部
+  const [filter, setFilter] = useState<AlertCategory | 'all'>(
+    () => (user?.role === 'ADMIN' ? 'all' : 'pendingSignature')
+  )
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -188,6 +191,34 @@ export default function DashboardPage() {
           </Card>
         </Col>
       </Row>
+
+      {/* 角色快速入口 */}
+      {user?.role === 'LAB_STAFF' && (
+        <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
+          {[
+            { label: '新增實驗', icon: <ExperimentOutlined />, path: '/experiments/new' },
+            { label: '原料驗收', icon: <FileTextOutlined />, path: '/materials?tab=1' },
+            { label: '庫存調整', icon: <BarChartOutlined />, path: '/materials?tab=2' },
+          ].map(({ label, icon, path }) => (
+            <Col key={label}>
+              <Button icon={icon} onClick={() => navigate(path)} size="small">{label}</Button>
+            </Col>
+          ))}
+        </Row>
+      )}
+      {user?.role === 'MANAGER' && (
+        <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
+          {[
+            { label: '待審核表單', icon: <FileTextOutlined />, path: '/forms' },
+            { label: '配方管理', icon: <BarChartOutlined />, path: '/formulas' },
+            { label: '實驗紀錄', icon: <ExperimentOutlined />, path: '/experiments' },
+          ].map(({ label, icon, path }) => (
+            <Col key={label}>
+              <Button icon={icon} onClick={() => navigate(path)} size="small">{label}</Button>
+            </Col>
+          ))}
+        </Row>
+      )}
 
       <Row gutter={[16, 16]}>
         {/* 待辦提醒 */}

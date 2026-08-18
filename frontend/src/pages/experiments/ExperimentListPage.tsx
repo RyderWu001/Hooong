@@ -396,6 +396,22 @@ export default function ExperimentListPage() {
           showTotal: (t) => `共 ${t} 筆`,
           onChange: (page, limit) => setFilters((f) => ({ ...f, page, limit })),
         }}
+        locale={{
+          emptyText: (
+            <div style={{ padding: '32px 0', textAlign: 'center' }}>
+              <div style={{ color: '#94a3b8', marginBottom: 12 }}>
+                {[filters.code, filters.formulaId, filters.experimenterId, filters.category, filters.dateFrom].some(Boolean)
+                  ? '找不到符合篩選條件的實驗'
+                  : '尚無實驗紀錄'}
+              </div>
+              {canCreate && ![filters.code, filters.formulaId, filters.experimenterId, filters.category, filters.dateFrom].some(Boolean) && (
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/experiments/new')}>
+                  建立第一個實驗
+                </Button>
+              )}
+            </div>
+          ),
+        }}
       />
 
       {/* 建立委託實驗 Modal */}

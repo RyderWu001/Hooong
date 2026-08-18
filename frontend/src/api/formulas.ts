@@ -92,5 +92,6 @@ export const updateIngredientBatch = (batchId: number, data: FormData | object) 
     data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {})
 export const deleteIngredientBatch = (batchId: number) => client.delete(`/ingredients/batches/${batchId}`)
 export const getExpiringBatches = (days = 30) => client.get(`/ingredients/batches/expiring?days=${days}`)
+export const getIngredientByBatch = (batchId: number) => client.get(`/ingredients/find-by-batch/${batchId}`)
 
 export const deleteIngredient = (id: number) => client.delete(`/ingredients/${id}`)

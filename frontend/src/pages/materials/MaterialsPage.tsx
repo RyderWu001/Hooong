@@ -20,7 +20,7 @@ import {
   getIngredients, createIngredient, updateIngredient, deleteIngredient,
   getIngredientDocuments, uploadIngredientDocument, deleteIngredientDocument,
   getIngredientBatches, createIngredientBatch, updateIngredientBatch, deleteIngredientBatch,
-  getExpiringBatches,
+  getExpiringBatches, getIngredientByBatch,
 } from '../../api/formulas'
 import {
   getInventory, createInventory, updateInventory, deleteInventory,
@@ -553,12 +553,13 @@ function QCReportModal({
 // ── 原料詳情 Drawer ──────────────────────────────────────────────────────────
 
 function IngredientDetailDrawer({
-  ingredient, open, onClose, canEdit,
+  ingredient, open, onClose, canEdit, initialBatchId,
 }: {
   ingredient: Ingredient | null
   open: boolean
   onClose: () => void
   canEdit: boolean
+  initialBatchId?: number
 }) {
   const [docs, setDocs] = useState<IngredientDocument[]>([])
   const [batches, setBatches] = useState<IngredientBatch[]>([])
@@ -570,6 +571,7 @@ function IngredientDetailDrawer({
   const [editingBatch, setEditingBatch] = useState<IngredientBatch | null>(null)
   const [batchForm] = Form.useForm()
   const [qcBatch, setQcBatch] = useState<IngredientBatch | null>(null)
+  const [activeTab, setActiveTab] = useState<string>(initialBatchId ? 'batches' : 'info')
 
   const loadDocs = useCallback(async () => {
     if (!ingredient) return
@@ -596,8 +598,17 @@ function IngredientDetailDrawer({
       loadDocs()
       loadBatches()
       setFileList([])
+      setActiveTab(initialBatchId ? 'batches' : 'info')
     }
   }, [open, ingredient?.id])
+
+  // 從通知點入時自動開啟指定批號的驗收 Modal
+  useEffect(() => {
+    if (initialBatchId && batches.length > 0) {
+      const target = batches.find(b => b.id === initialBatchId)
+      if (target) setQcBatch(target)
+    }
+  }, [initialBatchId, batches])
 
   const handleUpload = async () => {
     if (!ingredient || fileList.length === 0) return
@@ -821,6 +832,8 @@ function IngredientDetailDrawer({
       styles={{ body: { padding: '0 24px 24px' } }}
     >
       <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
         items={[
           {
             key: 'info',
@@ -897,7 +910,9 @@ function IngredientDetailDrawer({
                   pagination={false}
                   size="small"
                   locale={{ emptyText: '尚無批號紀錄' }}
+                  rowClassName={(row) => row.id === initialBatchId ? 'batch-highlight-row' : ''}
                 />
+                <style>{`.batch-highlight-row td { background: #fffbeb !important; }`}</style>
               </Space>
             ),
           },
@@ -1002,9 +1017,10 @@ function IngredientTab() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Ingredient | null>(null)
   const [detailTarget, setDetailTarget] = useState<Ingredient | null>(null)
+  const [highlightBatchId, setHighlightBatchId] = useState<number | undefined>()
   const [form] = Form.useForm()
   const [search, setSearch] = useState('')
-
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -1017,6 +1033,20 @@ function IngredientTab() {
   }, [search])
 
   useEffect(() => { load() }, [load])
+
+  // 從通知連結進入時（?batchId=X），自動開啟對應原料的詳情 Drawer
+  useEffect(() => {
+    const batchId = Number(searchParams.get('batchId'))
+    if (!batchId) return
+    getIngredientByBatch(batchId)
+      .then(res => {
+        setDetailTarget(res.data.data)
+        setHighlightBatchId(batchId)
+        // 清除 URL 參數，避免重整後重複觸發
+        setSearchParams(prev => { prev.delete('batchId'); return prev }, { replace: true })
+      })
+      .catch(() => {})
+  }, [])
 
   const toIndustryArr = (v: string | null) => (v ? v.split(',').filter(Boolean) : [])
 
@@ -1130,7 +1160,28 @@ function IngredientTab() {
         />
         <Button icon={<DownloadOutlined />} onClick={() => exportIngredientsCSV(data)}>匯出 CSV</Button>
       </Space>
-      <Table rowKey="id" loading={loading} columns={columns} dataSource={data} pagination={{ pageSize: 20 }} size="small" />
+      <Table
+        rowKey="id"
+        loading={loading}
+        columns={columns}
+        dataSource={data}
+        pagination={{ pageSize: 20 }}
+        size="small"
+        locale={{
+          emptyText: (
+            <div style={{ padding: '32px 0', textAlign: 'center' }}>
+              <div style={{ color: '#94a3b8', marginBottom: 12 }}>
+                {search ? '找不到符合搜尋條件的原料' : '尚無原料資料'}
+              </div>
+              {canEdit && !search && (
+                <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
+                  新增第一筆原料
+                </Button>
+              )}
+            </div>
+          ),
+        }}
+      />
 
       {/* 新增/編輯 Modal */}
       <Modal
@@ -1231,8 +1282,9 @@ function IngredientTab() {
       <IngredientDetailDrawer
         ingredient={detailTarget}
         open={!!detailTarget}
-        onClose={() => setDetailTarget(null)}
+        onClose={() => { setDetailTarget(null); setHighlightBatchId(undefined) }}
         canEdit={canEdit}
+        initialBatchId={highlightBatchId}
       />
     </>
   )
