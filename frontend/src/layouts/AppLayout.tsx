@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Layout, Menu, Avatar, Dropdown, Typography, Tag, Modal, Descriptions, Form, Input, Button, Space, message, Upload, Divider, Badge, Tooltip } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Typography, Tag, Modal, Descriptions, Form, Input, Button, Space, message, Upload, Divider } from 'antd'
 import {
   ExperimentOutlined,
   FileTextOutlined,
@@ -24,13 +24,12 @@ import {
   FileAddOutlined,
   UploadOutlined,
   DeleteOutlined,
-  BellOutlined,
   DashboardOutlined,
   SearchOutlined,
 } from '@ant-design/icons'
+import NotificationInbox from '../components/NotificationInbox'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
-import { useAlertCount } from '../hooks/useAlertCount'
 import { useTranslation } from 'react-i18next'
 import LanguageSwitch from '../components/LanguageSwitch'
 import GlobalSearch from '../components/GlobalSearch'
@@ -59,7 +58,6 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, clearAuth } = useAuthStore()
-  const { total: alertTotal } = useAlertCount()
   const { t } = useTranslation()
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -342,18 +340,7 @@ export default function AppLayout() {
           <span className={styles.headerRight}>
             <LanguageSwitch className={styles.bellBtn} />
 
-            <Tooltip title={alertTotal > 0
-              ? t('dashboard.alertsPending', { count: alertTotal })
-              : t('dashboard.noAlertsPending')}>
-              <Badge count={alertTotal} size="small" overflowCount={99}>
-                <span
-                  className={styles.bellBtn}
-                  onClick={() => navigate('/dashboard')}
-                >
-                  <BellOutlined />
-                </span>
-              </Badge>
-            </Tooltip>
+            <NotificationInbox />
 
           <Dropdown menu={userMenu} placement="bottomRight">
             <span className={styles.userInfo}>
