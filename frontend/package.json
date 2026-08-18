@@ -17,10 +17,12 @@
     "antd": "^6.4.4",
     "axios": "^1.18.0",
     "dayjs": "^1.11.21",
+    "i18next": "^26.3.6",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
+    "react-i18next": "^17.0.11",
     "react-router-dom": "^7.18.0",
     "xlsx": "^0.18.5",
     "zustand": "^5.0.14"

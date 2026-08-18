@@ -1,8 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConfigProvider, theme as antTheme } from 'antd'
 import zhTW from 'antd/locale/zh_TW'
+import viVN from 'antd/locale/vi_VN'
+import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-tw'
+import 'dayjs/locale/vi'
+import './i18n'
 
 import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -38,17 +42,21 @@ import QcDailyLogPage from './pages/forms/QcDailyLogPage'
 import ProductCounterPlanPage from './pages/forms/ProductCounterPlanPage'
 import ChemPreparationPage from './pages/forms/ChemPreparationPage'
 import ProductReworkPage from './pages/forms/ProductReworkPage'
+import DashboardPage from './pages/dashboard/DashboardPage'
 import SuppliersPage from './pages/suppliers/SuppliersPage'
 import SupplierComplianceAuditPage from './pages/forms/SupplierComplianceAuditPage'
 import FormulaChangePage from './pages/forms/FormulaChangePage'
 import MassProductionApprovalPage from './pages/forms/MassProductionApprovalPage'
 
-dayjs.locale('zh-tw')
-
 export default function App() {
+  const { i18n } = useTranslation()
+  const isVi = i18n.language === 'vi'
+  // dayjs 沒有 React context，需在語系變更時同步切換
+  dayjs.locale(isVi ? 'vi' : 'zh-tw')
+
   return (
     <ConfigProvider
-      locale={zhTW}
+      locale={isVi ? viVN : zhTW}
       theme={{
         algorithm: antTheme.defaultAlgorithm,
         token: {
@@ -145,7 +153,8 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/experiments" replace />} />
+            <Route index element={<DashboardPage />} />
+            <Route path="dashboard" element={<DashboardPage />} />
 
             <Route path="formulas" element={<FormulaListPage />} />
             <Route path="formulas/new" element={<FormulaFormPage />} />

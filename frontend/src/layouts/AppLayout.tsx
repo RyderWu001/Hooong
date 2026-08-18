@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Layout, Menu, Avatar, Dropdown, Typography, Tag, Modal, Descriptions, Form, Input, Button, Space, message, Upload, Divider } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Typography, Tag, Modal, Descriptions, Form, Input, Button, Space, message, Upload, Divider, Badge, Tooltip } from 'antd'
 import {
   ExperimentOutlined,
   FileTextOutlined,
@@ -24,9 +24,17 @@ import {
   FileAddOutlined,
   UploadOutlined,
   DeleteOutlined,
+  BellOutlined,
+  DashboardOutlined,
+  SearchOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import { useAlertCount } from '../hooks/useAlertCount'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitch from '../components/LanguageSwitch'
+import GlobalSearch from '../components/GlobalSearch'
+import searchStyles from '../components/GlobalSearch.module.css'
 import { logout, changePassword } from '../api/auth'
 import { getMySignature, saveMySignature } from '../api/formSignatures'
 import styles from './AppLayout.module.css'
@@ -37,12 +45,6 @@ const ROLE_COLOR: Record<string, string> = {
   ADMIN: 'red',
   MANAGER: 'blue',
   LAB_STAFF: 'green',
-}
-
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN: '管理員',
-  MANAGER: '經理',
-  LAB_STAFF: '實驗室人員',
 }
 
 export default function AppLayout() {
@@ -57,6 +59,21 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, clearAuth } = useAuthStore()
+  const { total: alertTotal } = useAlertCount()
+  const { t } = useTranslation()
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  // Cmd/Ctrl + K 開啟全域查詢
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const loadSignature = useCallback(async () => {
     const sig = await getMySignature().catch(() => null)
@@ -128,56 +145,57 @@ export default function AppLayout() {
   }
 
   const menuItems = [
+    { key: '/dashboard', icon: <DashboardOutlined />, label: t('menu.dashboard') },
     {
       key: '/formulas',
       icon: <MedicineBoxOutlined />,
-      label: '配方管理',
+      label: t('menu.formulas'),
       onTitleClick: ({ key }: { key: string }) => navigate(key),
       children: [
-        { key: '/traceability', icon: <ApartmentOutlined />, label: '溯源管理' },
+        { key: '/traceability', icon: <ApartmentOutlined />, label: t('menu.traceability') },
       ],
     },
-    { key: '/materials', icon: <ShopOutlined />, label: '原料管理' },
+    { key: '/materials', icon: <ShopOutlined />, label: t('menu.materials') },
     {
       key: '/experiments',
       icon: <ExperimentOutlined />,
-      label: '實驗管理',
+      label: t('menu.experiments'),
       onTitleClick: ({ key }: { key: string }) => navigate(key),
       children: [
-        { key: '/samples', icon: <TagsOutlined />, label: '樣品管理' },
+        { key: '/samples', icon: <TagsOutlined />, label: t('menu.samples') },
       ],
     },
-    { key: '/results',   icon: <FileTextOutlined />, label: '實驗結果' },
+    { key: '/results',   icon: <FileTextOutlined />, label: t('menu.results') },
     {
       key: '/forms',
       icon: <FormOutlined />,
-      label: '表單管理',
+      label: t('menu.forms'),
       children: [
         // 名稱對齊需求文件的正式表單名稱
-        { key: '/lab-daily-log',               icon: <CalendarOutlined />, label: '化驗室每日工作日誌' },
-        { key: '/sample-submissions',          icon: <TagsOutlined />,     label: '送樣連絡單' },
-        { key: '/chemical-evaluations',        icon: <AuditOutlined />,    label: '化學品評估表' },
-        { key: '/chemical-requests',           icon: <FileAddOutlined />,  label: '化學品需求申請單' },
-        { key: '/qc-daily-logs',               icon: <CalendarOutlined />, label: 'QC每日工作日誌' },
-        { key: '/product-counter-plans',       icon: <AuditOutlined />,    label: '產品對抗計劃執行明細表' },
-        { key: '/chem-preparations',           icon: <FileAddOutlined />,  label: '化驗室藥劑泡製紀錄' },
-        { key: '/product-reworks',             icon: <FileAddOutlined />,  label: '產品重修配置紀錄表' },
-        { key: '/suppliers',                   icon: <ShopOutlined />,     label: '化學品供應商資料表' },
-        { key: '/supplier-compliance-audits',  icon: <AuditOutlined />,    label: '化學品供應商評鑑資料表' },
-        { key: '/formula-changes',             icon: <FormOutlined />,     label: '配方變更核准申請書' },
-        { key: '/mass-production-approvals',   icon: <AuditOutlined />,    label: '新配方量產核准紀錄表' },
+        { key: '/lab-daily-log',               icon: <CalendarOutlined />, label: t('menu.labDailyLog') },
+        { key: '/sample-submissions',          icon: <TagsOutlined />,     label: t('menu.sampleSubmissions') },
+        { key: '/chemical-evaluations',        icon: <AuditOutlined />,    label: t('menu.chemicalEvaluations') },
+        { key: '/chemical-requests',           icon: <FileAddOutlined />,  label: t('menu.chemicalRequests') },
+        { key: '/qc-daily-logs',               icon: <CalendarOutlined />, label: t('menu.qcDailyLogs') },
+        { key: '/product-counter-plans',       icon: <AuditOutlined />,    label: t('menu.productCounterPlans') },
+        { key: '/chem-preparations',           icon: <FileAddOutlined />,  label: t('menu.chemPreparations') },
+        { key: '/product-reworks',             icon: <FileAddOutlined />,  label: t('menu.productReworks') },
+        { key: '/suppliers',                   icon: <ShopOutlined />,     label: t('menu.suppliers') },
+        { key: '/supplier-compliance-audits',  icon: <AuditOutlined />,    label: t('menu.supplierComplianceAudits') },
+        { key: '/formula-changes',             icon: <FormOutlined />,     label: t('menu.formulaChanges') },
+        { key: '/mass-production-approvals',   icon: <AuditOutlined />,    label: t('menu.massProductionApprovals') },
       ],
     },
-    { key: '/reports',   icon: <BarChartOutlined />, label: '報表' },
+    { key: '/reports',   icon: <BarChartOutlined />, label: t('menu.reports') },
     ...(user?.role === 'ADMIN'
       ? [
           {
             type: 'group' as const,
-            label: '系統管理',
+            label: t('menu.system'),
             children: [
-              { key: '/users',       icon: <TeamOutlined />,              label: '使用者管理' },
-              { key: '/dropdowns',   icon: <UnorderedListOutlined />,     label: '選項管理' },
-              { key: '/permissions', icon: <SafetyCertificateOutlined />, label: '權限管理' },
+              { key: '/users',       icon: <TeamOutlined />,              label: t('menu.users') },
+              { key: '/dropdowns',   icon: <UnorderedListOutlined />,     label: t('menu.dropdowns') },
+              { key: '/permissions', icon: <SafetyCertificateOutlined />, label: t('menu.permissions') },
             ],
           },
         ]
@@ -188,20 +206,20 @@ export default function AppLayout() {
     {
       key: 'profile',
       icon: <UserOutlined />,
-      label: '個人資料',
+      label: t('auth.profile'),
       onClick: () => setProfileOpen(true),
     },
     {
       key: 'password',
       icon: <LockOutlined />,
-      label: '修改密碼',
+      label: t('auth.changePassword'),
       onClick: () => setPasswordOpen(true),
     },
     { type: 'divider' as const },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
-      label: '登出',
+      label: t('auth.logout'),
       danger: true,
       onClick: handleLogout,
     },
@@ -212,7 +230,7 @@ export default function AppLayout() {
       {
         key: 'logout',
         icon: <LogoutOutlined />,
-        label: '登出',
+        label: t('auth.logout'),
         danger: true,
         onClick: handleLogout,
       },
@@ -291,7 +309,7 @@ export default function AppLayout() {
                 {
                   key: 'settings',
                   icon: <SettingOutlined />,
-                  label: '設定',
+                  label: t('auth.settings'),
                   children: settingsMenuItems,
                 },
               ]}
@@ -309,13 +327,42 @@ export default function AppLayout() {
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </span>
 
+          <button
+            type="button"
+            className={searchStyles.trigger}
+            onClick={() => setSearchOpen(true)}
+          >
+            <SearchOutlined />
+            <span>{t('search.placeholder')}</span>
+            <span className={searchStyles.triggerKbd}>
+              {navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} K
+            </span>
+          </button>
+
+          <span className={styles.headerRight}>
+            <LanguageSwitch className={styles.bellBtn} />
+
+            <Tooltip title={alertTotal > 0
+              ? t('dashboard.alertsPending', { count: alertTotal })
+              : t('dashboard.noAlertsPending')}>
+              <Badge count={alertTotal} size="small" overflowCount={99}>
+                <span
+                  className={styles.bellBtn}
+                  onClick={() => navigate('/dashboard')}
+                >
+                  <BellOutlined />
+                </span>
+              </Badge>
+            </Tooltip>
+
           <Dropdown menu={userMenu} placement="bottomRight">
             <span className={styles.userInfo}>
               <Avatar icon={<UserOutlined />} size="small" />
               <span>{user?.username}</span>
-              <Tag color={ROLE_COLOR[user?.role ?? '']}>{ROLE_LABEL[user?.role ?? '']}</Tag>
+              <Tag color={ROLE_COLOR[user?.role ?? '']}>{t(`role.${user?.role}`)}</Tag>
             </span>
           </Dropdown>
+          </span>
         </Header>
 
         <Content className={styles.content}>
@@ -323,19 +370,21 @@ export default function AppLayout() {
         </Content>
       </Layout>
 
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+
       {/* 個人資料 Modal */}
       <Modal
-        title={<Space><InfoCircleOutlined />個人資料</Space>}
+        title={<Space><InfoCircleOutlined />{t('auth.profile')}</Space>}
         open={profileOpen}
         onCancel={() => setProfileOpen(false)}
         footer={<Button onClick={() => setProfileOpen(false)}>關閉</Button>}
         width={480}
       >
         <Descriptions bordered column={1} style={{ marginTop: 8 }}>
-          <Descriptions.Item label="使用者名稱">{user?.username}</Descriptions.Item>
-          <Descriptions.Item label="電子郵件">{user?.email}</Descriptions.Item>
-          <Descriptions.Item label="角色">
-            <Tag color={ROLE_COLOR[user?.role ?? '']}>{ROLE_LABEL[user?.role ?? '']}</Tag>
+          <Descriptions.Item label={t('auth.username')}>{user?.username}</Descriptions.Item>
+          <Descriptions.Item label={t('auth.email')}>{user?.email}</Descriptions.Item>
+          <Descriptions.Item label={t('auth.role')}>
+            <Tag color={ROLE_COLOR[user?.role ?? '']}>{t(`role.${user?.role}`)}</Tag>
           </Descriptions.Item>
         </Descriptions>
 
@@ -403,7 +452,7 @@ export default function AppLayout() {
 
       {/* 修改密碼 Modal */}
       <Modal
-        title={<Space><LockOutlined />修改密碼</Space>}
+        title={<Space><LockOutlined />{t('auth.changePassword')}</Space>}
         open={passwordOpen}
         onCancel={() => { setPasswordOpen(false); passwordForm.resetFields() }}
         footer={null}
@@ -415,12 +464,12 @@ export default function AppLayout() {
           onFinish={handleChangePassword}
           style={{ marginTop: 8 }}
         >
-          <Form.Item name="currentPassword" label="目前密碼" rules={[{ required: true, message: '請輸入目前密碼' }]}>
+          <Form.Item name="currentPassword" label={t('auth.currentPassword')} rules={[{ required: true, message: '請輸入目前密碼' }]}>
             <Input.Password />
           </Form.Item>
           <Form.Item
             name="newPassword"
-            label="新密碼"
+            label={t('auth.newPassword')}
             rules={[
               { required: true, message: '請輸入新密碼' },
               { min: 8, message: '至少 8 個字元' },
@@ -430,7 +479,7 @@ export default function AppLayout() {
           </Form.Item>
           <Form.Item
             name="confirmPassword"
-            label="確認新密碼"
+            label={t('auth.confirmPassword')}
             rules={[{ required: true, message: '請再次輸入新密碼' }]}
           >
             <Input.Password />

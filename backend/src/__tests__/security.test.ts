@@ -154,3 +154,98 @@ describe('安全性設定', () => {
     expect(res.status).toBe(400)
   })
 })
+
+describe('提醒與儀表板', () => {
+  it('提醒明細包含分類與嚴重程度', async () => {
+    const res = await request(app).get(`${API}/dashboard/alerts`).set(auth())
+    expect(res.status).toBe(200)
+    const { items, counts, total } = res.body.data
+    expect(Array.isArray(items)).toBe(true)
+    expect(total).toBe(items.length)
+    // 每項都要有可導向的連結與可辨識的分類
+    for (const i of items) {
+      expect(i.link).toBeTruthy()
+      expect(['lowStock', 'expired', 'expiring', 'retention', 'pendingSignature']).toContain(i.category)
+      expect(['critical', 'warning', 'info']).toContain(i.severity)
+      // 必須回傳 i18n key 與參數，不可回傳組好的句子——否則無法隨介面語系切換
+      expect(i.titleKey).toMatch(/^alertItem\./)
+      expect(i.detailKey).toMatch(/^alertItem\./)
+      expect(i.title).toBeUndefined()
+      expect(i.detail).toBeUndefined()
+    }
+    // counts 與實際項目數一致
+    const recount: Record<string, number> = {}
+    for (const i of items) recount[i.category] = (recount[i.category] ?? 0) + 1
+    for (const [k, v] of Object.entries(counts)) {
+      expect(v).toBe(recount[k] ?? 0)
+    }
+  })
+
+  it('提醒依嚴重程度排序，critical 在最前', async () => {
+    const res = await request(app).get(`${API}/dashboard/alerts`).set(auth())
+    const rank: Record<string, number> = { critical: 0, warning: 1, info: 2 }
+    const seq = res.body.data.items.map((i: { severity: string }) => rank[i.severity])
+    expect(seq).toEqual([...seq].sort((a: number, b: number) => a - b))
+  })
+
+  it('count 端點與明細數量一致', async () => {
+    const [detail, count] = await Promise.all([
+      request(app).get(`${API}/dashboard/alerts`).set(auth()),
+      request(app).get(`${API}/dashboard/alerts/count`).set(auth()),
+    ])
+    expect(count.body.data.total).toBe(detail.body.data.total)
+  })
+
+  it('儀表板統計回傳完整結構', async () => {
+    const res = await request(app).get(`${API}/dashboard/summary`).set(auth())
+    expect(res.status).toBe(200)
+    const d = res.body.data
+    expect(typeof d.experiments.thisMonth).toBe('number')
+    expect(typeof d.totals.formulas).toBe('number')
+    expect(Array.isArray(d.recentExperiments)).toBe(true)
+    // 成功率無已判定實驗時為 null，不可誤報為 0
+    expect(d.experiments.successRate === null || typeof d.experiments.successRate === 'number').toBe(true)
+  })
+
+  it('未登入無法取得提醒', async () => {
+    const res = await request(app).get(`${API}/dashboard/alerts`)
+    expect(res.status).toBe(401)
+  })
+})
+
+describe('全域查詢', () => {
+  it('查詢字串過短時不回傳結果', async () => {
+    const res = await request(app).get(`${API}/search?q=R`).set(auth())
+    expect(res.status).toBe(200)
+    expect(res.body.data.hits).toEqual([])
+  })
+
+  it('可跨模組找到資料', async () => {
+    const res = await request(app).get(`${API}/search`).query({ q: 'RC' }).set(auth())
+    expect(res.status).toBe(200)
+    expect(res.body.data.hits.length).toBeGreaterThan(0)
+  })
+
+  it('每筆結果都有導向連結與命中欄位 key', async () => {
+    const res = await request(app).get(`${API}/search`).query({ q: 'RC' }).set(auth())
+    for (const h of res.body.data.hits) {
+      expect(h.link).toBeTruthy()
+      expect(['formula', 'ingredient', 'experiment', 'sample', 'supplier', 'knowledge'])
+        .toContain(h.type)
+      // 命中欄位須為 i18n key，不可回傳中文標籤
+      if (h.matchedFieldKey) expect(h.matchedFieldKey).toMatch(/^searchField\./)
+    }
+  })
+
+  it('每個類別的回傳筆數有上限，避免單一類別洗版', async () => {
+    const res = await request(app).get(`${API}/search`).query({ q: 'a' + '' }).set(auth())
+    const byType: Record<string, number> = {}
+    for (const h of res.body.data.hits) byType[h.type] = (byType[h.type] ?? 0) + 1
+    for (const n of Object.values(byType)) expect(n).toBeLessThanOrEqual(5)
+  })
+
+  it('未登入無法查詢', async () => {
+    const res = await request(app).get(`${API}/search?q=RC`)
+    expect(res.status).toBe(401)
+  })
+})

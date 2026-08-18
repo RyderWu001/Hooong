@@ -36,6 +36,8 @@ import productReworksRouter from './routes/productReworks'
 import supplierComplianceAuditsRouter from './routes/supplierComplianceAudits'
 import formulaChangeRouter from './routes/formulaChange'
 import massProductionRouter from './routes/massProduction'
+import dashboardRouter from './routes/dashboard'
+import searchRouter from './routes/search'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 3000)
@@ -91,6 +93,8 @@ app.use('/api/v1/product-reworks', productReworksRouter)
 app.use('/api/v1/supplier-compliance-audits', supplierComplianceAuditsRouter)
 app.use('/api/v1/formula-changes', formulaChangeRouter)
 app.use('/api/v1/mass-production-approvals', massProductionRouter)
+app.use('/api/v1/dashboard', dashboardRouter)
+app.use('/api/v1/search', searchRouter)
 
 app.get('/api/v1/health', (_, res) => res.json({ status: 'ok' }))
 

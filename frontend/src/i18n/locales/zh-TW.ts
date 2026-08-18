@@ -1,0 +1,266 @@
+/**
+ * 繁體中文語系。
+ *
+ * 這份同時是所有 key 的來源與回退基準：越南文尚未翻譯的字串會顯示這裡的中文，
+ * 而不是顯示原始 key，因此部分翻譯的狀態下系統仍可正常使用。
+ */
+export default {
+  // ── 通用 ────────────────────────────────────────────
+  common: {
+    add: '新增',
+    edit: '編輯',
+    delete: '刪除',
+    save: '儲存',
+    cancel: '取消',
+    confirm: '確定',
+    close: '關閉',
+    search: '搜尋',
+    reset: '重設',
+    print: '列印',
+    export: '匯出',
+    exportExcel: '匯出 Excel',
+    exportPdf: '匯出 PDF',
+    upload: '上傳',
+    download: '下載',
+    detail: '詳情',
+    copy: '複製',
+    refresh: '重新整理',
+    back: '返回',
+    all: '全部',
+    none: '無',
+    notSet: '未設定',
+    yes: '是',
+    no: '否',
+    loading: '載入中',
+    noData: '暫無資料',
+    actions: '操作',
+    remark: '備註',
+    notes: '備註',
+    status: '狀態',
+    date: '日期',
+    createdAt: '建立時間',
+    updatedAt: '更新時間',
+    createdBy: '建立人',
+    name: '名稱',
+    code: '代碼',
+    unit: '單位',
+    quantity: '數量',
+    total: '總計',
+    category: '分類',
+    type: '類型',
+    supplier: '供應商',
+    customer: '客戶',
+    required: '此欄位為必填',
+    confirmDelete: '確定刪除？',
+    items: '項',
+    records: '筆',
+  },
+
+  // ── 操作結果訊息 ────────────────────────────────────
+  msg: {
+    loadFailed: '載入失敗',
+    saveFailed: '儲存失敗',
+    deleteFailed: '刪除失敗',
+    created: '已新增',
+    updated: '已更新',
+    deleted: '已刪除',
+    saved: '已儲存',
+    allowPopup: '請允許彈出視窗',
+    noPermission: '權限不足',
+  },
+
+  // ── 登入 ────────────────────────────────────────────
+  auth: {
+    welcome: '歡迎回來',
+    subtitle: '請輸入您的帳號與密碼以繼續',
+    systemName: '實驗室資訊管理系統',
+    email: '電子郵件',
+    password: '密碼',
+    login: '登入',
+    logout: '登出',
+    register: '註冊',
+    registerNow: '立即註冊',
+    noAccount: '還沒有帳號？',
+    forgotPassword: '忘記密碼？',
+    username: '使用者名稱',
+    currentPassword: '目前密碼',
+    newPassword: '新密碼',
+    confirmPassword: '確認新密碼',
+    changePassword: '修改密碼',
+    profile: '個人資料',
+    settings: '設定',
+    mySignature: '我的電子簽名',
+    role: '角色',
+    loginFailed: '帳號或密碼錯誤',
+    passwordMismatch: '兩次密碼不一致',
+    passwordUpdated: '密碼已更新，請重新登入',
+  },
+
+  // ── 角色 ────────────────────────────────────────────
+  role: {
+    ADMIN: '管理員',
+    MANAGER: '經理',
+    LAB_STAFF: '實驗室人員',
+  },
+
+  // ── 選單 ────────────────────────────────────────────
+  menu: {
+    dashboard: '首頁',
+    formulas: '配方管理',
+    traceability: '溯源管理',
+    materials: '原料管理',
+    experiments: '實驗管理',
+    samples: '樣品管理',
+    results: '實驗結果',
+    forms: '表單管理',
+    reports: '報表',
+    knowledge: '知識庫',
+    risks: '風險管理',
+    system: '系統管理',
+    users: '使用者管理',
+    dropdowns: '選項管理',
+    permissions: '權限管理',
+    // 表單（名稱對齊需求文件）
+    labDailyLog: '化驗室每日工作日誌',
+    sampleSubmissions: '送樣連絡單',
+    chemicalEvaluations: '化學品評估表',
+    chemicalRequests: '化學品需求申請單',
+    qcDailyLogs: 'QC每日工作日誌',
+    productCounterPlans: '產品對抗計劃執行明細表',
+    chemPreparations: '化驗室藥劑泡製紀錄',
+    productReworks: '產品重修配置紀錄表',
+    suppliers: '化學品供應商資料表',
+    supplierComplianceAudits: '化學品供應商評鑑資料表',
+    formulaChanges: '配方變更核准申請書',
+    massProductionApprovals: '新配方量產核准紀錄表',
+  },
+
+  // ── 儀表板 ──────────────────────────────────────────
+  dashboard: {
+    greetingMorning: '早安',
+    greetingAfternoon: '午安',
+    greetingEvening: '晚安',
+    monthExperiments: '本月實驗',
+    monthSuccessRate: '本月成功率',
+    pendingAlerts: '待處理提醒',
+    formulasIngredients: '配方／原料',
+    vsLastMonth: '較上月',
+    noJudgedResults: '本月尚無已判定結果',
+    successFailed: '成功 {{success}}／失敗 {{failed}}',
+    criticalCount: '其中 {{count}} 項須立即處理',
+    noCritical: '無緊急項目',
+    activeSamples: '進行中樣品 {{count}} 件',
+    todoAlerts: '待辦提醒',
+    recentExperiments: '最近實驗',
+    noTodo: '目前沒有待處理事項',
+    noneInCategory: '此分類沒有項目',
+    noExperiments: '尚無實驗紀錄',
+    overdue: '已逾期',
+    undetermined: '未判定',
+    alertsPending: '{{count}} 項待處理',
+    noAlertsPending: '沒有待處理事項',
+  },
+
+  // ── 提醒分類 ────────────────────────────────────────
+  alert: {
+    lowStock: '庫存不足',
+    expired: '已過期',
+    expiring: '即將到期',
+    retention: '留樣到期',
+    pendingSignature: '待簽核',
+  },
+
+  // ── 實驗結果狀態 ────────────────────────────────────
+  resultStatus: {
+    SUCCESS: '成功',
+    FAILED: '失敗',
+    OBSERVING: '觀察中',
+    NEEDS_ADJUST: '待調整',
+  },
+
+  // ── 表單類型（提醒用）────────────────────────────────
+  formType: {
+    qcReport: '進料品質檢驗報告',
+  },
+
+  // ── 簽核關卡名稱 ────────────────────────────────────
+  approvalSlot: {
+    SampleSubmission: { 1: '承辦人', 2: '化驗室', 3: '廠務部', 4: '行管部', 5: '財務部', 6: '核准', 7: '總經理' },
+    ChemicalEvaluation: { 1: '評估人員', 2: '化驗室主管', 3: '廠長' },
+    ChemicalRequest: { 1: '申請人', 2: '技術主管', 3: '廠長', 4: '總經理' },
+    QcReport: { 1: '檢測員', 2: '審核', 3: '單位主管' },
+    FormulaChange: { 1: '技術經理', 2: '管理部', 3: '總經理', 4: '董事長' },
+    MassProduction: { 1: '管理部', 2: '總經理', 3: '董事長' },
+  },
+
+  // ── 提醒項目內容 ────────────────────────────────────
+  alertItem: {
+    lowStock: {
+      title: '{{name}}（{{code}}） 庫存不足',
+      detail: '目前 {{current}} {{unit}}，安全庫存 {{safety}} {{unit}}，短缺 {{shortfall}} {{unit}}',
+    },
+    batch: {
+      titleExpired: '{{name}} 批號 {{batchNo}} 已過期',
+      titleExpiring: '{{name}} 批號 {{batchNo}} 即將到期',
+      detailExpired: '已逾期 {{days}} 天（有效期至 {{date}}），剩餘 {{remaining}} {{unit}}',
+      detailExpiring: '{{days}} 天後到期（{{date}}），剩餘 {{remaining}} {{unit}}',
+    },
+    retention: {
+      titleExpired: '留樣 {{code}} 已逾期',
+      titleExpiring: '留樣 {{code}} 即將到期',
+      detailExpired: '已逾期 {{days}} 天（{{date}}）',
+      detailExpiring: '{{days}} 天後到期（{{date}}）',
+      location: '位置：{{location}}',
+      client: '客戶：{{client}}',
+    },
+    signature: {
+      title: '{{form}} #{{id}} 待您簽核',
+      detail: '目前關卡：{{slot}}（第 {{current}} / {{total}} 關）',
+    },
+  },
+
+  // ── 全域查詢 ────────────────────────────────────────
+  search: {
+    placeholder: '搜尋配方、原料、實驗、樣品…',
+    open: '全域查詢',
+    hint: '輸入至少 2 個字元開始搜尋',
+    noResult: '找不到符合「{{query}}」的資料',
+    resultCount: '共 {{count}} 筆結果',
+    matchedOn: '命中：{{field}}',
+    viewAll: '在此模組中查看全部',
+  },
+
+  searchType: {
+    formula: '配方',
+    ingredient: '原料',
+    experiment: '實驗',
+    sample: '樣品',
+    supplier: '供應商',
+    knowledge: '知識庫',
+  },
+
+  searchField: {
+    formulaCode: '配方編號',
+    formulaName: '配方名稱',
+    description: '說明',
+    ingredientName: '原料名稱',
+    ingredientCode: '原料代碼',
+    englishName: '英文名稱',
+    casNo: 'CAS No.',
+    experimentCode: '實驗編號',
+    client: '客戶',
+    fabricCode: '布種編號',
+    notes: '備註',
+    sampleCode: '樣品編號',
+    clientName: '客戶名稱',
+    label: '標籤',
+    targetItem: '檢測項目',
+    supplierName: '供應商名稱',
+    supplierCode: '供應商代號',
+    contactPerson: '聯絡人',
+    supplyItems: '供應項目',
+    title: '標題',
+    tags: '標籤',
+    content: '內容',
+  },
+} as const

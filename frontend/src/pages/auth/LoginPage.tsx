@@ -3,6 +3,8 @@ import { UserOutlined, LockOutlined, ExperimentOutlined } from '@ant-design/icon
 import { useNavigate, Link } from 'react-router-dom'
 import { login } from '../../api/auth'
 import { useAuthStore } from '../../stores/authStore'
+import { useTranslation } from 'react-i18next'
+import LanguageSwitch from '../../components/LanguageSwitch'
 import styles from './LoginPage.module.css'
 
 const { Title, Text } = Typography
@@ -11,6 +13,7 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { setAuth } = useAuthStore()
   const [form] = Form.useForm()
+  const { t } = useTranslation()
 
   const handleSubmit = async (values: { email: string; password: string }) => {
     try {
@@ -19,7 +22,7 @@ export default function LoginPage() {
       setAuth(token, user)
       navigate('/')
     } catch {
-      message.error('帳號或密碼錯誤')
+      message.error(t('auth.loginFailed'))
     }
   }
 
@@ -35,21 +38,24 @@ export default function LoginPage() {
           <Title className={styles.brandTitle}>泓利廣</Title>
           <div className={styles.brandDivider} />
           <Text className={styles.brandSub}>
-            實驗室資訊管理系統<br />
+            {t('auth.systemName')}<br />
             Laboratory Information Management System
           </Text>
         </div>
 
         {/* ── 右側表單區 ── */}
         <div className={styles.formPanel}>
-          <Title level={3} className={styles.formTitle}>歡迎回來</Title>
-          <Text className={styles.formSub}>請輸入您的帳號與密碼以繼續</Text>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
+            <LanguageSwitch variant="text" />
+          </div>
+          <Title level={3} className={styles.formTitle}>{t('auth.welcome')}</Title>
+          <Text className={styles.formSub}>{t('auth.subtitle')}</Text>
 
           <Form form={form} layout="vertical" onFinish={handleSubmit} size="large">
             <Form.Item
               name="email"
               label="電子郵件"
-              rules={[{ required: true, type: 'email', message: '請輸入有效的 Email' }]}
+              rules={[{ required: true, type: 'email', message: t('auth.email') }]}
             >
               <Input prefix={<UserOutlined />} placeholder="your@email.com" />
             </Form.Item>
@@ -57,7 +63,7 @@ export default function LoginPage() {
             <Form.Item
               name="password"
               label="密碼"
-              rules={[{ required: true, message: '請輸入密碼' }]}
+              rules={[{ required: true, message: t('auth.password') }]}
             >
               <Input.Password prefix={<LockOutlined />} placeholder="••••••••" />
             </Form.Item>
@@ -75,8 +81,8 @@ export default function LoginPage() {
           </Form>
 
           <div className={styles.links}>
-            <Link to="/forgot-password">忘記密碼？</Link>
-            <span>還沒有帳號？<Link to="/register">立即註冊</Link></span>
+            <Link to="/forgot-password">{t('auth.forgotPassword')}</Link>
+            <span>{t('auth.noAccount')}<Link to="/register">{t('auth.registerNow')}</Link></span>
           </div>
 
           <div className={styles.copyright}>
