@@ -2,12 +2,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Card, Row, Col, Statistic, List, Tag, Typography, Space, Empty,
-  Button, Skeleton, Tooltip,
+  Button, Segmented, Skeleton, Tooltip,
 } from 'antd'
 import {
   WarningOutlined, ClockCircleOutlined, InboxOutlined, AuditOutlined,
   ExperimentOutlined, RiseOutlined, FallOutlined, ReloadOutlined,
-  CheckCircleOutlined, FileTextOutlined, RightOutlined,
+  CheckCircleOutlined, FileTextOutlined,
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import {
@@ -38,14 +38,6 @@ const ALERT_CATEGORIES: AlertCategory[] = [
   'lowStock', 'expired', 'expiring', 'retention', 'pendingSignature',
 ]
 
-/** 各分類點擊後跳轉的頁面（pendingSignature 依項目決定） */
-const CATEGORY_LINK: Record<AlertCategory, string> = {
-  lowStock:         '/materials?tab=3',
-  expired:          '/materials?tab=4',
-  expiring:         '/materials?tab=4',
-  retention:        '/experiments',
-  pendingSignature: '/materials',
-}
 
 const RESULT_COLOR: Record<string, string> = {
   SUCCESS: 'success',
@@ -61,6 +53,7 @@ export default function DashboardPage() {
   const [alerts, setAlerts] = useState<AlertSummary | null>(null)
   const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState<AlertCategory | 'all'>('all')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -91,6 +84,7 @@ export default function DashboardPage() {
   })
 
   const items = alerts?.items ?? []
+  const shown = filter === 'all' ? items : items.filter(i => i.category === filter)
 
   const monthDelta = summary
     ? summary.experiments.thisMonth - summary.experiments.prevMonth
@@ -196,8 +190,8 @@ export default function DashboardPage() {
       </Row>
 
       <Row gutter={[16, 16]}>
-        {/* 待辦提醒：分類彙總（個別項目請由右上角鈴鐺查閱） */}
-        <Col xs={24} lg={10}>
+        {/* 待辦提醒 */}
+        <Col xs={24} lg={14}>
           <Card
             size="small"
             title={
@@ -207,88 +201,69 @@ export default function DashboardPage() {
                 {items.length > 0 && <Tag color="red">{items.length}</Tag>}
               </Space>
             }
-            styles={{ body: { padding: '4px 0' } }}
+            styles={{ body: { padding: items.length ? '8px 0 0' : 12 } }}
           >
-            <Skeleton loading={loading} active paragraph={{ rows: 5 }}>
-              {items.length === 0 ? (
+            {items.length > 0 && (
+              <div style={{ padding: '0 12px 8px', overflowX: 'auto' }}>
+                <Segmented
+                  size="small"
+                  value={filter}
+                  onChange={(v) => setFilter(v as AlertCategory | 'all')}
+                  options={[
+                    { label: `${t('common.all')} ${items.length}`, value: 'all' },
+                    ...ALERT_CATEGORIES
+                      .filter(c => (alerts?.counts[c] ?? 0) > 0)
+                      .map(c => ({
+                        label: `${t(`alert.${c}`)} ${alerts?.counts[c]}`,
+                        value: c,
+                      })),
+                  ]}
+                />
+              </div>
+            )}
+
+            <Skeleton loading={loading} active>
+              {shown.length === 0 ? (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={t('dashboard.noTodo')}
-                  style={{ padding: '16px 0' }}
+                  description={items.length === 0 ? t('dashboard.noTodo') : t('dashboard.noneInCategory')}
                 />
               ) : (
-                <>
-                  {ALERT_CATEGORIES.map(cat => {
-                    const count = alerts?.counts[cat] ?? 0
-                    const catItems = items.filter(i => i.category === cat)
-                    const hasCritical = catItems.some(i => i.severity === 'critical')
-                    const hasWarning  = catItems.some(i => i.severity === 'warning')
-                    const iconColor   = count === 0 ? '#cbd5e1'
-                      : hasCritical ? '#dc2626'
-                      : hasWarning  ? '#d97706'
-                      : '#2563eb'
-                    const tagColor = hasCritical ? 'error' : hasWarning ? 'warning' : 'processing'
-
-                    const handleCatClick = () => {
-                      if (count === 0) return
-                      if (cat === 'pendingSignature' && catItems.length === 1) {
-                        navigate(catItems[0].link)
-                      } else {
-                        navigate(CATEGORY_LINK[cat])
-                      }
-                    }
-
-                    const tooltipItems = catItems.slice(0, 6).map(i => alertTitle(i))
-                    const tooltipExtra = catItems.length > 6 ? `…等 ${catItems.length} 筆` : null
-
-                    return (
-                      <Tooltip
-                        key={cat}
-                        placement="right"
-                        title={
-                          count > 0 ? (
-                            <div>
-                              {tooltipItems.map((title, idx) => (
-                                <div key={idx} style={{ lineHeight: '1.8' }}>· {title}</div>
-                              ))}
-                              {tooltipExtra && <div style={{ opacity: 0.7 }}>{tooltipExtra}</div>}
-                            </div>
-                          ) : null
-                        }
-                      >
-                        <div
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            padding: '9px 16px',
-                            cursor: count > 0 ? 'pointer' : 'default',
-                            opacity: count === 0 ? 0.45 : 1,
-                            transition: 'background 0.15s',
-                          }}
-                          className={count > 0 ? 'alert-cat-row' : ''}
-                          onClick={handleCatClick}
-                        >
-                          <span style={{ color: iconColor, fontSize: 17, width: 20, flexShrink: 0, textAlign: 'center' }}>
-                            {CATEGORY_ICON[cat]}
+                <List
+                  size="small"
+                  dataSource={shown}
+                  style={{ maxHeight: 420, overflowY: 'auto' }}
+                  renderItem={(item) => (
+                    <List.Item
+                      style={{ cursor: 'pointer', paddingLeft: 12, paddingRight: 12 }}
+                      onClick={() => navigate(item.link)}
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          <span style={{ color: SEVERITY_COLOR[item.severity], fontSize: 18 }}>
+                            {CATEGORY_ICON[item.category]}
                           </span>
-                          <Text style={{ flex: 1, fontSize: 13 }}>{t(`alert.${cat}`)}</Text>
-                          {count > 0
-                            ? <Tag color={tagColor} style={{ margin: 0 }}>{count} {t('common.records')}</Tag>
-                            : <Text type="secondary" style={{ fontSize: 12 }}>—</Text>
-                          }
-                          {count > 0 && <RightOutlined style={{ fontSize: 11, color: '#94a3b8' }} />}
-                        </div>
-                      </Tooltip>
-                    )
-                  })}
-                  <style>{`.alert-cat-row:hover { background: #f8fafc; }`}</style>
-                </>
+                        }
+                        title={
+                          <Space size={4} wrap>
+                            <Text strong style={{ fontSize: 13 }}>{alertTitle(item)}</Text>
+                            {item.daysLeft !== null && item.daysLeft < 0 && (
+                              <Tag color="error">{t('dashboard.overdue')}</Tag>
+                            )}
+                          </Space>
+                        }
+                        description={<Text type="secondary" style={{ fontSize: 12 }}>{alertDetail(item)}</Text>}
+                      />
+                    </List.Item>
+                  )}
+                />
               )}
             </Skeleton>
           </Card>
         </Col>
 
         {/* 最近實驗 */}
-        <Col xs={24} lg={14}>
+        <Col xs={24} lg={10}>
           <Card
             size="small"
             title={<Space><ExperimentOutlined />{t('dashboard.recentExperiments')}</Space>}
