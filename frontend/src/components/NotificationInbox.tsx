@@ -43,6 +43,23 @@ const CATEGORY_I18N: Record<AlertCategory, string> = {
   pendingSignature: 'alert.pendingSignature',
 }
 
+/** pendingSignature 的 titleParams 帶 formKey（i18n key），detailParams 帶 slotKey（i18n key）
+ *  但模板期待 {{form}} 和 {{slot}}，需要先解析一層再傳入 t()。*/
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function resolveAlertParams(item: AlertItem, t: (key: string, opts?: any) => string) {
+  if (item.category !== 'pendingSignature') {
+    return { titleParams: item.titleParams, detailParams: item.detailParams }
+  }
+  const form = t(item.titleParams.formKey as string)
+  const slot = t(item.detailParams.slotKey as string, {
+    defaultValue: item.detailParams.slotFallback as string,
+  })
+  return {
+    titleParams: { ...item.titleParams, form },
+    detailParams: { ...item.detailParams, slot },
+  }
+}
+
 export default function NotificationInbox() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -130,7 +147,9 @@ export default function NotificationInbox() {
           <List
             size="small"
             dataSource={items}
-            renderItem={(item) => (
+            renderItem={(item) => {
+              const { titleParams, detailParams } = resolveAlertParams(item, t)
+              return (
               <List.Item
                 key={item.id}
                 style={{ padding: '10px 16px', cursor: 'pointer', transition: 'background 0.15s' }}
@@ -157,7 +176,7 @@ export default function NotificationInbox() {
                         ellipsis
                         style={{ fontSize: 13, flex: 1 }}
                       >
-                        {t(item.titleKey, item.titleParams)}
+                        {t(item.titleKey, titleParams)}
                       </Typography.Text>
                       <Tag
                         color={SEVERITY_TAG[item.severity]}
@@ -169,9 +188,9 @@ export default function NotificationInbox() {
                     <Typography.Text
                       type="secondary"
                       style={{ fontSize: 12, display: 'block' }}
-                      ellipsis={{ tooltip: t(item.detailKey, item.detailParams) }}
+                      ellipsis={{ tooltip: t(item.detailKey, detailParams) }}
                     >
-                      {t(item.detailKey, item.detailParams)}
+                      {t(item.detailKey, detailParams)}
                     </Typography.Text>
                     {item.daysLeft !== null && (
                       <Typography.Text
@@ -188,7 +207,8 @@ export default function NotificationInbox() {
                   </div>
                 </div>
               </List.Item>
-            )}
+              )
+            }}
           />
         )}
       </div>

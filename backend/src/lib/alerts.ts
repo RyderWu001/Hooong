@@ -84,7 +84,7 @@ async function lowStockAlerts(): Promise<AlertItem[]> {
         shortfall: Number(shortfall.toFixed(2)),
         unit: r.unit,
       },
-      link: '/materials',
+      link: `/materials?tab=3&ingredientId=${r.id}`,
       date: null,
       daysLeft: null,
     }
@@ -121,7 +121,7 @@ async function batchExpiryAlerts(): Promise<AlertItem[]> {
         remaining: b.remainingQty ?? b.quantity,
         unit: b.unit,
       },
-      link: '/materials',
+      link: '/materials?tab=4',
       date: fmt(b.expiryDate!),
       daysLeft: left,
     }
@@ -219,16 +219,19 @@ async function pendingSignatureAlerts(role: string): Promise<AlertItem[]> {
 
       const slotName = APPROVAL_CHAINS[formType].find((s) => s.order === nextSlot)?.name ?? ''
       const slotKey = `approvalSlot.${formType}.${nextSlot}`
+      const baseLink = FORM_ROUTES[formType] ?? '/'
+      const link = formType === 'QcReport'
+        ? `/materials?tab=1&batchId=${id}`
+        : `${baseLink}?id=${id}`
       out.push({
         id: `sign-${formType}-${id}`,
         category: 'pendingSignature',
         severity: 'info',
         titleKey: 'alertItem.signature.title',
-        // 表單名稱與關卡名同樣以 key 傳遞，由前端依語系翻譯
         titleParams: { formKey: FORM_LABEL_KEYS[formType] ?? '', id },
         detailKey: 'alertItem.signature.detail',
         detailParams: { slotKey, slotFallback: slotName, current: nextSlot, total },
-        link: FORM_ROUTES[formType] ?? '/',
+        link,
         date: null,
         daysLeft: null,
       })

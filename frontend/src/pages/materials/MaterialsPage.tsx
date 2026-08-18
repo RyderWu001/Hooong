@@ -1,5 +1,6 @@
 import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Card, Tabs, Table, Button, Modal, Form, Input, InputNumber,
   Space, Popconfirm, message, Select, DatePicker, Tag, Alert,
@@ -1621,9 +1622,20 @@ function TraceabilityTab() {
 // ─── 主頁面 ───────────────────────────────────────────────────────────────────
 
 export default function MaterialsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab') ?? '1'
+  const validTabs = new Set(['1', '2', '3', '4', '5'])
+  const activeTab = validTabs.has(tabParam) ? tabParam : '1'
+
+  const handleTabChange = (key: string) => {
+    setSearchParams(prev => { prev.set('tab', key); return prev }, { replace: true })
+  }
+
   return (
     <Card title="原物料管理">
       <Tabs
+        activeKey={activeTab}
+        onChange={handleTabChange}
         items={[
           { key: '1', label: '原料資料維護', icon: <EditOutlined />, children: <IngredientTab /> },
           { key: '2', label: '庫存管理', icon: <InboxOutlined />, children: <InventoryTab /> },
