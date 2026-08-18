@@ -274,7 +274,15 @@ export default function AppLayout() {
   return (
     <Layout className={styles.root}>
       <Sider trigger={null} collapsible collapsed={collapsed} theme="light" width={220}>
-        <div className={styles.siderInner}>
+        <div className={styles.siderInner} style={{ position: 'relative' }}>
+          {/* 折疊把手（貼在 Sider 右邊緣中央） */}
+          <div
+            className={styles.siderToggle}
+            onClick={() => setCollapsed(!collapsed)}
+            title={collapsed ? '展開側欄' : '收合側欄'}
+          >
+            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+          </div>
           <div className={styles.siderLogo} style={{ cursor: 'pointer' }} onClick={() => navigate('/dashboard')}>
             <div className={styles.logoIcon}>H</div>
             {!collapsed && (
@@ -319,17 +327,10 @@ export default function AppLayout() {
 
       <Layout>
         <Header className={styles.header}>
-          <span
-            className={styles.collapseBtn}
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          </span>
-
-          {/* 子頁面（有 ID 或 /new）才顯示返回按鈕 */}
+          {/* 子頁面才顯示返回按鈕，頂層頁面此位置空白 */}
           {(() => {
             const parts = location.pathname.split('/').filter(Boolean)
-            const isSubPage = parts.length >= 2 || parts[0] === 'new'
+            const isSubPage = parts.length >= 2
             return isSubPage ? (
               <span
                 className={styles.collapseBtn}
@@ -338,7 +339,7 @@ export default function AppLayout() {
               >
                 <ArrowLeftOutlined />
               </span>
-            ) : null
+            ) : <span style={{ width: 36 }} />
           })()}
 
           <button

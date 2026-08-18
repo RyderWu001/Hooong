@@ -11,6 +11,35 @@
   top: 0;
   background: #ffffff;
   border-right: 1px solid #e2e8f0;
+  /* 讓折疊把手可以超出邊界 */
+  overflow: visible;
+}
+
+/* 貼在 Sider 右邊緣中央的折疊把手 */
+.siderToggle {
+  position: absolute;
+  right: -13px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 200;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  color: #64748b;
+  font-size: 12px;
+  transition: color 0.2s, box-shadow 0.2s;
+}
+
+.siderToggle:hover {
+  color: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .siderLogo {
