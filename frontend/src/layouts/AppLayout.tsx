@@ -9,6 +9,7 @@ import {
   UserOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  ArrowLeftOutlined,
   MedicineBoxOutlined,
   ShopOutlined,
   SettingOutlined,
@@ -324,6 +325,21 @@ export default function AppLayout() {
           >
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </span>
+
+          {/* 子頁面（有 ID 或 /new）才顯示返回按鈕 */}
+          {(() => {
+            const parts = location.pathname.split('/').filter(Boolean)
+            const isSubPage = parts.length >= 2 || parts[0] === 'new'
+            return isSubPage ? (
+              <span
+                className={styles.collapseBtn}
+                onClick={() => navigate(-1)}
+                title="返回上一頁"
+              >
+                <ArrowLeftOutlined />
+              </span>
+            ) : null
+          })()}
 
           <button
             type="button"
