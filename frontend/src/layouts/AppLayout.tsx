@@ -16,6 +16,7 @@ import {
   LockOutlined,
   InfoCircleOutlined,
   UnorderedListOutlined,
+  BookOutlined,
   TagsOutlined,
   ApartmentOutlined,
   SafetyCertificateOutlined,
@@ -154,7 +155,6 @@ export default function AppLayout() {
         { key: '/traceability', icon: <ApartmentOutlined />, label: t('menu.traceability') },
       ],
     },
-    { key: '/materials', icon: <ShopOutlined />, label: t('menu.materials') },
     {
       key: '/experiments',
       icon: <ExperimentOutlined />,
@@ -186,6 +186,7 @@ export default function AppLayout() {
       ],
     },
     { key: '/reports',   icon: <BarChartOutlined />, label: t('menu.reports') },
+    { key: '/knowledge', icon: <BookOutlined />, label: t('menu.knowledge') },
     ...(user?.role === 'ADMIN'
       ? [
           {

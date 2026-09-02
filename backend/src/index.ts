@@ -4,7 +4,7 @@ import path from 'path'
 import express from 'express'
 import { ensureBucket } from './db/storage'
 import { MAX_UPLOAD_BYTES } from './middleware/upload'
-import { apiLimiter, authLimiter, aiLimiter } from './middleware/rateLimit'
+import { apiLimiter, authLimiter } from './middleware/rateLimit'
 import cors from 'cors'
 import helmet from 'helmet'
 import compression from 'compression'
@@ -61,7 +61,6 @@ app.use('/uploads', express.static(path.join(__dirname, '../../uploads')))
 app.use('/api/v1', apiLimiter)
 app.use('/api/v1/auth/login', authLimiter)
 app.use('/api/v1/auth/register', authLimiter)
-app.use('/api/v1/knowledge/ai-chat', aiLimiter)
 
 app.use('/api/v1/auth', authRouter)
 app.use('/api/v1/users', usersRouter)

@@ -28,7 +28,6 @@ import ResultDetailPage from './pages/results/ResultDetailPage'
 
 import ReportsPage from './pages/reports/ReportsPage'
 import UserManagementPage from './pages/users/UserManagementPage'
-import MaterialsPage from './pages/materials/MaterialsPage'
 import DropdownManagePage from './pages/dropdowns/DropdownManagePage'
 import SamplesPage from './pages/samples/SamplesPage'
 import TraceabilityPage from './pages/traceability/TraceabilityPage'
@@ -168,8 +167,6 @@ export default function App() {
 
             <Route path="results" element={<ResultListPage />} />
             <Route path="samples" element={<SamplesPage />} />
-
-            <Route path="materials" element={<MaterialsPage />} />
 
             <Route path="reports" element={<ReportsPage />} />
             <Route path="traceability" element={<TraceabilityPage />} />

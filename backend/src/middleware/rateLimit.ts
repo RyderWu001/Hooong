@@ -37,9 +37,10 @@ export const aiLimiter = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   // 未登入時回退到 IP，IPv6 需經 ipKeyGenerator 正規化子網段，否則可換位址繞過
-  keyGenerator: (req, res) => {
+  // 注意：此中介層須掛在 requireAuth 之後，req.user 才會有值
+  keyGenerator: (req) => {
     const userId = (req as { user?: { id: number } }).user?.id
-    return userId ? `u:${userId}` : ipKeyGenerator(req.ip ?? '', res as never)
+    return userId ? `u:${userId}` : ipKeyGenerator(req.ip ?? '')
   },
   message: json('AI 問答過於頻繁，請稍後再試'),
 })

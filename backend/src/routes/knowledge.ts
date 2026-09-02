@@ -2,6 +2,7 @@ import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 import { validateNumericParams } from '../lib/query'
+import { aiLimiter } from '../middleware/rateLimit'
 
 const router = Router()
 validateNumericParams(router)
@@ -90,7 +91,7 @@ router.delete('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
 })
 
 // POST /knowledge/ai-chat — AI 問答（需要 ANTHROPIC_API_KEY）
-router.post('/ai-chat', requireAuth, async (req, res) => {
+router.post('/ai-chat', requireAuth, aiLimiter, async (req, res) => {
   const { question, history = [] } = req.body
   if (!question?.trim()) {
     res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '請輸入問題' } })
@@ -117,44 +118,91 @@ router.post('/ai-chat', requireAuth, async (req, res) => {
   }
 
   const keywords = extractKeywords(question)
-  const articles = await prisma.knowledgeArticle.findMany({
-    where: keywords.length > 0 ? {
-      OR: keywords.flatMap((kw) => [
-        { title: { contains: kw, mode: 'insensitive' } },
-        { tags: { contains: kw, mode: 'insensitive' } },
-        { content: { contains: kw, mode: 'insensitive' } },
-      ]),
-    } : {},
-    take: 4,
-    orderBy: { updatedAt: 'desc' },
-  })
+  const [articles, formulas, experiments] = await Promise.all([
+    prisma.knowledgeArticle.findMany({
+      where: keywords.length > 0 ? {
+        OR: keywords.flatMap((kw) => [
+          { title: { contains: kw, mode: 'insensitive' } },
+          { tags: { contains: kw, mode: 'insensitive' } },
+          { content: { contains: kw, mode: 'insensitive' } },
+        ]),
+      } : {},
+      take: 4,
+      orderBy: { updatedAt: 'desc' },
+    }),
+    // 讓 AI 也能從過去的配方中找資料，例如「防水」「透明」等訴求
+    prisma.formula.findMany({
+      where: keywords.length > 0 ? {
+        OR: keywords.flatMap((kw) => [
+          { code: { contains: kw, mode: 'insensitive' } },
+          { name: { contains: kw, mode: 'insensitive' } },
+          { description: { contains: kw, mode: 'insensitive' } },
+          { category: { contains: kw, mode: 'insensitive' } },
+          { productType: { contains: kw, mode: 'insensitive' } },
+        ]),
+      } : {},
+      take: 4,
+      orderBy: { updatedAt: 'desc' },
+    }),
+    prisma.experiment.findMany({
+      where: keywords.length > 0 ? {
+        OR: keywords.flatMap((kw) => [
+          { code: { contains: kw, mode: 'insensitive' } },
+          { notes: { contains: kw, mode: 'insensitive' } },
+          { category: { contains: kw, mode: 'insensitive' } },
+          { clientCompany: { contains: kw, mode: 'insensitive' } },
+          { conclusionBefore: { contains: kw, mode: 'insensitive' } },
+          { conclusionAfter: { contains: kw, mode: 'insensitive' } },
+        ]),
+      } : {},
+      take: 4,
+      orderBy: { experimentDate: 'desc' },
+      include: {
+        formula: { select: { code: true, name: true } },
+        result: { select: { description: true, reflection: true } },
+      },
+    }),
+  ])
 
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
+    const sections: string[] = []
+    if (articles.length > 0) {
+      sections.push(`**相關知識庫文章：**\n${articles.map((a) => `- **${a.title}**：${a.content.substring(0, 100)}…`).join('\n')}`)
+    }
+    if (formulas.length > 0) {
+      sections.push(`**相關配方：**\n${formulas.map((f) => `- **${f.code} ${f.name}**（${f.productType}）：${f.description.substring(0, 100)}…`).join('\n')}`)
+    }
+    if (experiments.length > 0) {
+      sections.push(`**相關實驗紀錄：**\n${experiments.map((e) => `- **${e.code}**（${e.formula?.name ?? '無配方'}）：${e.notes.substring(0, 100)}…`).join('\n')}`)
+    }
     res.json({
       success: true,
       data: {
-        answer: `AI 功能尚未啟用（請在後端 .env 設定 ANTHROPIC_API_KEY）。\n\n**相關知識庫文章：**\n${
-          articles.length > 0
-            ? articles.map((a) => `- **${a.title}**：${a.content.substring(0, 100)}…`).join('\n')
-            : '（無相關文章）'
-        }`,
-        relatedArticles: articles.map((a) => ({ id: a.id, title: a.title })),
+        answer: `AI 功能尚未啟用（請在後端 .env 設定 ANTHROPIC_API_KEY）。\n\n${sections.length > 0 ? sections.join('\n\n') : '（無相關資料）'}`,
         aiEnabled: false,
       },
     })
     return
   }
 
-  const systemPrompt = `你是泓利廣染整實驗室的AI助理，擅長染色配方、纖維材料、品質管理、實驗紀錄等領域知識。請用繁體中文回答，語氣專業但易懂。`
+  const systemPrompt = `你是泓利廣染整實驗室的AI助理，擅長染色配方、纖維材料、品質管理、實驗紀錄等領域知識。你可以參考系統內的知識庫文章、過去的配方與實驗紀錄來回答問題（例如協助從過去資料中找出符合防水、透明等訴求的配方）。請用繁體中文回答，語氣專業但易懂；若參考資料中找不到答案，請誠實告知，不要編造。`
 
-  const contextText = articles.length > 0
-    ? `\n\n**知識庫參考資料：**\n${articles.map((a) => `### ${a.title}\n${a.content}`).join('\n\n')}`
-    : ''
+  const contextText = [
+    articles.length > 0
+      ? `**知識庫參考資料：**\n${articles.map((a) => `### ${a.title}\n${a.content}`).join('\n\n')}`
+      : '',
+    formulas.length > 0
+      ? `**配方參考資料：**\n${formulas.map((f) => `### ${f.code} ${f.name}\n類別：${f.category ?? '未分類'} / ${f.productType}\n說明：${f.description}`).join('\n\n')}`
+      : '',
+    experiments.length > 0
+      ? `**實驗紀錄參考資料：**\n${experiments.map((e) => `### ${e.code}（配方：${e.formula?.name ?? '無'}）\n客戶：${e.clientCompany ?? '無'}\n備註：${e.notes}\n結論：${[e.conclusionBefore, e.conclusionAfter].filter(Boolean).join(' → ') || e.result?.description || '無'}`).join('\n\n')}`
+      : '',
+  ].filter(Boolean).join('\n\n')
 
   const messages = [
     ...(history as { role: string; content: string }[]).slice(-6),
-    { role: 'user', content: `${question}${contextText}` },
+    { role: 'user', content: contextText ? `${question}\n\n${contextText}` : question },
   ]
 
   // 無 timeout 時，上游若無回應會讓此請求一直懸著並佔用連線
