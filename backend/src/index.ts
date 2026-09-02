@@ -38,6 +38,7 @@ import formulaChangeRouter from './routes/formulaChange'
 import massProductionRouter from './routes/massProduction'
 import dashboardRouter from './routes/dashboard'
 import searchRouter from './routes/search'
+import assistantRouter from './routes/assistant'
 
 const app = express()
 const PORT = Number(process.env.PORT ?? 3000)
@@ -94,6 +95,7 @@ app.use('/api/v1/formula-changes', formulaChangeRouter)
 app.use('/api/v1/mass-production-approvals', massProductionRouter)
 app.use('/api/v1/dashboard', dashboardRouter)
 app.use('/api/v1/search', searchRouter)
+app.use('/api/v1/assistant', assistantRouter)
 
 app.get('/api/v1/health', (_, res) => res.json({ status: 'ok' }))
 

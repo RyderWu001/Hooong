@@ -28,6 +28,7 @@ import {
   DeleteOutlined,
   DashboardOutlined,
   SearchOutlined,
+  RobotOutlined,
 } from '@ant-design/icons'
 import NotificationInbox from '../components/NotificationInbox'
 import { useNavigate, useLocation, Outlet } from 'react-router-dom'
@@ -185,6 +186,7 @@ export default function AppLayout() {
         { key: '/mass-production-approvals',   icon: <AuditOutlined />,    label: t('menu.massProductionApprovals') },
       ],
     },
+    { key: '/assistant', icon: <RobotOutlined />, label: t('assistant.menu') },
     { key: '/reports',   icon: <BarChartOutlined />, label: t('menu.reports') },
     { key: '/knowledge', icon: <BookOutlined />, label: t('menu.knowledge') },
     ...(user?.role === 'ADMIN'

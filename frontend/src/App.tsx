@@ -42,6 +42,7 @@ import ProductCounterPlanPage from './pages/forms/ProductCounterPlanPage'
 import ChemPreparationPage from './pages/forms/ChemPreparationPage'
 import ProductReworkPage from './pages/forms/ProductReworkPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
+import AssistantPage from './pages/assistant/AssistantPage'
 import SuppliersPage from './pages/suppliers/SuppliersPage'
 import SupplierComplianceAuditPage from './pages/forms/SupplierComplianceAuditPage'
 import FormulaChangePage from './pages/forms/FormulaChangePage'
@@ -171,6 +172,7 @@ export default function App() {
             <Route path="reports" element={<ReportsPage />} />
             <Route path="traceability" element={<TraceabilityPage />} />
             <Route path="knowledge" element={<KnowledgePage />} />
+            <Route path="assistant" element={<AssistantPage />} />
             <Route path="lab-daily-log" element={<LabDailyLogPage />} />
             <Route path="sample-submissions" element={<SampleSubmissionPage />} />
             <Route path="chemical-evaluations" element={<ChemicalEvaluationPage />} />
