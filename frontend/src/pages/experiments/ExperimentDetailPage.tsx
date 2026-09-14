@@ -22,7 +22,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  getExperiment, updateExperiment,
+  getExperiment, updateExperiment, deleteExperiment,
   createGroup, updateGroup, deleteGroup,
   addGroupStep, reorderGroupSteps, deleteGroupStep,
   uploadGroupAttachment, deleteGroupAttachment,
@@ -1071,6 +1071,17 @@ export default function ExperimentDetailPage() {
 
   const expId = Number(id)
   const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const isAdmin = user?.role === 'ADMIN'
+
+  const handleDeleteExperiment = async () => {
+    try {
+      await deleteExperiment(expId)
+      message.success('實驗已刪除')
+      navigate('/experiments')
+    } catch (err: any) {
+      message.error(err?.response?.data?.error?.message ?? '刪除失敗')
+    }
+  }
 
   const reload = async () => {
     setLoadError(null)
@@ -1247,6 +1258,16 @@ export default function ExperimentDetailPage() {
         extra={
           <Space>
             {canEdit && <Button size="small" icon={<EditOutlined />} onClick={openEditExp}>編輯資訊</Button>}
+            {isAdmin && (
+              <Popconfirm
+                title="確定刪除此實驗？"
+                description="將一併刪除底下所有試驗組、樣品與附件，且無法復原。"
+                okText="刪除" okType="danger" cancelText="取消"
+                onConfirm={handleDeleteExperiment}
+              >
+                <Button size="small" danger icon={<DeleteOutlined />}>刪除實驗</Button>
+              </Popconfirm>
+            )}
             <Button size="small" type="primary"
               onClick={() => navigate(`/experiments/${id}/result`)}>
               查看 / 建立結果
