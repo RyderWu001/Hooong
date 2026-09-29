@@ -8,7 +8,7 @@ export const getExperiments = (params?: {
 export const getExperiment = (id: number) => client.get(`/experiments/${id}`)
 
 export const createExperiment = (data: {
-  code: string; formulaId?: number | null; experimentDate: string
+  code: string; formulaId?: number | null; templateId?: number | null; experimentDate: string
   category?: string | null; temperature?: number; humidity?: number; notes?: string
   clientCompany?: string | null; fabricCode?: string | null; clientContact?: string | null
   commissionType?: string | null; expectedDate?: string | null; actualDate?: string | null
@@ -17,6 +17,7 @@ export const createExperiment = (data: {
 }) => client.post('/experiments', data)
 
 export const updateExperiment = (id: number, data: {
+  templateId?: number | null
   category?: string | null; temperature?: number; humidity?: number
   notes?: string; experimentDate?: string
   clientCompany?: string | null; fabricCode?: string | null; clientContact?: string | null
@@ -33,7 +34,8 @@ export const getGroups = (experimentId: number) =>
   client.get(`/experiments/${experimentId}/groups`)
 
 export const createGroup = (experimentId: number, data: {
-  name: string; groupOrder?: number; experimentType?: string | null
+  name: string; groupOrder?: number; conditions?: Record<string, unknown> | null
+  experimentType?: string | null
   bathRatio?: string | null; startPH?: number | null; endPH?: number | null
   acidMethod?: string | null; tempRate?: string | null; holdTime?: number | null
   burningCondition?: string | null; washCondition?: string | null; dyeAuxiliaries?: string[] | null
@@ -45,7 +47,8 @@ export const createGroup = (experimentId: number, data: {
 }) => client.post(`/experiments/${experimentId}/groups`, data)
 
 export const updateGroup = (experimentId: number, groupId: number, data: {
-  name: string; experimentType?: string | null
+  name: string; conditions?: Record<string, unknown> | null
+  experimentType?: string | null
   bathRatio?: string | null; startPH?: number | null; endPH?: number | null
   acidMethod?: string | null; tempRate?: string | null; holdTime?: number | null
   burningCondition?: string | null; washCondition?: string | null; dyeAuxiliaries?: string[] | null

@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
 import prisma from './client'
+import { seedExperimentTemplates } from './seedTemplates'
 
 // 下拉選項類別定義
 const DROPDOWN_SEED = [
@@ -979,6 +980,8 @@ async function main() {
       notes: '已更新防水劑配製SOP，要求交聯劑投料前確認槽體完全乾燥並記錄。/ Đã cập nhật SOP pha chế chất chống thấm, yêu cầu kiểm tra bể khô ráo trước khi thêm chất liên kết.',
     },
   })
+
+  await seedExperimentTemplates()
 
   console.log('✅ 種子資料完成')
   console.log('📋 測試帳號：')

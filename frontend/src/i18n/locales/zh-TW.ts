@@ -119,6 +119,7 @@ export default {
     system: '系統管理',
     users: '使用者管理',
     dropdowns: '選項管理',
+    experimentTemplates: '實驗範本',
     permissions: '權限管理',
     // 表單（名稱對齊需求文件）
     labDailyLog: '化驗室每日工作日誌',

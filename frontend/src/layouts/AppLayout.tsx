@@ -195,6 +195,7 @@ export default function AppLayout() {
             children: [
               { key: '/users',       icon: <TeamOutlined />,              label: t('menu.users') },
               { key: '/dropdowns',   icon: <UnorderedListOutlined />,     label: t('menu.dropdowns') },
+              { key: '/experiment-templates', icon: <ExperimentOutlined />, label: t('menu.experimentTemplates') },
               { key: '/permissions', icon: <SafetyCertificateOutlined />, label: t('menu.permissions') },
             ],
           },

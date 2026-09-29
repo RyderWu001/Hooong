@@ -7,8 +7,9 @@ import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { createExperiment } from '../../api/experiments'
 import { getFormulas } from '../../api/formulas'
+import { getExperimentTemplates } from '../../api/experimentTemplates'
 import DropdownSelect from '../../components/DropdownSelect'
-import type { Formula, CommissionTestItem } from '../../types'
+import type { Formula, ExperimentTemplate, CommissionTestItem } from '../../types'
 import dayjs from 'dayjs'
 
 const TEST_PURPOSES = ['ΔE', 'Water repellence', 'Quick dry', 'Wicking', 'Handle', 'Tear Strength', 'Density', 'PH', 'Appearance', 'Other']
@@ -29,10 +30,18 @@ export default function ExperimentFormPage() {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [formulas, setFormulas] = useState<Formula[]>([])
+  const [templates, setTemplates] = useState<ExperimentTemplate[]>([])
   const [testItems, setTestItems] = useState<CommissionTestItem[]>([newTestItem()])
 
   useEffect(() => {
     getFormulas({ status: 'ACTIVE', limit: 200 }).then((res) => setFormulas(res.data.data))
+    getExperimentTemplates().then((res) => {
+      const list = res.data.data ?? []
+      setTemplates(list)
+      // 預設選用通用範本；沒有時留白，由使用者自行選擇
+      const generic = list.find((t) => t.key === 'generic')
+      if (generic) form.setFieldValue('templateId', generic.id)
+    })
     form.setFieldsValue({ experimentDate: dayjs(), temperature: 25.0, humidity: 60.0 })
   }, [])
 
@@ -116,6 +125,7 @@ export default function ExperimentFormPage() {
       const res = await createExperiment({
         code: values.code,
         formulaId: values.formulaId ?? null,
+        templateId: values.templateId ?? null,
         experimentDate: values.experimentDate.toISOString(),
         category: values.category ?? null,
         temperature: values.temperature,
@@ -167,6 +177,17 @@ export default function ExperimentFormPage() {
           <Col span={8}>
             <Form.Item name="experimentDate" label="實驗日期" rules={[{ required: true }]}>
               <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={12}>
+          <Col span={24}>
+            <Form.Item name="templateId" label="實驗範本" tooltip="範本決定各試驗組要記錄哪些實驗條件，可由管理員於「實驗範本」頁面新增或修改">
+              <Select
+                allowClear placeholder="選擇實驗範本"
+                options={templates.map((t) => ({ value: t.id, label: t.domain ? `${t.name}（${t.domain}）` : t.name }))}
+              />
             </Form.Item>
           </Col>
         </Row>

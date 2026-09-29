@@ -7,6 +7,8 @@ import { scanCommissionPDF } from '../../api/commissionScan'
 import type { ScannedCommission } from '../../api/commissionScan'
 import { getResultSummaryReport } from '../../api/reports'
 import { getFormulas } from '../../api/formulas'
+import { getExperimentTemplates } from '../../api/experimentTemplates'
+import { formatConditionValue, getGroupConditions, resolveTemplate } from '../../utils/experimentTemplate'
 import { getUsers } from '../../api/auth'
 import { useDropdownOptions } from '../../hooks/useDropdownOptions'
 import type { Experiment, Formula, User } from '../../types'
@@ -145,18 +147,31 @@ export default function ExperimentListPage() {
           e.code, e.formulaName ?? '', e.category ?? '', e.experimenterName ?? '',
           dayjs(e.experimentDate).format('YYYY-MM-DD'), e.notes,
         ])
-        const grpHeaders = [
-          '實驗編號', '試驗組', '浴比', '起染pH', '終染pH', '加酸方式',
-          '升溫速率', '保溫(分)', '均染劑', '修補劑', '氯化鈣', '固色劑', '染料組合', '添加量', '備註',
-        ]
-        const grpRows = experiments.flatMap((e) =>
-          (e.groups ?? []).map((g) => [
-            e.code, g.name, g.bathRatio ?? '', g.startPH ?? '', g.endPH ?? '',
-            g.acidMethod ?? '', g.tempRate ?? '', g.holdTime ?? '',
-            g.leveler ?? '', g.fixer ?? '', g.calciumChloride ?? '',
-            g.colorFixative ?? '', g.dyeCombination ?? '', g.dyeAmount ?? '', g.notes,
-          ])
-        )
+        // 條件欄位由各實驗的範本決定：合併所有範本欄位為欄頭，沒有該欄位的實驗留白
+        const tplRes = await getExperimentTemplates(true)
+        const templates = tplRes.data.data ?? []
+        const columns = new Map<string, string>()
+        for (const e of experiments) {
+          for (const f of resolveTemplate(e, templates)?.fields ?? []) {
+            if (!columns.has(f.key)) columns.set(f.key, f.unit ? `${f.label}(${f.unit})` : f.label)
+          }
+        }
+        const colKeys = [...columns.keys()]
+        const grpHeaders = ['實驗編號', '試驗組', ...colKeys.map((k) => columns.get(k)!), '備註']
+        const grpRows = experiments.flatMap((e) => {
+          const fields = resolveTemplate(e, templates)?.fields ?? []
+          return (e.groups ?? []).map((g) => {
+            const values = getGroupConditions(g, fields)
+            return [
+              e.code, g.name,
+              ...colKeys.map((k) => {
+                const f = fields.find((x) => x.key === k)
+                return f ? (formatConditionValue(f, values[k]) ?? '') : ''
+              }),
+              g.notes,
+            ]
+          })
+        })
         if (format === 'excel') {
           exportToExcel([
             { name: '實驗總覽', headers: expHeaders, rows: expRows },
@@ -573,7 +588,7 @@ export default function ExperimentListPage() {
                 <Radio value="groups">
                   <Space direction="vertical" size={0}>
                     <Text strong>試驗組條件彙整</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>含各試驗組染色／助劑／染料條件，Excel 輸出雙分頁</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>含各試驗組的實驗條件，Excel 輸出雙分頁</Text>
                   </Space>
                 </Radio>
                 <Radio value="results">

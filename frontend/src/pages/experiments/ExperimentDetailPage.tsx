@@ -32,7 +32,10 @@ import {
   setGroupSuccess,
 } from '../../api/experiments'
 import DropdownSelect from '../../components/DropdownSelect'
-import type { Experiment, ExperimentGroup, ExperimentGroupStep, Attachment, Sample, CommissionTestItem } from '../../types'
+import ConditionFields from '../../components/ConditionFields'
+import { getExperimentTemplates } from '../../api/experimentTemplates'
+import { conditionRows, fromFormConditions, getGroupConditions, resolveTemplate, toFormConditions } from '../../utils/experimentTemplate'
+import type { Experiment, ExperimentTemplate, TemplateField, ExperimentGroup, ExperimentGroupStep, Attachment, Sample, CommissionTestItem } from '../../types'
 import { printCommissionForm } from '../../utils/printCommission'
 import { useAuthStore } from '../../stores/authStore'
 import { downloadBlob } from '../../utils/download'
@@ -270,9 +273,10 @@ function GroupPhotoSlot({
 // ── 單一試驗組卡片 ────────────────────────────────────────────────────────────
 
 function GroupCard({
-  group, groupIdx, experimentId, canEdit, onUpdated,
+  group, groupIdx, experimentId, canEdit, onUpdated, fields,
 }: {
   group: ExperimentGroup
+  fields: TemplateField[]
   groupIdx: number
   experimentId: number
   canEdit: boolean
@@ -390,17 +394,7 @@ function GroupCard({
   const openEdit = () => {
     editForm.setFieldsValue({
       name: group.name,
-      experimentType: group.experimentType,
-      bathRatio: group.bathRatio, startPH: group.startPH, endPH: group.endPH,
-      acidMethod: group.acidMethod, tempRate: group.tempRate, holdTime: group.holdTime,
-      burningCondition: group.burningCondition, washCondition: group.washCondition,
-      dyeAuxiliaries: group.dyeAuxiliaries ?? [],
-      leveler: group.leveler, fixer: group.fixer,
-      calciumChloride: group.calciumChloride, colorFixative: group.colorFixative,
-      dyeCombination: group.dyeCombination, dyeAmount: group.dyeAmount,
-      fixingTemp: group.fixingTemp, fixingAuxAmount: group.fixingAuxAmount,
-      fiberSpec: group.fiberSpec, widthShrinkage: group.widthShrinkage,
-      shrinkTime: group.shrinkTime, fixingAuxiliaries: group.fixingAuxiliaries ?? [],
+      conditions: toFormConditions(fields, getGroupConditions(group, fields)),
       notes: group.notes,
     })
     setEditOpen(true)
@@ -408,7 +402,10 @@ function GroupCard({
 
   const handleSaveEdit = async (values: any) => {
     try {
-      await updateGroup(experimentId, group.id, values)
+      await updateGroup(experimentId, group.id, {
+        name: values.name, notes: values.notes,
+        conditions: fromFormConditions(fields, values.conditions),
+      })
       setEditOpen(false)
       onUpdated()
     } catch { message.error('儲存失敗') }
@@ -430,33 +427,7 @@ function GroupCard({
     finally { setSuccessLoading(false) }
   }
 
-  const isFixing = group.experimentType === '定型機'
-  const condRows = isFixing ? [
-    { label: '實驗類型', value: group.experimentType },
-    { label: '加工溫度/時間', value: group.fixingTemp },
-    { label: '助劑用量', value: group.fixingAuxAmount },
-    { label: '纖維規格', value: group.fiberSpec },
-    { label: '門幅縮率', value: group.widthShrinkage },
-    { label: '縮水時間', value: group.shrinkTime },
-    { label: '定型助劑', value: (group.fixingAuxiliaries ?? []).join('、') || null },
-  ].filter((r) => r.value != null && r.value !== '') : [
-    { label: '實驗類型', value: group.experimentType },
-    { label: '浴比', value: group.bathRatio },
-    { label: '起染pH', value: group.startPH != null ? group.startPH : null },
-    { label: '終染pH', value: group.endPH != null ? group.endPH : null },
-    { label: '加酸方式', value: group.acidMethod },
-    { label: '升溫速率', value: group.tempRate },
-    { label: '保溫時間', value: group.holdTime != null ? `${group.holdTime} 分鐘` : null },
-    { label: '燒毛/退漿條件', value: group.burningCondition },
-    { label: '水洗條件', value: group.washCondition },
-    { label: '染色助劑', value: (group.dyeAuxiliaries ?? []).join('、') || null },
-    { label: '均染劑', value: group.leveler },
-    { label: '修補劑', value: group.fixer },
-    { label: '氯化鈣', value: group.calciumChloride },
-    { label: '固色劑', value: group.colorFixative },
-    { label: '染料組合', value: group.dyeCombination },
-    { label: '添加量', value: group.dyeAmount },
-  ].filter((r) => r.value != null && r.value !== '')
+  const condRows = conditionRows(fields, getGroupConditions(group, fields))
 
   return (
     <Card
@@ -594,125 +565,11 @@ function GroupCard({
         width={680}
       >
         <Form form={editForm} layout="vertical" onFinish={handleSaveEdit} style={{ marginTop: 8 }}>
-          <Space style={{ width: '100%' }} size={8}>
-            <Form.Item name="name" label="試驗組名稱" rules={[{ required: true }]} style={{ flex: 2 }}>
-              <Input placeholder="A組、B組、對照組…" />
-            </Form.Item>
-            <Form.Item name="experimentType" label="實驗項目" style={{ flex: 1 }}>
-              <Select allowClear placeholder="選擇類型" options={[
-                { value: '染色機', label: '染色/染色製程（染色機）' },
-                { value: '定型機-物性', label: '物性改良（定型機）' },
-                { value: '定型機-機能', label: '機能性加工（定型機）' },
-              ]} />
-            </Form.Item>
-          </Space>
-
-          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.experimentType !== cur.experimentType}>
-            {({ getFieldValue }) => {
-              const expType: string = getFieldValue('experimentType') ?? ''
-              const isFixingType = expType.startsWith('定型機')
-              return isFixingType ? (
-                <>
-                  <Divider titlePlacement="left" plain style={{ fontSize: 12, color: '#888', margin: '4px 0' }}>定型加工條件</Divider>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="fixingTemp" label="加工溫度/時間" style={{ flex: 1 }}>
-                      <Input placeholder="180°C × 30s" />
-                    </Form.Item>
-                    <Form.Item name="fixingAuxAmount" label="助劑用量" style={{ flex: 1 }}>
-                      <Input placeholder="30g/L" />
-                    </Form.Item>
-                  </Space>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="fiberSpec" label="纖維規格" style={{ flex: 1 }}>
-                      <Input placeholder="100% Polyester" />
-                    </Form.Item>
-                    <Form.Item name="widthShrinkage" label="門幅縮率" style={{ flex: 1 }}>
-                      <Input placeholder="5%" />
-                    </Form.Item>
-                    <Form.Item name="shrinkTime" label="縮水時間" style={{ flex: 1 }}>
-                      <Input placeholder="30 min" />
-                    </Form.Item>
-                  </Space>
-                  <Form.Item name="fixingAuxiliaries" label="定型加工助劑（可複選）">
-                    <Checkbox.Group style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
-                      {['吸濕快乾劑','接水劑','消毛劑','燙煙裂劑','摩擦電劑','撥滑紙劑','摩擦紙劑','摩起毛起絨劑',
-                        '摩軟劑','增硬劑','增彈劑','增重劑','漿色劑','起毛油劑','摩紫外線劑','黏劑',
-                        '摩耐防蛀劑','高溫難燃防止劑','溶液加工劑','負面離子加工劑','防毛劑',
-                        '預縮外線加工劑','皮革漆沙劑','皮革磷裂劑'].map((a) => (
-                        <Checkbox key={a} value={a} style={{ margin: 0, fontSize: 12 }}>{a}</Checkbox>
-                      ))}
-                    </Checkbox.Group>
-                  </Form.Item>
-                </>
-              ) : (
-                <>
-                  <Divider titlePlacement="left" plain style={{ fontSize: 12, color: '#888', margin: '4px 0' }}>染色條件</Divider>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="bathRatio" label="浴比" style={{ flex: 1 }}>
-                      <Input placeholder="1:10" />
-                    </Form.Item>
-                    <Form.Item name="startPH" label="起染 pH" style={{ flex: 1 }}>
-                      <InputNumber style={{ width: '100%' }} step={0.1} min={0} max={14} />
-                    </Form.Item>
-                    <Form.Item name="endPH" label="終染 pH" style={{ flex: 1 }}>
-                      <InputNumber style={{ width: '100%' }} step={0.1} min={0} max={14} />
-                    </Form.Item>
-                  </Space>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="acidMethod" label="加酸方式" style={{ flex: 1 }}>
-                      <DropdownSelect categoryKey="dyeing_acid_method" allowClear placeholder="選擇或新增" style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Form.Item name="tempRate" label="升溫速率" style={{ flex: 1 }}>
-                      <Input placeholder="1°C/min" />
-                    </Form.Item>
-                    <Form.Item name="holdTime" label="保溫時間（分）" style={{ flex: 1 }}>
-                      <InputNumber style={{ width: '100%' }} min={0} />
-                    </Form.Item>
-                  </Space>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="burningCondition" label="燒毛/退漿/燒定漿條件" style={{ flex: 1 }}>
-                      <Input placeholder="燒毛條件…" />
-                    </Form.Item>
-                    <Form.Item name="washCondition" label="水洗條件" style={{ flex: 1 }}>
-                      <Input placeholder="水洗溫度/次數…" />
-                    </Form.Item>
-                  </Space>
-                  <Form.Item name="dyeAuxiliaries" label="染色助劑（可複選）">
-                    <Checkbox.Group style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
-                      {['勻染劑','遮蔽劑','破壞洗劑','修復劑','氯化鈣','退色劑','熟洗劑','浴中柔軟劑'].map((a) => (
-                        <Checkbox key={a} value={a} style={{ margin: 0, fontSize: 12 }}>{a}</Checkbox>
-                      ))}
-                    </Checkbox.Group>
-                  </Form.Item>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="leveler" label="均染劑（用量）" style={{ flex: 1 }}>
-                      <Input placeholder="品名 + 用量%" />
-                    </Form.Item>
-                    <Form.Item name="fixer" label="修補劑（用量）" style={{ flex: 1 }}>
-                      <Input placeholder="品名 + 用量%" />
-                    </Form.Item>
-                  </Space>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="calciumChloride" label="氯化鈣（用量）" style={{ flex: 1 }}>
-                      <Input placeholder="用量%" />
-                    </Form.Item>
-                    <Form.Item name="colorFixative" label="固色劑（用量）" style={{ flex: 1 }}>
-                      <Input placeholder="品名 + 用量%" />
-                    </Form.Item>
-                  </Space>
-                  <Divider titlePlacement="left" plain style={{ fontSize: 12, color: '#888', margin: '4px 0' }}>染料條件</Divider>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="dyeCombination" label="染料組合" style={{ flex: 2 }}>
-                      <Input placeholder="酸性紅 R-380 + …" />
-                    </Form.Item>
-                    <Form.Item name="dyeAmount" label="添加量" style={{ flex: 1 }}>
-                      <Input placeholder="4% + 2%" />
-                    </Form.Item>
-                  </Space>
-                </>
-              )
-            }}
+          <Form.Item name="name" label="試驗組名稱" rules={[{ required: true }]}>
+            <Input placeholder="A組、B組、對照組…" />
           </Form.Item>
+
+          <ConditionFields fields={fields} form={editForm} />
 
           <Form.Item name="notes" label="備註">
             <Input.TextArea rows={2} />
@@ -1061,6 +918,7 @@ export default function ExperimentDetailPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const [experiment, setExperiment] = useState<Experiment | null>(null)
+  const [templates, setTemplates] = useState<ExperimentTemplate[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [samples, setSamples] = useState<Sample[]>([])
   const [loading, setLoading] = useState(true)
@@ -1100,10 +958,19 @@ export default function ExperimentDetailPage() {
   }
 
   useEffect(() => { reload() }, [id])
+  useEffect(() => {
+    getExperimentTemplates(true).then((r) => setTemplates(r.data.data ?? [])).catch(() => {})
+  }, [])
+
+  const template = resolveTemplate(experiment, templates)
+  const templateFields: TemplateField[] = template?.fields ?? []
 
   const handleAddGroup = async (values: any) => {
     try {
-      await createGroup(expId, values)
+      await createGroup(expId, {
+        name: values.name, notes: values.notes,
+        conditions: fromFormConditions(templateFields, values.conditions),
+      })
       setAddGroupOpen(false)
       addGroupForm.resetFields()
       reload()
@@ -1254,6 +1121,7 @@ export default function ExperimentDetailPage() {
         title={<Space>
           <Text strong>{experiment.code}</Text>
           {experiment.category && <Tag color="blue">{experiment.category}</Tag>}
+          {template && <Tag color="purple">{template.name}</Tag>}
         </Space>}
         extra={
           <Space>
@@ -1418,6 +1286,7 @@ export default function ExperimentDetailPage() {
                 experimentId={expId}
                 canEdit={canEdit}
                 onUpdated={reload}
+                fields={templateFields}
               />
             ))}
           </div>
@@ -1440,128 +1309,15 @@ export default function ExperimentDetailPage() {
         onCancel={() => setAddGroupOpen(false)}
         onOk={() => addGroupForm.submit()} destroyOnHidden width={680}>
         <Form form={addGroupForm} layout="vertical" onFinish={handleAddGroup} style={{ marginTop: 8 }}>
-          <Space style={{ width: '100%' }} size={8}>
-            <Form.Item name="name" label="試驗組名稱" rules={[{ required: true }]} style={{ flex: 2 }}>
-              <Input placeholder="A組、對照組、高溫組…" />
-            </Form.Item>
-            <Form.Item name="experimentType" label="實驗項目" style={{ flex: 1 }}>
-              <Select allowClear placeholder="選擇類型" options={[
-                { value: '染色機', label: '染色/染色製程（染色機）' },
-                { value: '定型機-物性', label: '物性改良（定型機）' },
-                { value: '定型機-機能', label: '機能性加工（定型機）' },
-              ]} />
-            </Form.Item>
-          </Space>
-
-          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.experimentType !== cur.experimentType}>
-            {({ getFieldValue }) => {
-              const expType: string = getFieldValue('experimentType') ?? ''
-              const isFixingType = expType.startsWith('定型機')
-              return isFixingType ? (
-                <>
-                  <Divider titlePlacement="left" plain style={{ fontSize: 12, color: '#888' }}>定型加工條件（選填）</Divider>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="fixingTemp" label="加工溫度/時間" style={{ flex: 1 }}>
-                      <Input placeholder="180°C × 30s" />
-                    </Form.Item>
-                    <Form.Item name="fixingAuxAmount" label="助劑用量" style={{ flex: 1 }}>
-                      <Input placeholder="30g/L" />
-                    </Form.Item>
-                  </Space>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="fiberSpec" label="纖維規格" style={{ flex: 1 }}>
-                      <Input placeholder="100% Polyester" />
-                    </Form.Item>
-                    <Form.Item name="widthShrinkage" label="門幅縮率" style={{ flex: 1 }}>
-                      <Input placeholder="5%" />
-                    </Form.Item>
-                    <Form.Item name="shrinkTime" label="縮水時間" style={{ flex: 1 }}>
-                      <Input placeholder="30 min" />
-                    </Form.Item>
-                  </Space>
-                  <Form.Item name="fixingAuxiliaries" label="定型加工助劑（可複選）">
-                    <Checkbox.Group style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
-                      {['吸濕快乾劑','接水劑','消毛劑','燙煙裂劑','摩擦電劑','撥滑紙劑','摩擦紙劑','摩起毛起絨劑',
-                        '摩軟劑','增硬劑','增彈劑','增重劑','漿色劑','起毛油劑','摩紫外線劑','黏劑',
-                        '摩耐防蛀劑','高溫難燃防止劑','溶液加工劑','負面離子加工劑','防毛劑',
-                        '預縮外線加工劑','皮革漆沙劑','皮革磷裂劑'].map((a) => (
-                        <Checkbox key={a} value={a} style={{ margin: 0, fontSize: 12 }}>{a}</Checkbox>
-                      ))}
-                    </Checkbox.Group>
-                  </Form.Item>
-                </>
-              ) : (
-                <>
-                  <Divider titlePlacement="left" plain style={{ fontSize: 12, color: '#888' }}>染色條件（選填）</Divider>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="bathRatio" label="浴比" style={{ flex: 1 }}>
-                      <Input placeholder="1:10" />
-                    </Form.Item>
-                    <Form.Item name="startPH" label="起染 pH" style={{ flex: 1 }}>
-                      <InputNumber style={{ width: '100%' }} step={0.1} min={0} max={14} />
-                    </Form.Item>
-                    <Form.Item name="endPH" label="終染 pH" style={{ flex: 1 }}>
-                      <InputNumber style={{ width: '100%' }} step={0.1} min={0} max={14} />
-                    </Form.Item>
-                  </Space>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="acidMethod" label="加酸方式" style={{ flex: 1 }}>
-                      <DropdownSelect categoryKey="dyeing_acid_method" allowClear placeholder="選擇或新增" style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Form.Item name="tempRate" label="升溫速率" style={{ flex: 1 }}>
-                      <Input placeholder="1.5°C/min" />
-                    </Form.Item>
-                    <Form.Item name="holdTime" label="保溫時間（分）" style={{ flex: 1 }}>
-                      <InputNumber style={{ width: '100%' }} min={0} />
-                    </Form.Item>
-                  </Space>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="burningCondition" label="燒毛/退漿條件" style={{ flex: 1 }}>
-                      <Input placeholder="燒毛條件…" />
-                    </Form.Item>
-                    <Form.Item name="washCondition" label="水洗條件" style={{ flex: 1 }}>
-                      <Input placeholder="溫度/次數…" />
-                    </Form.Item>
-                  </Space>
-                  <Form.Item name="dyeAuxiliaries" label="染色助劑（可複選）">
-                    <Checkbox.Group style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
-                      {['勻染劑','遮蔽劑','破壞洗劑','修復劑','氯化鈣','退色劑','熟洗劑','浴中柔軟劑'].map((a) => (
-                        <Checkbox key={a} value={a} style={{ margin: 0, fontSize: 12 }}>{a}</Checkbox>
-                      ))}
-                    </Checkbox.Group>
-                  </Form.Item>
-                  <Divider titlePlacement="left" plain style={{ fontSize: 12, color: '#888' }}>助劑用量（選填）</Divider>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="leveler" label="均染劑（用量）" style={{ flex: 1 }}>
-                      <Input placeholder="品名 + 用量%" />
-                    </Form.Item>
-                    <Form.Item name="fixer" label="修補劑（用量）" style={{ flex: 1 }}>
-                      <Input placeholder="品名 + 用量%" />
-                    </Form.Item>
-                  </Space>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="calciumChloride" label="氯化鈣（用量）" style={{ flex: 1 }}>
-                      <Input placeholder="用量%" />
-                    </Form.Item>
-                    <Form.Item name="colorFixative" label="固色劑（用量）" style={{ flex: 1 }}>
-                      <Input placeholder="品名 + 用量%" />
-                    </Form.Item>
-                  </Space>
-                  <Divider titlePlacement="left" plain style={{ fontSize: 12, color: '#888' }}>染料條件（選填）</Divider>
-                  <Space style={{ width: '100%' }} size={8}>
-                    <Form.Item name="dyeCombination" label="染料組合" style={{ flex: 2 }}>
-                      <Input placeholder="酸性紅 R-380 + 酸性藍 B-150" />
-                    </Form.Item>
-                    <Form.Item name="dyeAmount" label="添加量" style={{ flex: 1 }}>
-                      <Input placeholder="4% + 2%" />
-                    </Form.Item>
-                  </Space>
-                </>
-              )
-            }}
+          <Form.Item name="name" label="試驗組名稱" rules={[{ required: true }]}>
+            <Input placeholder="A組、對照組、高溫組…" />
           </Form.Item>
 
-          <Form.Item name="notes" label="備註"><Input.TextArea rows={2} /></Form.Item>
+          <ConditionFields fields={templateFields} form={addGroupForm} />
+
+          <Form.Item name="notes" label="備註">
+            <Input.TextArea rows={2} />
+          </Form.Item>
         </Form>
       </Modal>
 

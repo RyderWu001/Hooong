@@ -122,11 +122,40 @@ export interface ExperimentGroupStep {
   attachments: Attachment[]
 }
 
+// ── 實驗範本：定義某類實驗的條件欄位（通用化，不綁定特定產業）──────────────────
+export type TemplateFieldType = 'text' | 'textarea' | 'number' | 'select' | 'multiselect' | 'date'
+
+export interface TemplateField {
+  key: string
+  label: string
+  type: TemplateFieldType
+  unit?: string
+  placeholder?: string
+  options?: string[]
+  /** 欄位分組標題（相鄰且同名者合併顯示） */
+  section?: string
+  /** 條件顯示：依另一個欄位的值決定是否顯示（in 或 notIn 擇一） */
+  showWhen?: { key: string; in?: unknown[]; notIn?: unknown[] }
+}
+
+export interface ExperimentTemplate {
+  id: number
+  key: string
+  name: string
+  domain: string | null
+  description: string
+  fields: TemplateField[]
+  isActive: boolean
+  isBuiltin: boolean
+}
+
 export interface ExperimentGroup {
   id: number
   experimentId: number
   name: string
   groupOrder: number
+  /** 通用實驗條件（key 由範本欄位定義）；舊資料為 null，改讀下方染整欄位 */
+  conditions?: Record<string, unknown> | null
   experimentType: string | null
   // 染色條件
   bathRatio: string | null
@@ -213,6 +242,8 @@ export interface Experiment {
   code: string
   formulaId: number | null
   formulaName?: string
+  templateId?: number | null
+  template?: ExperimentTemplate | null
   experimenterId: number
   experimenterName?: string
   experimentDate: string

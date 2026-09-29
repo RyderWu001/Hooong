@@ -29,6 +29,7 @@ import ResultDetailPage from './pages/results/ResultDetailPage'
 import ReportsPage from './pages/reports/ReportsPage'
 import UserManagementPage from './pages/users/UserManagementPage'
 import DropdownManagePage from './pages/dropdowns/DropdownManagePage'
+import ExperimentTemplatesPage from './pages/experiments/ExperimentTemplatesPage'
 import SamplesPage from './pages/samples/SamplesPage'
 import TraceabilityPage from './pages/traceability/TraceabilityPage'
 import KnowledgePage from './pages/knowledge/KnowledgePage'
@@ -197,6 +198,14 @@ export default function App() {
               element={
                 <ProtectedRoute roles={['ADMIN']}>
                   <DropdownManagePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="experiment-templates"
+              element={
+                <ProtectedRoute roles={['ADMIN']}>
+                  <ExperimentTemplatesPage />
                 </ProtectedRoute>
               }
             />

@@ -117,6 +117,7 @@ export default {
     system: 'Quản trị hệ thống',
     users: 'Quản lý người dùng',
     dropdowns: 'Quản lý tùy chọn',
+    experimentTemplates: 'Mẫu thí nghiệm',
     permissions: 'Quản lý quyền',
     labDailyLog: 'Nhật ký công việc hàng ngày phòng thí nghiệm',
     sampleSubmissions: 'Đơn liên hệ gửi mẫu',
