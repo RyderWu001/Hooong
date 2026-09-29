@@ -1183,9 +1183,9 @@ export default function ExperimentDetailPage() {
         {experiment.clientCompany || experiment.fabricCode || experiment.clientContact || experiment.commissionType ? (
           <Space direction="vertical" style={{ width: '100%' }}>
             <Descriptions bordered size="small" column={3}>
-              <Descriptions.Item label="客戶公司名稱" span={1}>{experiment.clientCompany || '—'}</Descriptions.Item>
-              <Descriptions.Item label="客戶聯絡人" span={1}>{experiment.clientContact || '—'}</Descriptions.Item>
-              <Descriptions.Item label="布料代碼" span={1}>{experiment.fabricCode || '—'}</Descriptions.Item>
+              <Descriptions.Item label="委託單位" span={1}>{experiment.clientCompany || '—'}</Descriptions.Item>
+              <Descriptions.Item label="聯絡人" span={1}>{experiment.clientContact || '—'}</Descriptions.Item>
+              <Descriptions.Item label="樣品編號" span={1}>{experiment.fabricCode || '—'}</Descriptions.Item>
               <Descriptions.Item label="類型" span={1}>
                 {experiment.commissionType
                   ? <Tag color="blue">{COMMISSION_TYPE_LABEL[experiment.commissionType] ?? experiment.commissionType}</Tag>
@@ -1234,7 +1234,7 @@ export default function ExperimentDetailPage() {
                   {(experiment.commissionNotes as any).waitingForProcessing && <Tag>待加工</Tag>}
                   {(experiment.commissionNotes as any).report && <Tag>報告</Tag>}
                   {(experiment.commissionNotes as any).cost != null && (experiment.commissionNotes as any).cost > 0 &&
-                    <Tag>成本：{(experiment.commissionNotes as any).cost} VND</Tag>}
+                    <Tag>成本：{(experiment.commissionNotes as any).cost}</Tag>}
                 </Space>
               </>
             )}
@@ -1348,14 +1348,14 @@ export default function ExperimentDetailPage() {
 
           <Divider titlePlacement="left" plain style={{ fontSize: 12 }}>委託單資訊</Divider>
           <Space style={{ width: '100%' }} size={8}>
-            <Form.Item name="clientCompany" label="客戶公司名稱" style={{ flex: 1 }}>
-              <Input placeholder="Tên Cty Khách Hàng" />
+            <Form.Item name="clientCompany" label="委託單位" style={{ flex: 1 }}>
+              <Input placeholder="Đơn vị ủy thác" />
             </Form.Item>
-            <Form.Item name="clientContact" label="客戶聯絡人" style={{ flex: 1 }}>
-              <Input placeholder="Người Liên lạc" />
+            <Form.Item name="clientContact" label="聯絡人" style={{ flex: 1 }}>
+              <Input placeholder="Người liên lạc" />
             </Form.Item>
-            <Form.Item name="fabricCode" label="布料代碼" style={{ flex: 1 }}>
-              <Input placeholder="Mã số vải" />
+            <Form.Item name="fabricCode" label="樣品編號" style={{ flex: 1 }}>
+              <Input placeholder="Mã số mẫu" />
             </Form.Item>
           </Space>
           <Space style={{ width: '100%' }} size={8}>
@@ -1448,7 +1448,7 @@ export default function ExperimentDetailPage() {
             <Form.Item name="commissionNotes_report" valuePropName="checked" style={{ marginBottom: 0 }}>
               <Checkbox>報告</Checkbox>
             </Form.Item>
-            <Form.Item name="commissionNotes_cost" label="成本 (VND)" style={{ marginBottom: 0 }}>
+            <Form.Item name="commissionNotes_cost" label="成本" style={{ marginBottom: 0 }}>
               <InputNumber min={0} placeholder="0" style={{ width: 120 }} />
             </Form.Item>
           </Space>
@@ -1511,7 +1511,7 @@ export default function ExperimentDetailPage() {
           {pendingFabricCode && (
             <>
               <Divider plain style={{ margin: '8px 0 4px', fontSize: 12 }}>
-                樣品（1 筆）— 來自布料代碼
+                樣品（1 筆）— 來自樣品編號
               </Divider>
               <Space direction="vertical" size={2} style={{ paddingLeft: 8 }}>
                 <Checkbox

@@ -15,7 +15,7 @@ function extractField(text: string, ...patterns: RegExp[]): string | null {
   return null
 }
 
-function parseCommissionPDF(rawText: string) {
+export function parseCommissionPDF(rawText: string) {
   const flat = rawText.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ')
 
   // ── Header fields ─────────────────────────────────────────────────────────
@@ -25,16 +25,19 @@ function parseCommissionPDF(rawText: string) {
   )
 
   const clientCompany = extractField(flat,
+    /委託單位[^：:]*[：:]\s*(.+?)(?=樣品編號|聯絡人|申請日期|\n)/,
     /客戶公司名稱[^：:]*[：:]\s*(.+?)(?=布料代碼|客戶名稱|申請日期|\n)/,
     /Tên Cty Khách Hàng[^：:]*[：:]\s*(.+?)(?=布料代碼|客戶名稱|申請日期|\n)/,
   )
 
   const fabricCode = extractField(flat,
+    /樣品編號[^：:]*[：:]\s*([A-Za-z0-9\-_]+)/,
     /布料代碼[^：:]*[：:]\s*([A-Za-z0-9\-_]+)/,
     /Mã số vải[^：:]*[：:]\s*([A-Za-z0-9\-_]+)/,
   )
 
   const clientContact = extractField(flat,
+    /聯絡人[^：:]*[：:]\s*(.+?)(?=申請日期|樣品編號|類型|\n)/,
     /客戶名稱[^：:]*[：:]\s*(.+?)(?=申請日期|布料代碼|類型|\n)/,
     /Người Liên lạc[^：:]*[：:]\s*(.+?)(?=申請日期|\n)/,
   )
@@ -51,7 +54,7 @@ function parseCommissionPDF(rawText: string) {
 
   const waitingForProcessing = /☑\s*待加工/.test(flat)
   const hasReport = /☑\s*報告/.test(flat)
-  const costMatch = flat.match(/(\d[\d,]+)\s*VND/)
+  const costMatch = flat.match(/成本[^\d\n]{0,20}(\d[\d,]*)/) ?? flat.match(/(\d[\d,]+)\s*VND/)
   const cost = costMatch ? Number(costMatch[1].replace(/,/g, '')) : null
 
   // ── Conclusions ────────────────────────────────────────────────────────────

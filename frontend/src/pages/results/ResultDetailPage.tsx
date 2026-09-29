@@ -20,11 +20,11 @@ const STATUS_OPTIONS = [
   { value: 'NEEDS_ADJUST', label: '需調整', color: 'blue' },
 ]
 
-const DEFAULT_DIMENSIONS = ['手感', '色澤', '染色牢度', '吸濕', '外觀', '固含量', 'pH', '比重', '黏度', '電導度', 'COD', '機能性']
+const DEFAULT_DIMENSIONS = ['外觀', '色澤', '氣味', '質地', 'pH', '比重', '黏度', '固含量', '電導度', '穩定性', '機能性']
 
-const ANOMALY_OPTIONS = ['色花', '梯份', '色差', '染料', '染色牢度不合格', '物性不合格', '機能性不合格', '沾汙', '泡沫']
+const ANOMALY_OPTIONS = ['外觀異常', '色差', '沉澱／分層', '異味', '物性不合格', '機能性不合格', '污染', '泡沫']
 
-const IMPROVEMENT_ACTIONS = ['延後加酸', '降低升溫速率', '增加助劑量', '調整染料配比', '延長保溫時間', '降低染色溫度']
+const IMPROVEMENT_ACTIONS = ['調整配比', '調整添加量', '延長反應／保溫時間', '降低製程溫度', '調整 pH', '更換原料批次']
 
 function calcOkng(confirmed: number | null, standard: number | null): 'OK' | 'NG' | null {
   if (confirmed == null || standard == null) return null

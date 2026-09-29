@@ -282,7 +282,7 @@ export default function KnowledgePage() {
             <Input placeholder="例：染色知識、品質管理、安全注意事項" />
           </Form.Item>
           <Form.Item name="tags" label="標籤（逗號分隔）">
-            <Input placeholder="例：染料, 溫度, pH值" />
+            <Input placeholder="例：原料, 溫度, pH值" />
           </Form.Item>
           <Form.Item name="content" label="內容" rules={[{ required: true }]}>
             <TextArea rows={12} placeholder="輸入文章內容…" />
@@ -303,7 +303,7 @@ export default function KnowledgePage() {
         footer={
           <Space.Compact style={{ width: '100%' }}>
             <Input
-              placeholder="輸入問題，例如：酸性染料的最佳 pH 值範圍？"
+              placeholder="輸入問題，例如：乳化劑的最佳添加量範圍？"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onPressEnter={handleSendChat}

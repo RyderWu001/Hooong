@@ -511,17 +511,17 @@ export default function ExperimentListPage() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="clientCompany" label="客戶公司名稱">
+              <Form.Item name="clientCompany" label="委託單位">
                 <Input />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="fabricCode" label="布料代碼">
+              <Form.Item name="fabricCode" label="樣品編號">
                 <Input />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="clientContact" label="客戶聯絡人">
+              <Form.Item name="clientContact" label="聯絡人">
                 <Input />
               </Form.Item>
             </Col>

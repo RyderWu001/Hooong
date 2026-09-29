@@ -229,18 +229,18 @@ export default function ExperimentFormPage() {
 
         <Row gutter={12}>
           <Col span={8}>
-            <Form.Item name="clientCompany" label="客戶公司名稱">
-              <Input placeholder="Tên Cty Khách Hàng" />
+            <Form.Item name="clientCompany" label="委託單位">
+              <Input placeholder="Đơn vị ủy thác" />
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item name="clientContact" label="客戶聯絡人">
-              <Input placeholder="Người Liên lạc" />
+            <Form.Item name="clientContact" label="聯絡人">
+              <Input placeholder="Người liên lạc" />
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item name="fabricCode" label="布料代碼">
-              <Input placeholder="Mã số vải" />
+            <Form.Item name="fabricCode" label="樣品編號">
+              <Input placeholder="Mã số mẫu" />
             </Form.Item>
           </Col>
         </Row>
@@ -298,7 +298,7 @@ export default function ExperimentFormPage() {
             </Form.Item>
           </Col>
           <Col flex="160px">
-            <Form.Item name="commissionNotes_cost" label="成本 (VND)" style={{ marginBottom: 0 }}>
+            <Form.Item name="commissionNotes_cost" label="成本" style={{ marginBottom: 0 }}>
               <InputNumber style={{ width: '100%' }} min={0} placeholder="0" />
             </Form.Item>
           </Col>

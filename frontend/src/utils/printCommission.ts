@@ -60,8 +60,8 @@ export function printCommissionForm(experiment: Experiment) {
   </style>
 </head>
 <body>
-  <div class="center"><h1>旺隆責任有限公司 / CÔNG TY TNHH WANG LONG (VIỆT NAM)</h1></div>
-  <div class="center"><h2>實驗室委託單（化學品對布料效果測試表）/ PHIẾU YÊU CẦU PHÒNG THÍ NGHIỆM</h2></div>
+  <div class="center"><h1>實驗室資訊管理系統</h1></div>
+  <div class="center"><h2>實驗委託單 / PHIẾU YÊU CẦU THÍ NGHIỆM</h2></div>
 
   <table style="margin-bottom: 8px;">
     <tr>
@@ -69,15 +69,15 @@ export function printCommissionForm(experiment: Experiment) {
       <td style="width: 50%">試驗編號：<strong>${experiment.code}</strong></td>
     </tr>
     <tr>
-      <td>客戶公司名稱 / Tên Cty Khách Hàng：${experiment.clientCompany ?? ''}</td>
+      <td>委託單位 / Đơn vị ủy thác：${experiment.clientCompany ?? ''}</td>
       <td>申請日期：${dayjs(experiment.experimentDate).format('YYYY-MM-DD')}</td>
     </tr>
     <tr>
-      <td>布料代碼 / Mã số vải：${experiment.fabricCode ?? ''}</td>
+      <td>樣品編號 / Mã số mẫu：${experiment.fabricCode ?? ''}</td>
       <td>預計完成日：${experiment.expectedDate ? dayjs(experiment.expectedDate).format('YYYY-MM-DD') : ''}</td>
     </tr>
     <tr>
-      <td>客戶名稱 / Người Liên lạc：${experiment.clientContact ?? ''}</td>
+      <td>聯絡人 / Người liên lạc：${experiment.clientContact ?? ''}</td>
       <td>實際完成日：${experiment.actualDate ? dayjs(experiment.actualDate).format('YYYY-MM-DD') : ''}</td>
     </tr>
     <tr>
@@ -114,7 +114,7 @@ export function printCommissionForm(experiment: Experiment) {
         備註 / Ghi chú：&nbsp;&nbsp;
         ${checkMark(!!cn.waitingForProcessing)} 待加工 đợi gia công &nbsp;&nbsp;
         ${checkMark(!!cn.report)} 報告 báo cáo &nbsp;&nbsp;
-        ${checkMark(!!(cn.cost))} 成本 giá thành ${cn.cost ? cn.cost : ''} VND
+        ${checkMark(!!(cn.cost))} 成本 giá thành ${cn.cost ? cn.cost : ''}
       </td>
     </tr>
   </table>
