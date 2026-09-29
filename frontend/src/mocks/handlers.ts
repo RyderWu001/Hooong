@@ -295,6 +295,19 @@ export function resolveWriteMock(url: string, method: string, body: unknown): un
     return ok({})
   }
 
+  // 登入（開發用 mock，帳密與 backend seed 的測試帳號相同）
+  if (m === 'POST' && /\/auth\/login$/.test(url)) {
+    const MOCK_PASSWORDS: Record<string, string> = {
+      'admin@test.com': 'admin123', 'lab@test.com': 'lab123', 'manager@test.com': 'manager123',
+    }
+    const user = mockUsers.find((u) => u.email === data.email)
+    if (!user || MOCK_PASSWORDS[user.email] !== data.password) {
+      throw Object.assign(new Error('Invalid credentials'), { response: { status: 401, data: { success: false, error: { code: 'INVALID_CREDENTIALS', message: '帳號或密碼錯誤' } } } })
+    }
+    return ok({ token: 'dev-mock-token', user })
+  }
+  if (m === 'POST' && /\/auth\/logout$/.test(url)) return ok({})
+
   // 實驗範本
   if (m === 'POST' && /\/experiment-templates$/.test(url)) {
     const item = { id: Math.max(0, ...mockTemplates.map((t) => t.id)) + 1, isActive: true, isBuiltin: false, ...data }
