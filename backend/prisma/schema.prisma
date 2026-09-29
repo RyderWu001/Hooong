@@ -171,6 +171,8 @@ model Experiment {
   code             String            @unique
   formula          Formula?          @relation(fields: [formulaId], references: [id])
   formulaId        Int?
+  template         ExperimentTemplate? @relation(fields: [templateId], references: [id])
+  templateId       Int?
   experimenter     User              @relation("ExperimenterRelation", fields: [experimenterId], references: [id])
   experimenterId   Int
   experimentDate   DateTime
@@ -197,9 +199,26 @@ model Experiment {
   transactions     MaterialTransaction[]
 
   @@index([formulaId])
+  @@index([templateId])
   @@index([experimenterId])
   @@index([experimentDate])
   @@index([createdAt])
+}
+
+// ── 實驗範本：定義某類實驗的「條件欄位」，讓系統可用於任何領域（食品、清潔劑、染整…）──
+// fields 為 TemplateField[]：{ key, label, type, unit?, options?, section?, showWhen?, placeholder? }
+model ExperimentTemplate {
+  id          Int          @id @default(autoincrement())
+  key         String       @unique
+  name        String
+  domain      String?
+  description String       @default("")
+  fields      Json
+  isActive    Boolean      @default(true)
+  isBuiltin   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  experiments Experiment[]
 }
 
 model ExperimentGroup {
@@ -208,7 +227,10 @@ model ExperimentGroup {
   experimentId      Int
   name              String
   groupOrder        Int                   @default(1)
-  // 實驗項目類型
+  // 通用實驗條件：欄位由 ExperimentTemplate.fields 定義，值以 key → value 存放。
+  // 下方染整專屬欄位為舊資料相容保留，新資料一律寫入 conditions。
+  conditions        Json?
+  // 實驗項目類型（舊）
   experimentType    String?               // 染色機/定型機
   // 染色條件
   bathRatio         String?

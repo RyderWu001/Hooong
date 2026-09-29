@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { Prisma } from '@prisma/client'
 import prisma from '../db/client'
 import { uploadToStorage } from '../db/storage'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
@@ -21,6 +22,7 @@ const GROUP_INCLUDE = {
 
 const EXP_INCLUDE = {
   formula: { select: { name: true } },
+  template: true,
   experimenter: { select: { username: true } },
   groups: { orderBy: { groupOrder: 'asc' as const }, include: GROUP_INCLUDE },
   attachments: true,
@@ -69,7 +71,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 
 router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
   const {
-    code, formulaId, experimenterId, experimentDate, category, temperature, humidity, notes,
+    code, formulaId, templateId, experimenterId, experimentDate, category, temperature, humidity, notes,
     clientCompany, fabricCode, clientContact, commissionType,
     expectedDate, actualDate, testItems, commissionNotes, conclusionBefore, conclusionAfter,
   } = req.body
@@ -77,6 +79,7 @@ router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: Aut
     data: {
       code,
       ...(formulaId ? { formulaId: Number(formulaId) } : {}),
+      ...(templateId ? { templateId: Number(templateId) } : {}),
       experimenterId: experimenterId ? Number(experimenterId) : req.user!.id,
       experimentDate: new Date(experimentDate),
       category: category ?? null,
@@ -101,13 +104,14 @@ router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: Aut
 
 router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const {
-    category, temperature, humidity, notes, experimentDate,
+    templateId, category, temperature, humidity, notes, experimentDate,
     clientCompany, fabricCode, clientContact, commissionType,
     expectedDate, actualDate, testItems, commissionNotes, conclusionBefore, conclusionAfter,
   } = req.body
   const e = await prisma.experiment.update({
     where: { id: Number(req.params.id) },
     data: {
+      ...(templateId !== undefined ? { templateId: templateId ? Number(templateId) : null } : {}),
       category: category ?? null,
       temperature,
       humidity,
@@ -131,13 +135,14 @@ router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, r
 
 router.patch('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const {
-    category, temperature, humidity, notes, experimentDate,
+    templateId, category, temperature, humidity, notes, experimentDate,
     clientCompany, fabricCode, clientContact, commissionType,
     expectedDate, actualDate, testItems, commissionNotes, conclusionBefore, conclusionAfter,
   } = req.body
   const e = await prisma.experiment.update({
     where: { id: Number(req.params.id) },
     data: {
+      ...(templateId !== undefined ? { templateId: templateId ? Number(templateId) : null } : {}),
       ...(category !== undefined ? { category: category ?? null } : {}),
       ...(temperature !== undefined ? { temperature } : {}),
       ...(humidity !== undefined ? { humidity } : {}),
@@ -177,7 +182,7 @@ router.get('/:id/groups', requireAuth, async (req, res) => {
 
 router.post('/:id/groups', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
   const experimentId = Number(req.params.id)
-  const { name, groupOrder, experimentType, bathRatio, startPH, endPH, acidMethod, tempRate, holdTime,
+  const { name, groupOrder, conditions, experimentType, bathRatio, startPH, endPH, acidMethod, tempRate, holdTime,
     burningCondition, washCondition, dyeAuxiliaries,
     leveler, fixer, calciumChloride, colorFixative, dyeCombination, dyeAmount,
     fixingTemp, fixingAuxAmount, fiberSpec, widthShrinkage, shrinkTime, fixingAuxiliaries,
@@ -188,6 +193,7 @@ router.post('/:id/groups', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async
     data: {
       experimentId, name,
       groupOrder: groupOrder ?? maxOrder + 1,
+      conditions: conditions ?? undefined,
       experimentType: experimentType ?? null,
       bathRatio: bathRatio ?? null,
       startPH: startPH != null ? Number(startPH) : null,
@@ -218,7 +224,7 @@ router.post('/:id/groups', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async
 })
 
 router.put('/:id/groups/:gid', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
-  const { name, experimentType, bathRatio, startPH, endPH, acidMethod, tempRate, holdTime,
+  const { name, conditions, experimentType, bathRatio, startPH, endPH, acidMethod, tempRate, holdTime,
     burningCondition, washCondition, dyeAuxiliaries,
     leveler, fixer, calciumChloride, colorFixative, dyeCombination, dyeAmount,
     fixingTemp, fixingAuxAmount, fiberSpec, widthShrinkage, shrinkTime, fixingAuxiliaries,
@@ -227,6 +233,8 @@ router.put('/:id/groups/:gid', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), a
     where: { id: Number(req.params.gid) },
     data: {
       name,
+      // 只有前端有帶 conditions 時才覆寫，避免舊版用戶端把條件清空
+      ...(conditions !== undefined ? { conditions: conditions ?? Prisma.DbNull } : {}),
       experimentType: experimentType ?? null,
       bathRatio: bathRatio ?? null,
       startPH: startPH != null ? Number(startPH) : null,

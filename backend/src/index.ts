@@ -13,6 +13,7 @@ import usersRouter from './routes/users'
 import ingredientsRouter from './routes/ingredients'
 import formulasRouter from './routes/formulas'
 import experimentsRouter from './routes/experiments'
+import experimentTemplatesRouter from './routes/experimentTemplates'
 import resultsRouter from './routes/results'
 import reportsRouter from './routes/reports'
 import materialsRouter from './routes/materials'
@@ -67,6 +68,7 @@ app.use('/api/v1/users', usersRouter)
 app.use('/api/v1/ingredients', ingredientsRouter)
 app.use('/api/v1/formulas', formulasRouter)
 app.use('/api/v1/experiments', experimentsRouter)
+app.use('/api/v1/experiment-templates', experimentTemplatesRouter)
 app.use('/api/v1/results', resultsRouter)
 app.use('/api/v1/reports', reportsRouter)
 app.use('/api/v1/materials', materialsRouter)
