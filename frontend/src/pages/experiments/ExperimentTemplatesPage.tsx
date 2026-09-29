@@ -152,7 +152,7 @@ export default function ExperimentTemplatesPage() {
         rowKey="id" loading={loading} dataSource={data} pagination={false}
         columns={[
           {
-            title: '名稱', dataIndex: 'name',
+            title: '名稱', dataIndex: 'name', width: 280,
             render: (v: string, r) => (
               <Space direction="vertical" size={0}>
                 <Space>

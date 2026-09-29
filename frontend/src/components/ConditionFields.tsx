@@ -6,24 +6,35 @@ import { isFieldVisible } from '../utils/experimentTemplate'
 
 const CONDITIONS = 'conditions'
 
-function FieldInput({ field }: { field: TemplateField }) {
+/**
+ * Form.Item 會把 value / onChange 注入到直接子元件，因此這裡必須接住並往下傳，
+ * 否則畫面不會顯示既有值，輸入的內容也不會進入表單。
+ */
+interface FieldInputProps<V = unknown> {
+  field: TemplateField
+  value?: V
+  onChange?: (value: V) => void
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- 值型別隨欄位類型而異（字串／數字／陣列／dayjs）
+function FieldInput({ field, value, onChange }: FieldInputProps<any>) {
   switch (field.type) {
     case 'number':
-      return <InputNumber style={{ width: '100%' }} addonAfter={field.unit} placeholder={field.placeholder} />
+      return <InputNumber style={{ width: '100%' }} suffix={field.unit} placeholder={field.placeholder} value={value} onChange={onChange} />
     case 'textarea':
-      return <Input.TextArea rows={2} placeholder={field.placeholder} />
+      return <Input.TextArea rows={2} placeholder={field.placeholder} value={value} onChange={(e) => onChange?.(e.target.value)} />
     case 'select':
-      return <Select allowClear placeholder={field.placeholder ?? '請選擇'} options={(field.options ?? []).map((o) => ({ value: o, label: o }))} />
+      return <Select allowClear placeholder={field.placeholder ?? '請選擇'} value={value} onChange={onChange} options={(field.options ?? []).map((o) => ({ value: o, label: o }))} />
     case 'multiselect':
       return (
-        <Checkbox.Group style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+        <Checkbox.Group value={value} onChange={onChange} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
           {(field.options ?? []).map((o) => <Checkbox key={o} value={o} style={{ margin: 0, fontSize: 12 }}>{o}</Checkbox>)}
         </Checkbox.Group>
       )
     case 'date':
-      return <DatePicker style={{ width: '100%' }} />
+      return <DatePicker style={{ width: '100%' }} value={value} onChange={onChange} />
     default:
-      return <Input placeholder={field.placeholder} suffix={field.unit} />
+      return <Input placeholder={field.placeholder} suffix={field.unit} value={value} onChange={(e) => onChange?.(e.target.value)} />
   }
 }
 

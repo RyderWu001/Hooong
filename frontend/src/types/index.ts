@@ -156,30 +156,30 @@ export interface ExperimentGroup {
   groupOrder: number
   /** 通用實驗條件（key 由範本欄位定義）；舊資料為 null，改讀下方染整欄位 */
   conditions?: Record<string, unknown> | null
-  experimentType: string | null
+  experimentType?: string | null
   // 染色條件
-  bathRatio: string | null
-  startPH: number | null
-  endPH: number | null
-  acidMethod: string | null
-  tempRate: string | null
-  holdTime: number | null
-  burningCondition: string | null
-  washCondition: string | null
-  dyeAuxiliaries: string[] | null
-  leveler: string | null
-  fixer: string | null
-  calciumChloride: string | null
-  colorFixative: string | null
-  dyeCombination: string | null
-  dyeAmount: string | null
+  bathRatio?: string | null
+  startPH?: number | null
+  endPH?: number | null
+  acidMethod?: string | null
+  tempRate?: string | null
+  holdTime?: number | null
+  burningCondition?: string | null
+  washCondition?: string | null
+  dyeAuxiliaries?: string[] | null
+  leveler?: string | null
+  fixer?: string | null
+  calciumChloride?: string | null
+  colorFixative?: string | null
+  dyeCombination?: string | null
+  dyeAmount?: string | null
   // 定型加工條件
-  fixingTemp: string | null
-  fixingAuxAmount: string | null
-  fiberSpec: string | null
-  widthShrinkage: string | null
-  shrinkTime: string | null
-  fixingAuxiliaries: string[] | null
+  fixingTemp?: string | null
+  fixingAuxAmount?: string | null
+  fiberSpec?: string | null
+  widthShrinkage?: string | null
+  shrinkTime?: string | null
+  fixingAuxiliaries?: string[] | null
   notes: string
   isSuccess: boolean
   createdAt: string

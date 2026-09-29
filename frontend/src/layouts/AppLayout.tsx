@@ -286,7 +286,7 @@ export default function AppLayout() {
             {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
           </div>
           <div className={styles.siderLogo} style={{ cursor: 'pointer' }} onClick={() => navigate('/dashboard')}>
-            <div className={styles.logoIcon}>H</div>
+            <div className={styles.logoIcon}><ExperimentOutlined /></div>
             {!collapsed && (
               <span className={styles.logoLink}>
                 <Typography.Text strong className={styles.logoText}>

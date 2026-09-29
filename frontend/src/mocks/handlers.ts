@@ -1,5 +1,5 @@
 import {
-  mockUsers, mockIngredients, mockFormulas, mockExperiments,
+  mockUsers, mockIngredients, mockFormulas, mockExperiments, mockTemplates,
   mockResults, mockFormulaVersions, mockResultSummary, mockFormulaUsage,
   mockInventory, mockTransactions,
   mockSuppliers, mockEvaluations, mockPurchaseRecords,
@@ -47,6 +47,8 @@ const HANDLERS: [RegExp, Handler][] = [
   [/\/formulas$/, (_, p) => paginate(mockFormulas, Number(p.get('page') || 1), Number(p.get('limit') || 20))],
 
   // Experiments
+  // 實驗範本
+  [/\/experiment-templates$/, (_, p) => ok(p.get('all') ? mockTemplates : mockTemplates.filter((t) => t.isActive))],
   [/\/experiments\/(\d+)\/steps$/, () => ok([])],
   [/\/experiments\/(\d+)\/samples$/, (url) => {
     const id = Number(url.match(/\/experiments\/(\d+)/)?.[1])
@@ -62,7 +64,8 @@ const HANDLERS: [RegExp, Handler][] = [
   [/\/experiments\/(\d+)\/attachments/, () => ok({})],
   [/\/experiments\/(\d+)$/, (url) => {
     const id = Number(url.match(/\/experiments\/(\d+)/)?.[1])
-    return ok(mockExperiments.find((e) => e.id === id) ?? mockExperiments[0])
+    const exp = mockExperiments.find((e) => e.id === id) ?? mockExperiments[0]
+    return ok({ ...exp, template: mockTemplates.find((t) => t.id === exp.templateId) ?? null })
   }],
   [/\/experiments$/, (_, p) => {
     let list = [...mockExperiments]
@@ -290,6 +293,43 @@ export function resolveWriteMock(url: string, method: string, body: unknown): un
     const idx = mockExperiments.findIndex((e) => e.id === id)
     if (idx !== -1) mockExperiments.splice(idx, 1)
     return ok({})
+  }
+
+  // 實驗範本
+  if (m === 'POST' && /\/experiment-templates$/.test(url)) {
+    const item = { id: Math.max(0, ...mockTemplates.map((t) => t.id)) + 1, isActive: true, isBuiltin: false, ...data }
+    mockTemplates.push(item)
+    return ok(item)
+  }
+  if (m === 'PUT' && /\/experiment-templates\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/experiment-templates\/(\d+)/)?.[1])
+    const t = mockTemplates.find((x) => x.id === id)
+    if (t) { Object.assign(t, data); return ok(t) }
+  }
+  if (m === 'DELETE' && /\/experiment-templates\/(\d+)$/.test(url)) {
+    const id = Number(url.match(/\/experiment-templates\/(\d+)/)?.[1])
+    const idx = mockTemplates.findIndex((t) => t.id === id && !t.isBuiltin)
+    if (idx !== -1) mockTemplates.splice(idx, 1)
+    return ok({})
+  }
+
+  // 試驗組（新增／編輯）
+  if (m === 'POST' && /\/experiments\/(\d+)\/groups$/.test(url)) {
+    const exp = mockExperiments.find((e) => e.id === Number(url.match(/\/experiments\/(\d+)/)?.[1]))
+    if (exp) {
+      const g = {
+        id: Math.max(0, ...mockExperiments.flatMap((e) => e.groups.map((x) => x.id))) + 1,
+        experimentId: exp.id, groupOrder: exp.groups.length + 1, isSuccess: false, notes: '',
+        createdAt: new Date().toISOString(), steps: [], attachments: [], samples: [], ...data,
+      }
+      exp.groups.push(g)
+      return ok(g)
+    }
+  }
+  if (m === 'PUT' && /\/experiments\/(\d+)\/groups\/(\d+)$/.test(url)) {
+    const [, eid, gid] = url.match(/\/experiments\/(\d+)\/groups\/(\d+)/) ?? []
+    const g = mockExperiments.find((e) => e.id === Number(eid))?.groups.find((x) => x.id === Number(gid))
+    if (g) { Object.assign(g, data); return ok(g) }
   }
 
   // Materials inventory write

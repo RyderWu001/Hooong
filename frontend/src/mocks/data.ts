@@ -1,4 +1,4 @@
-import type { Experiment, User, MaterialInventory, MaterialTransaction, Supplier, SupplierEvaluation, PurchaseRecord, FormulaRisk, IngredientRisk, AbnormalEvent } from '../types'
+import type { Experiment, ExperimentTemplate, User, MaterialInventory, MaterialTransaction, Supplier, SupplierEvaluation, PurchaseRecord, FormulaRisk, IngredientRisk, AbnormalEvent } from '../types'
 
 export const mockUsers: User[] = [
   { id: 1, username: '管理員', email: 'admin@test.com', role: 'ADMIN', isActive: true },
@@ -49,6 +49,68 @@ export const mockFormulas = [
   },
 ]
 
+// 開發用 mock：與後端內建範本精簡對應（正式欄位以 backend/src/db/seedTemplates.ts 為準）
+const DYE_SHOW = { key: 'experimentType', notIn: ['定型機', '定型機-物性', '定型機-機能'] }
+export const mockTemplates: ExperimentTemplate[] = [
+  {
+    id: 1, key: 'generic', name: '通用實驗', domain: '通用', isActive: true, isBuiltin: true,
+    description: '適用任何領域的基本條件欄位，可複製後自行增減欄位',
+    fields: [
+      { key: 'temperature', label: '溫度', type: 'number', unit: '°C', section: '基本條件' },
+      { key: 'duration', label: '時間', type: 'number', unit: 'min', section: '基本條件' },
+      { key: 'ph', label: 'pH', type: 'number', section: '基本條件' },
+      { key: 'amount', label: '用量／劑量', type: 'text', placeholder: '例：5 g/L', section: '基本條件' },
+      { key: 'method', label: '操作方法', type: 'textarea', section: '操作說明' },
+    ],
+  },
+  {
+    id: 2, key: 'food', name: '食品配方開發', domain: '食品', isActive: true, isBuiltin: true,
+    description: '食品、飲料等配方的加工條件與品質指標',
+    fields: [
+      { key: 'heatTemp', label: '加熱溫度', type: 'number', unit: '°C', section: '加工條件' },
+      { key: 'heatTime', label: '加熱時間', type: 'number', unit: 'min', section: '加工條件' },
+      { key: 'sterilization', label: '殺菌方式', type: 'select', options: ['無', '巴氏殺菌', 'UHT', '高壓殺菌'], section: '加工條件' },
+      { key: 'additives', label: '添加物', type: 'multiselect', options: ['防腐劑', '香料', '色素', '乳化劑', '增稠劑', '抗氧化劑', '甜味劑'], section: '加工條件' },
+      { key: 'ph', label: 'pH', type: 'number', section: '品質指標' },
+      { key: 'brix', label: '糖度', type: 'number', unit: '°Brix', section: '品質指標' },
+      { key: 'aw', label: '水活性 (aw)', type: 'number', section: '品質指標' },
+      { key: 'sensory', label: '官能評價', type: 'textarea', section: '品質指標' },
+    ],
+  },
+  {
+    id: 3, key: 'detergent', name: '清潔劑／洗潔精', domain: '日用化學', isActive: true, isBuiltin: true,
+    description: '洗潔精、洗衣精等清潔類配方的性能測試條件',
+    fields: [
+      { key: 'dilution', label: '稀釋倍率', type: 'text', placeholder: '例：1:100', section: '測試條件' },
+      { key: 'washTemp', label: '清洗溫度', type: 'number', unit: '°C', section: '測試條件' },
+      { key: 'testMethod', label: '洗淨力測試方法', type: 'select', options: ['油污洗淨', '皂垢去除', '汙布洗淨', '其他'], section: '測試條件' },
+      { key: 'ingredients', label: '主要成分', type: 'multiselect', options: ['界面活性劑', '香精', '防腐劑', '酵素', '螯合劑', '增稠劑', '色料'], section: '配方特性' },
+      { key: 'ph', label: 'pH', type: 'number', section: '性能指標' },
+      { key: 'viscosity', label: '黏度', type: 'number', unit: 'cP', section: '性能指標' },
+      { key: 'foamHeight', label: '泡沫高度', type: 'number', unit: 'mm', section: '性能指標' },
+    ],
+  },
+  {
+    id: 4, key: 'dyeing', name: '染整（相容舊資料）', domain: '紡織染整', isActive: true, isBuiltin: true,
+    description: '紡織染色與定型加工條件；欄位與舊版試驗組欄位相同，舊資料可直接沿用',
+    fields: [
+      { key: 'experimentType', label: '實驗項目', type: 'select', options: ['染色機', '定型機-物性', '定型機-機能'] },
+      { key: 'bathRatio', label: '浴比', type: 'text', placeholder: '1:10', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'startPH', label: '起染 pH', type: 'number', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'endPH', label: '終染 pH', type: 'number', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'acidMethod', label: '加酸方式', type: 'text', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'tempRate', label: '升溫速率', type: 'text', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'holdTime', label: '保溫時間', type: 'number', unit: '分鐘', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'leveler', label: '均染劑（用量）', type: 'text', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'fixer', label: '修補劑（用量）', type: 'text', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'calciumChloride', label: '氯化鈣（用量）', type: 'text', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'colorFixative', label: '固色劑（用量）', type: 'text', section: '染色條件', showWhen: DYE_SHOW },
+      { key: 'dyeCombination', label: '染料組合', type: 'text', section: '染料條件', showWhen: DYE_SHOW },
+      { key: 'dyeAmount', label: '添加量', type: 'text', section: '染料條件', showWhen: DYE_SHOW },
+    ],
+  },
+]
+
 export const mockExperiments: Experiment[] = [
   {
     id: 1, code: 'EXP-2025-001', formulaId: 1, formulaName: 'RC-2025-001',
@@ -93,6 +155,30 @@ export const mockExperiments: Experiment[] = [
     attachments: [],
     samples: [],
     createdAt: '2025-06-05T09:00:00Z',
+  },
+  {
+    id: 3, code: 'EXP-2025-003', formulaId: null, templateId: 2, template: null,
+    experimenterId: 2, experimenterName: '王實驗',
+    experimentDate: '2025-06-12T09:00:00Z', category: '新品開發',
+    temperature: 25.0, humidity: 60.0, notes: '無糖茶飲殺菌條件比較（範例：食品範本）',
+    clientCompany: null, fabricCode: null, clientContact: null, commissionType: null,
+    expectedDate: null, actualDate: null, testItems: null, commissionNotes: null,
+    conclusionBefore: null, conclusionAfter: null,
+    groups: [
+      {
+        id: 101, experimentId: 3, name: 'A組（巴氏殺菌）', groupOrder: 1, isSuccess: false, notes: '風味保留較佳',
+        conditions: { heatTemp: 85, heatTime: 15, sterilization: '巴氏殺菌', additives: ['抗氧化劑', '香料'], ph: 6.8, brix: 0.2, sensory: '茶香明顯，回甘' },
+        createdAt: '2025-06-12T09:00:00Z', steps: [], attachments: [], samples: [],
+      },
+      {
+        id: 102, experimentId: 3, name: 'B組（UHT）', groupOrder: 2, isSuccess: true, notes: '保存期較長',
+        conditions: { heatTemp: 135, heatTime: 0.1, sterilization: 'UHT', additives: ['抗氧化劑'], ph: 6.7, brix: 0.2, sensory: '略有蒸煮味' },
+        createdAt: '2025-06-12T09:00:00Z', steps: [], attachments: [], samples: [],
+      },
+    ],
+    attachments: [],
+    samples: [],
+    createdAt: '2025-06-12T09:00:00Z',
   },
   {
     id: 2, code: 'EXP-2025-002', formulaId: 2, formulaName: 'RC-2025-002',
