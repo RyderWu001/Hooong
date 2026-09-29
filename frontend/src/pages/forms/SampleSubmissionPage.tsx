@@ -77,7 +77,7 @@ function printSubmission(sub: SampleSubmission, chainSigs: FormSignatureRecord[]
   const order = sub.orderInfo ?? DEFAULT_ORDER
   const fc = sub.formulaCostTable ?? DEFAULT_FORMULA_TABLE
 
-  const sigNames = ['總經理', '財務部', '行管部', '廠務部', '化驗室', '核准', '承辦人']
+  const sigNames = ['總經理', '財務部', '行管部', '管理部', '化驗室', '核准', '承辦人']
   const sigBoxes = sigNames.map(n => {
     const s = chainSigs.find(c => c.slotName === n)
     return `<div class="sig-box">
@@ -117,11 +117,11 @@ function printSubmission(sub: SampleSubmission, chainSigs: FormSignatureRecord[]
   .pkg-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-bottom: 8px; }
   .pkg-item { border: 1px solid #999; padding: 3px; text-align: center; font-size: 10px; }
   @media print { @page { margin: 10mm; size: A4 portrait; } }`,
-    body: `<div class="form-no">CMS03-03-1B No. ${sub.formNo ?? ''}</div>
+    body: `<div class="form-no">LAB03-03-1B No. ${sub.formNo ?? ''}</div>
 <h2>送樣連絡單</h2>
 <div class="header-grid">
   <div class="field"><div class="field-label">公司名稱</div>${sub.companyName}</div>
-  <div class="field"><div class="field-label">廠區位置</div>${sub.factoryLocation ?? ''}</div>
+  <div class="field"><div class="field-label">實驗室據點</div>${sub.factoryLocation ?? ''}</div>
   <div class="field"><div class="field-label">聯絡人</div>${sub.contactPerson ?? ''}</div>
   <div class="field"><div class="field-label">填單日期</div>${sub.formDate ? dayjs(sub.formDate).format('YYYY-MM-DD') : ''}</div>
   <div class="field"><div class="field-label">取樣日期</div>${sub.sampleTakenDate ? dayjs(sub.sampleTakenDate).format('YYYY-MM-DD') : ''}</div>
@@ -187,7 +187,7 @@ function printSubmission(sub: SampleSubmission, chainSigs: FormSignatureRecord[]
 <div class="section-title">訂貨資訊</div>
 <div class="header-grid">
   <div class="field"><div class="field-label">訂貨時間</div>${order.orderTime}</div>
-  <div class="field"><div class="field-label">量產型號</div>${order.massProductionModel}</div>
+  <div class="field"><div class="field-label">產品型號</div>${order.massProductionModel}</div>
   <div class="field"><div class="field-label">訂貨數量</div>${order.orderQty}</div>
   <div class="field"><div class="field-label">配方編號</div>${order.formulaNo}</div>
 </div>
@@ -339,7 +339,7 @@ export default function SampleSubmissionPage() {
 
   return (
     <Card
-      title={<Space><FileTextOutlined />送樣連絡單 (CMS03-03-1B)</Space>}
+      title={<Space><FileTextOutlined />送樣連絡單 (LAB03-03-1B)</Space>}
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增送樣單</Button>}
     >
       <Table
@@ -371,7 +371,7 @@ export default function SampleSubmissionPage() {
             <Form.Item name="companyName" label="公司名稱" rules={[{ required: true }]} style={{ width: 180 }}>
               <Input />
             </Form.Item>
-            <Form.Item name="factoryLocation" label="廠區位置" style={{ width: 150 }}>
+            <Form.Item name="factoryLocation" label="實驗室據點" style={{ width: 150 }}>
               <Input />
             </Form.Item>
             <Form.Item name="contactPerson" label="聯絡人" style={{ width: 120 }}>
@@ -559,7 +559,7 @@ export default function SampleSubmissionPage() {
           {/* 訂貨資訊 */}
           <Divider plain style={{ margin: '4px 0 8px', fontSize: 12 }}>訂貨資訊</Divider>
           <Space wrap size={8} style={{ marginBottom: 12 }}>
-            {([['orderTime', '訂貨時間'], ['massProductionModel', '量產型號'], ['orderQty', '訂貨數量'], ['formulaNo', '配方編號']] as const).map(([f, label]) => (
+            {([['orderTime', '訂貨時間'], ['massProductionModel', '產品型號'], ['orderQty', '訂貨數量'], ['formulaNo', '配方編號']] as const).map(([f, label]) => (
               <Form.Item key={f} label={label} style={{ marginBottom: 0 }}>
                 <Input size="small" value={orderInfo[f]} onChange={e => setOrderInfo(prev => ({ ...prev, [f]: e.target.value }))} style={{ width: 150 }} />
               </Form.Item>

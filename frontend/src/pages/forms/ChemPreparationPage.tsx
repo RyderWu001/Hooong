@@ -51,7 +51,7 @@ function printChemPreparation(row: ChemPreparation) {
   }).join('')
 
   if (!openPrintWindow({
-    title: '化驗室藥劑泡製紀錄 CMS03-07-6A',
+    title: '化驗室藥劑泡製紀錄 LAB03-07-6A',
     css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
@@ -92,7 +92,7 @@ function printChemPreparation(row: ChemPreparation) {
       <h2>化驗室藥劑泡製紀錄</h2>
     </div>
     <div class="header-right">
-      <div class="field"><strong>表單編號:</strong> CMS03-07-6A</div>
+      <div class="field"><strong>表單編號:</strong> LAB03-07-6A</div>
     </div>
   </div>
 
@@ -137,7 +137,7 @@ function printChemPreparation(row: ChemPreparation) {
     <div class="sig-cell"><div class="sig-label">化驗員 / NHÂN VIÊN THÍ NGHIỆM</div></div>
   </div>
 
-  <div class="footer">(附件12) CMS03-07-6A 化驗室藥劑泡製紀錄</div>
+  <div class="footer">(附件12) LAB03-07-6A 化驗室藥劑泡製紀錄</div>
 </div>`,
   })) message.error('請允許彈出視窗')
 }
@@ -247,7 +247,7 @@ export default function ChemPreparationPage() {
 
   return (
     <Card
-      title={<Space><ExperimentOutlined />化驗室藥劑泡製紀錄 (CMS03-07-6A)</Space>}
+      title={<Space><ExperimentOutlined />化驗室藥劑泡製紀錄 (LAB03-07-6A)</Space>}
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增紀錄</Button>}
     >
       <Table

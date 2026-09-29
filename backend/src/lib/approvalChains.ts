@@ -15,7 +15,7 @@ export const APPROVAL_CHAINS: Record<string, ApprovalSlot[]> = {
   SampleSubmission: [
     { name: '承辦人', order: 1, roles: ['LAB_STAFF'] },
     { name: '化驗室', order: 2, roles: ['LAB_STAFF', 'MANAGER'] },
-    { name: '廠務部', order: 3, roles: ['MANAGER'] },
+    { name: '管理部', order: 3, roles: ['MANAGER'] },
     { name: '行管部', order: 4, roles: ['MANAGER'] },
     { name: '財務部', order: 5, roles: ['MANAGER'] },
     { name: '核准', order: 6, roles: ['MANAGER', 'ADMIN'] },

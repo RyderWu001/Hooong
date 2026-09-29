@@ -289,7 +289,7 @@ export default function AppLayout() {
             {!collapsed && (
               <span className={styles.logoLink}>
                 <Typography.Text strong className={styles.logoText}>
-                  泓利廣實驗室
+                  實驗室資訊系統
                 </Typography.Text>
                 <span className={styles.logoSubtext}>Lab System</span>
               </span>

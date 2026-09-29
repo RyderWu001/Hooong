@@ -9,10 +9,10 @@ async function main() {
   if (!formula) { console.error('找不到配方 RC-2025-001'); return }
   console.log(`使用配方 id=${formula.id} ${formula.name}`)
 
-  // ── 1. 配方變更核准申請書 (CMS03-07-3A) ──────────────────────────────────────
+  // ── 1. 配方變更核准申請書 (LAB03-07-3A) ──────────────────────────────────────
   const fc = await prisma.formulaChangeApplication.create({
     data: {
-      no: 'CMS03-07-3A-2507001',
+      no: 'LAB03-07-3A-2507001',
       date: new Date('2025-07-15'),
       customerName: '越南富達紡織有限公司',
       productName: '均染劑低泡型 RC-2025-001',
@@ -43,10 +43,10 @@ async function main() {
   })
   console.log(`✅ 配方變更申請書 id=${fc.id}  (${fc.no})`)
 
-  // ── 2. 新配方量產核准紀錄表 (CMS03-07-4A) ────────────────────────────────────
+  // ── 2. 新配方量產核准紀錄表 (LAB03-07-4A) ────────────────────────────────────
   const mp = await prisma.massProductionApproval.create({
     data: {
-      no: 'CMS03-07-4A-2507001',
+      no: 'LAB03-07-4A-2507001',
       newFormulaCode: 'RC-2025-001-v2',
       oldFormulaCode: 'RC-2025-001',
       date: new Date('2025-07-20'),

@@ -101,7 +101,7 @@ model IngredientBatch {
   unit              String
   status            String     @default("正常")
   notes             String     @default("")
-  // 附件2: 進料品質檢驗分析報告書 (CMS03-07-2B)
+  // 附件2: 進料品質檢驗分析報告書 (LAB03-07-2B)
   acceptanceNo      String?
   orderDate         DateTime?
   qcItems           Json?
@@ -391,7 +391,7 @@ model Supplier {
   status           String               @default("ACTIVE")
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt
-  // 附件14: CMS01-05-1A 化學品供應商資料表（客戶）
+  // 附件14: LAB01-05-1A 化學品供應商資料表（客戶）
   supplierTypes    Json?
   factoryAddress   String?              @default("")
   establishedDate  String?              @default("")
@@ -540,7 +540,7 @@ model AbnormalEvent {
   @@index([createdAt])
 }
 
-// ── 附件4: 送樣連絡單 (CMS03-03-1B) ─────────────────────────────────────────
+// ── 附件4: 送樣連絡單 (LAB03-03-1B) ─────────────────────────────────────────
 
 model SampleSubmission {
   id                   Int       @id @default(autoincrement())
@@ -567,7 +567,7 @@ model SampleSubmission {
   @@index([createdAt])
 }
 
-// ── 附件5: 化驗室每日工作日誌 (CMS01-03-3B) ─────────────────────────────────
+// ── 附件5: 化驗室每日工作日誌 (LAB01-03-3B) ─────────────────────────────────
 
 model LabDailyLog {
   id               Int      @id @default(autoincrement())
@@ -613,7 +613,7 @@ model RolePermission {
   @@unique([role, module])
 }
 
-// ── 附件8: 化學品評估表 (CMS01-01-1B) ────────────────────────────────────────
+// ── 附件8: 化學品評估表 (LAB01-01-1B) ────────────────────────────────────────
 
 model ChemicalEvaluation {
   id                   Int       @id @default(autoincrement())
@@ -655,7 +655,7 @@ model ChemicalEvaluation {
   @@index([createdAt])
 }
 
-// ── 附件9: 化學品需求申請單 (CMS01-01-2B) ────────────────────────────────────
+// ── 附件9: 化學品需求申請單 (LAB01-01-2B) ────────────────────────────────────
 
 model ChemicalRequest {
   id                  Int       @id @default(autoincrement())
@@ -691,7 +691,7 @@ model ChemicalRequest {
   @@index([createdAt])
 }
 
-// ── 附件10: QC每日工作日誌 (CMS01-03-6B) ─────────────────────────────────────
+// ── 附件10: QC每日工作日誌 (LAB01-03-6B) ─────────────────────────────────────
 
 model QcDailyLog {
   id        Int      @id @default(autoincrement())
@@ -707,7 +707,7 @@ model QcDailyLog {
   @@index([createdAt])
 }
 
-// ── 附件11: 產品對抗計劃執行明細表 (CMS03-07-5A) ──────────────────────────────
+// ── 附件11: 產品對抗計劃執行明細表 (LAB03-07-5A) ──────────────────────────────
 
 model ProductCounterPlan {
   id               Int       @id @default(autoincrement())
@@ -735,7 +735,7 @@ model ProductCounterPlan {
   @@index([createdAt])
 }
 
-// ── 附件12: 化驗室藥劑泡製紀錄 (CMS03-07-6A) ─────────────────────────────────
+// ── 附件12: 化驗室藥劑泡製紀錄 (LAB03-07-6A) ─────────────────────────────────
 
 model ChemPreparation {
   id         Int      @id @default(autoincrement())
@@ -754,7 +754,7 @@ model ChemPreparation {
   @@index([createdAt])
 }
 
-// ── 附件13: 產品重修配置紀錄表 (CMS03-07-7A) ─────────────────────────────────
+// ── 附件13: 產品重修配置紀錄表 (LAB03-07-7A) ─────────────────────────────────
 
 model ProductRework {
   id              Int       @id @default(autoincrement())
@@ -780,7 +780,7 @@ model ProductRework {
   @@index([createdAt])
 }
 
-// ── 附件6: 配方變更核准申請書 (CMS03-07-3A) ──────────────────────────────────
+// ── 附件6: 配方變更核准申請書 (LAB03-07-3A) ──────────────────────────────────
 
 model FormulaChangeApplication {
   id              Int       @id @default(autoincrement())
@@ -814,7 +814,7 @@ model FormulaChangeApplication {
   @@index([createdAt])
 }
 
-// ── 附件15: 化學品供應商評鑑資料表 (CMS01-05-2A) ─────────────────────────────
+// ── 附件15: 化學品供應商評鑑資料表 (LAB01-05-2A) ─────────────────────────────
 
 model SupplierComplianceAudit {
   id                  Int       @id @default(autoincrement())
@@ -844,7 +844,7 @@ model SupplierComplianceAudit {
   @@index([createdAt])
 }
 
-// ── 附件7: 新配方量產核准紀錄表 (CMS03-07-4A) ────────────────────────────────
+// ── 附件7: 新配方量產核准紀錄表 (LAB03-07-4A) ────────────────────────────────
 
 model MassProductionApproval {
   id                   Int       @id @default(autoincrement())

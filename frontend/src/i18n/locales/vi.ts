@@ -129,7 +129,7 @@ export default {
     suppliers: 'Bảng thông tin nhà cung cấp hóa chất',
     supplierComplianceAudits: 'Bảng đánh giá nhà cung cấp hóa chất',
     formulaChanges: 'Đơn xin phê duyệt thay đổi công thức',
-    massProductionApprovals: 'Biểu mẫu phê duyệt công thức mới sản xuất đại trà',
+    massProductionApprovals: 'Biểu mẫu phê duyệt áp dụng công thức mới',
   },
 
   dashboard: {

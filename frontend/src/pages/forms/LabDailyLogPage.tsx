@@ -49,7 +49,7 @@ function printLog(log: LabDailyLog, sigSupervisor: string | null, sigLabTech: st
   .sig-label { font-size: 11px; margin-bottom: 4px; }
   .procedure-area { border: 1px solid #000; min-height: 120px; padding: 8px; white-space: pre-wrap; }
   @media print { @page { margin: 15mm; } }`,
-    body: `<div class="form-no">CMS01-03-3B</div>
+    body: `<div class="form-no">LAB01-03-3B</div>
 <h2>化驗室每日工作日誌</h2>
 <div class="header-row">
   <span>日期：${dayjs(log.logDate).format('YYYY 年 MM 月 DD 日')}</span>
@@ -198,7 +198,7 @@ export default function LabDailyLogPage() {
 
   return (
     <Card
-      title={<Space><FileTextOutlined />化驗室每日工作日誌 (CMS01-03-3B)</Space>}
+      title={<Space><FileTextOutlined />化驗室每日工作日誌 (LAB01-03-3B)</Space>}
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增日誌</Button>}
     >
       <Table

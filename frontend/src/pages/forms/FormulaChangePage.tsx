@@ -71,7 +71,7 @@ function printFormulaChange(row: FormulaChange, formulaName?: string) {
   const ck = (v: boolean) => v ? '☑' : '☐'
 
   if (!openPrintWindow({
-    title: '配方變更核准申請書 CMS03-07-3A',
+    title: '配方變更核准申請書 LAB03-07-3A',
     css: `  body { font-family: 'Microsoft JhengHei','Times New Roman',Arial,sans-serif; font-size: 11px; color: #000; padding: 10mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
@@ -120,7 +120,7 @@ function printFormulaChange(row: FormulaChange, formulaName?: string) {
     <div class="header-right">
       <div class="field-row"><strong>No:</strong> ${row.no ?? ''}</div>
       <div class="field-row"><strong>DATE / 日期:</strong> ${row.date ? dayjs(row.date).format('YYYY-MM-DD') : ''}</div>
-      <div><strong>Form No:</strong> CMS03-07-3A</div>
+      <div><strong>Form No:</strong> LAB03-07-3A</div>
     </div>
   </div>
 
@@ -231,7 +231,7 @@ function printFormulaChange(row: FormulaChange, formulaName?: string) {
     <div class="sig-cell"><div class="sig-label">董事長 / Chủ tịch</div></div>
   </div>
 
-  <div class="footer">CMS03-07-3A｜泓利廣實驗室系統</div>
+  <div class="footer">LAB03-07-3A｜實驗室資訊管理系統</div>
 </div>`,
     printDelayMs: 600,
   })) message.error('請允許彈出視窗')
@@ -398,7 +398,7 @@ export default function FormulaChangePage() {
 
   return (
     <Card
-      title="配方變更核准申請書 (CMS03-07-3A)"
+      title="配方變更核准申請書 (LAB03-07-3A)"
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增申請</Button>}
     >
       <Table
@@ -424,7 +424,7 @@ export default function FormulaChangePage() {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item label="申請單號" name="no">
-                <Input placeholder="CMS03-07-3A-XXXX" />
+                <Input placeholder="LAB03-07-3A-XXXX" />
               </Form.Item>
             </Col>
             <Col span={12}>

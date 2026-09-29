@@ -81,7 +81,7 @@ function printEvaluation(row: ChemEval) {
   const mixRows = mix.map(r => `<tr><td>${r.name}</td><td>${r.casNo}</td><td>${r.percentage}</td></tr>`).join('')
 
   if (!openPrintWindow({
-    title: '化學品評估表 CMS01-01-1B',
+    title: '化學品評估表 LAB01-01-1B',
     css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10.5px; color: #000; padding: 10mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
@@ -308,7 +308,7 @@ function printEvaluation(row: ChemEval) {
   </div>
 
   <!-- 頁腳 -->
-  <div class="footer">(附件8) CMS01-01-1B 化學品評估表</div>
+  <div class="footer">(附件8) LAB01-01-1B 化學品評估表</div>
 </div>`,
   })) message.error('請允許彈出視窗')
 }
@@ -481,7 +481,7 @@ export default function ChemicalEvaluationPage() {
 
   return (
     <Card
-      title={<Space><AuditOutlined />化學品評估表 (CMS01-01-1B)</Space>}
+      title={<Space><AuditOutlined />化學品評估表 (LAB01-01-1B)</Space>}
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增評估表</Button>}
     >
       <Table

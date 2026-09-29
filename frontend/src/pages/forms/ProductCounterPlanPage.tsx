@@ -71,7 +71,7 @@ function printProductCounterPlan(row: ProductCounterPlan) {
   const cb = (opts: string[], val: string) => opts.includes(val) ? '☑' : '☐'
 
   if (!openPrintWindow({
-    title: '產品對抗計劃執行明細表 CMS03-07-5A',
+    title: '產品對抗計劃執行明細表 LAB03-07-5A',
     css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 9.5px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
@@ -113,7 +113,7 @@ function printProductCounterPlan(row: ProductCounterPlan) {
       <h2>產品對抗計劃執行明細表</h2>
     </div>
     <div class="header-right">
-      <div class="field"><strong>表單編號:</strong> CMS03-07-5A</div>
+      <div class="field"><strong>表單編號:</strong> LAB03-07-5A</div>
       <div class="field"><strong>NGÀY / 日期:</strong> ${row.date ? dayjs(row.date).format('YYYY-MM-DD') : ''}</div>
     </div>
   </div>
@@ -190,7 +190,7 @@ function printProductCounterPlan(row: ProductCounterPlan) {
     <div class="sig-cell"><div class="sig-label">填表人<br>NGƯỜI ĐIỀN BIỂU</div></div>
   </div>
 
-  <div class="footer">(附件11) CMS03-07-5A 產品對抗計劃執行明細表</div>
+  <div class="footer">(附件11) LAB03-07-5A 產品對抗計劃執行明細表</div>
 </div>`,
   })) message.error('請允許彈出視窗')
 }
@@ -338,7 +338,7 @@ export default function ProductCounterPlanPage() {
 
   return (
     <Card
-      title={<Space><ExperimentOutlined />產品對抗計劃執行明細表 (CMS03-07-5A)</Space>}
+      title={<Space><ExperimentOutlined />產品對抗計劃執行明細表 (LAB03-07-5A)</Space>}
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增</Button>}
     >
       <Table

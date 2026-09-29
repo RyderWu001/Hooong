@@ -44,7 +44,7 @@ function printSupplierDetail(row: Supplier) {
   const complianceRows = COMPLIANCE_ITEMS.map(c => `<tr><td>${c.label}</td><td>${compliance[c.key] === 'yes' ? '☑ 有' : compliance[c.key] === 'no' ? '☐ 無' : '☐ 未知'}</td></tr>`).join('')
 
   if (!openPrintWindow({
-    title: '化學品供應商資料表 CMS01-05-1A',
+    title: '化學品供應商資料表 LAB01-05-1A',
     css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
@@ -79,7 +79,7 @@ function printSupplierDetail(row: Supplier) {
       <h2>化學品供應商資料表（客戶）</h2>
     </div>
     <div class="header-right">
-      <div class="field"><strong>表單編號:</strong> CMS01-05-1A</div>
+      <div class="field"><strong>表單編號:</strong> LAB01-05-1A</div>
       <div class="field"><strong>供應商編號:</strong> ${row.code}</div>
     </div>
   </div>
@@ -123,7 +123,7 @@ function printSupplierDetail(row: Supplier) {
     <tbody>${productRows || '<tr><td>—</td></tr>'}</tbody>
   </table>
 
-  <div class="footer">(附件14) CMS01-05-1A 化學品供應商資料表（客戶）</div>
+  <div class="footer">(附件14) LAB01-05-1A 化學品供應商資料表（客戶）</div>
 </div>`,
   })) message.error('請允許彈出視窗')
 }
@@ -257,12 +257,12 @@ function SupplierTab() {
         </Form>
       </Modal>
 
-      {/* 附件14: CMS01-05-1A 化學品供應商詳細資料 Drawer */}
+      {/* 附件14: LAB01-05-1A 化學品供應商詳細資料 Drawer */}
       <Drawer
         title={
           <Space>
             <FileTextOutlined />
-            化學品供應商資料表 (CMS01-05-1A) — {detailSupplier?.name}
+            化學品供應商資料表 (LAB01-05-1A) — {detailSupplier?.name}
             {detailSupplier && (
               <Button size="small" icon={<PrinterOutlined />} onClick={() => printSupplierDetail(detailSupplier)}>列印</Button>
             )}

@@ -83,7 +83,7 @@ function printRequest(row: ChemRequest) {
     </tr>`).join('')
 
   if (!openPrintWindow({
-    title: '化學品需求申請單 CMS01-01-2B',
+    title: '化學品需求申請單 LAB01-01-2B',
     css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10.5px; color: #000; padding: 10mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
@@ -221,7 +221,7 @@ function printRequest(row: ChemRequest) {
   </div>
 
   <!-- 頁腳 -->
-  <div class="footer">CMS01-01-2B 化學品需求申請單</div>
+  <div class="footer">LAB01-01-2B 化學品需求申請單</div>
 </div>`,
   })) message.error('請允許彈出視窗')
 }
@@ -369,7 +369,7 @@ export default function ChemicalRequestPage() {
 
   return (
     <Card
-      title={<Space><FileAddOutlined />化學品需求申請單 (CMS01-01-2B)</Space>}
+      title={<Space><FileAddOutlined />化學品需求申請單 (LAB01-01-2B)</Space>}
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增申請單</Button>}
     >
       <Table

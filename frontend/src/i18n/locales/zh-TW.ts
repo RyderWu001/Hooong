@@ -132,7 +132,7 @@ export default {
     suppliers: '化學品供應商資料表',
     supplierComplianceAudits: '化學品供應商評鑑資料表',
     formulaChanges: '配方變更核准申請書',
-    massProductionApprovals: '新配方量產核准紀錄表',
+    massProductionApprovals: '新配方啟用核准紀錄表',
   },
 
   // ── 儀表板 ──────────────────────────────────────────
@@ -185,7 +185,7 @@ export default {
 
   // ── 簽核關卡名稱 ────────────────────────────────────
   approvalSlot: {
-    SampleSubmission: { 1: '承辦人', 2: '化驗室', 3: '廠務部', 4: '行管部', 5: '財務部', 6: '核准', 7: '總經理' },
+    SampleSubmission: { 1: '承辦人', 2: '化驗室', 3: '管理部', 4: '行管部', 5: '財務部', 6: '核准', 7: '總經理' },
     ChemicalEvaluation: { 1: '評估人員', 2: '化驗室主管', 3: '廠長' },
     ChemicalRequest: { 1: '申請人', 2: '技術主管', 3: '廠長', 4: '總經理' },
     QcReport: { 1: '檢測員', 2: '審核', 3: '單位主管' },

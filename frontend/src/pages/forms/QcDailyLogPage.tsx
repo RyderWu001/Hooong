@@ -41,7 +41,7 @@ function printQcDailyLog(row: QcDailyLog) {
   const s3Rows = s3.map(r => `<tr><td>${r.no}</td><td>${r.productionDate}</td><td>${r.chemCode}</td><td>${r.lot}</td><td>${r.quantity}</td><td>${r.result}</td><td>${r.notes}</td></tr>`).join('')
 
   if (!openPrintWindow({
-    title: '化驗室QC每日工作日誌 CMS01-03-6B',
+    title: '化驗室QC每日工作日誌 LAB01-03-6B',
     css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
@@ -77,7 +77,7 @@ function printQcDailyLog(row: QcDailyLog) {
       <h2>化驗室QC每日工作日誌</h2>
     </div>
     <div class="header-right">
-      <div class="field"><strong>表單編號:</strong> CMS01-03-6B</div>
+      <div class="field"><strong>表單編號:</strong> LAB01-03-6B</div>
       <div class="field"><strong>NGÀY / 日期:</strong> ${row.logDate ? dayjs(row.logDate).format('YYYY-MM-DD') : ''}</div>
     </div>
   </div>
@@ -142,7 +142,7 @@ function printQcDailyLog(row: QcDailyLog) {
     <div class="sig-cell"><div class="sig-label">化驗員 / QC NHÂN VIÊN</div></div>
   </div>
 
-  <div class="footer">(附件10) CMS01-03-6B 化驗室QC每日工作日誌</div>
+  <div class="footer">(附件10) LAB01-03-6B 化驗室QC每日工作日誌</div>
 </div>`,
   })) message.error('請允許彈出視窗')
 }
@@ -313,7 +313,7 @@ export default function QcDailyLogPage() {
 
   return (
     <Card
-      title={<Space><CalendarOutlined />化驗室QC每日工作日誌 (CMS01-03-6B)</Space>}
+      title={<Space><CalendarOutlined />化驗室QC每日工作日誌 (LAB01-03-6B)</Space>}
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增日誌</Button>}
     >
       <Table

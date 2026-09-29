@@ -118,7 +118,7 @@ export const mockResults = [
     issueRecord: '初期攪拌不均，需調整攪拌速度',
     improvement: '建議下次使用均質機提升均勻度',
     clientFeedback: '客戶反映保濕效果佳',
-    notes: '可進入量產評估',
+    notes: '可進入啟用評估',
     attachments: [],
     createdAt: '2024-06-11T14:00:00Z',
     updatedAt: '2024-06-11T14:00:00Z',

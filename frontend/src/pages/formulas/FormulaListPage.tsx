@@ -217,7 +217,7 @@ export default function FormulaListPage() {
             { value: 'DRAFT', label: '草稿' },
             { value: 'REVIEWING', label: '審核中' },
             { value: 'PUBLISHED', label: '已發布' },
-            { value: 'ACTIVE', label: '量產中' },
+            { value: 'ACTIVE', label: '啟用中' },
             { value: 'ARCHIVED', label: '已封存' },
             { value: 'DELETED', label: '已刪除' },
           ]}

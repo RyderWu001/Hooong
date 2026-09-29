@@ -96,7 +96,7 @@ function printProductRework(row: ProductRework) {
     </tr>`).join('')
 
   if (!openPrintWindow({
-    title: '產品重修配置紀錄表 CMS03-07-7A',
+    title: '產品重修配置紀錄表 LAB03-07-7A',
     css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 9.5px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
@@ -137,7 +137,7 @@ function printProductRework(row: ProductRework) {
       <h2>產品重修配置紀錄表</h2>
     </div>
     <div class="header-right">
-      <div class="field"><strong>表單編號:</strong> CMS03-07-7A</div>
+      <div class="field"><strong>表單編號:</strong> LAB03-07-7A</div>
     </div>
   </div>
 
@@ -195,10 +195,10 @@ function printProductRework(row: ProductRework) {
     <div class="sig-cell"><div class="sig-label">技術經理<br>QL KT</div></div>
     <div class="sig-cell"><div class="sig-label">QC</div></div>
     <div class="sig-cell"><div class="sig-label">生管</div></div>
-    <div class="sig-cell"><div class="sig-label">廠務部<br>BP SẢN XUẤT</div></div>
+    <div class="sig-cell"><div class="sig-label">管理部<br>BP QUẢN LÝ</div></div>
   </div>
 
-  <div class="footer">(附件13) CMS03-07-7A 產品重修配置紀錄表</div>
+  <div class="footer">(附件13) LAB03-07-7A 產品重修配置紀錄表</div>
 </div>`,
   })) message.error('請允許彈出視窗')
 }
@@ -329,7 +329,7 @@ export default function ProductReworkPage() {
 
   return (
     <Card
-      title={<Space><ToolOutlined />產品重修配置紀錄表 (CMS03-07-7A)</Space>}
+      title={<Space><ToolOutlined />產品重修配置紀錄表 (LAB03-07-7A)</Space>}
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增紀錄</Button>}
     >
       <Table

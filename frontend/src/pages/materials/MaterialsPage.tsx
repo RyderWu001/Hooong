@@ -43,10 +43,10 @@ const DOC_TYPE_OPTIONS = [
   { value: 'COA', label: 'COA（分析報告書）' },
   { value: 'REACH', label: 'REACH 聲明' },
   { value: 'ZDHC', label: 'ZDHC Chemcheck' },
-  { value: 'EVAL_CHEM', label: '化學品評估表（CMS01-01-1B）' },
-  { value: 'EVAL_REQUEST', label: '需求申請單（CMS01-01-2B）' },
-  { value: 'SUPPLIER_INFO', label: '供應商資料表（CMS01-05-1A）' },
-  { value: 'SUPPLIER_AUDIT', label: '供應商評鑑表（CMS01-05-2A）' },
+  { value: 'EVAL_CHEM', label: '化學品評估表（LAB01-01-1B）' },
+  { value: 'EVAL_REQUEST', label: '需求申請單（LAB01-01-2B）' },
+  { value: 'SUPPLIER_INFO', label: '供應商資料表（LAB01-05-1A）' },
+  { value: 'SUPPLIER_AUDIT', label: '供應商評鑑表（LAB01-05-2A）' },
   { value: 'OTHER', label: '其他' },
 ]
 const DOC_TYPE_COLOR: Record<string, string> = {
@@ -328,7 +328,7 @@ function printQCReport(
     </td>
   </tr>
 
-  <!-- ⑦ 簽名列（4 欄：主管 / 審核 / 檢測員 / CMS03-07-2B）-->
+  <!-- ⑦ 簽名列（4 欄：主管 / 審核 / 檢測員 / LAB03-07-2B）-->
   <tr>
     <td colspan="2" style="padding:0">
       <table>
@@ -349,7 +349,7 @@ function printQCReport(
             ${sigFor('檢測員')?.signedByName ? `<div style="font-size:9px;color:#555;margin-top:2px">${sigFor('檢測員')!.signedByName}</div>` : ''}
           </td>
           <td style="width:13%;text-align:right;vertical-align:bottom;padding:5px 7px;font-weight:bold;font-size:11px" class="no-t no-l no-b no-r">
-            CMS03-07-2B
+            LAB03-07-2B
           </td>
         </tr>
       </table>
@@ -360,7 +360,7 @@ function printQCReport(
 
 <!-- 頁腳（表框外，置中小字）-->
 <div style="text-align:center;font-size:9px;color:#555;margin-top:5px">
-  (附件2)CMS03-07-2B 進料品質檢驗分析報告書
+  (附件2)LAB03-07-2B 進料品質檢驗分析報告書
 </div>`,
   })) message.error('請允許彈出視窗')
 }
@@ -458,7 +458,7 @@ function QCReportModal({
   return (
     <Modal
       open={open}
-      title={`進料品質檢驗報告 — ${batch.batchNo} (CMS03-07-2B)`}
+      title={`進料品質檢驗報告 — ${batch.batchNo} (LAB03-07-2B)`}
       onCancel={onClose}
       onOk={handleSave}
       okText="儲存"

@@ -65,7 +65,7 @@ function printAudit(row: SupplierComplianceAudit) {
   const advRows = adv.map(a => `<tr><td class="left">${a.item}</td><td>${scoreLabel(a.score)}</td></tr>`).join('')
 
   if (!openPrintWindow({
-    title: '化學品供應商評鑑資料表 CMS01-05-2A',
+    title: '化學品供應商評鑑資料表 LAB01-05-2A',
     css: `  body { font-family: 'Microsoft JhengHei','Noto Sans TC',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: stretch; border-bottom: 2px solid #000; }
@@ -104,7 +104,7 @@ function printAudit(row: SupplierComplianceAudit) {
       <h2>化學品供應商評鑑資料表 (內部稽核)</h2>
     </div>
     <div class="header-right">
-      <div class="field"><strong>表單編號:</strong> CMS01-05-2A</div>
+      <div class="field"><strong>表單編號:</strong> LAB01-05-2A</div>
       <div class="field"><strong>稽核日期:</strong> ${row.auditDate ? dayjs(row.auditDate).format('YYYY-MM-DD') : ''}</div>
     </div>
   </div>
@@ -162,7 +162,7 @@ function printAudit(row: SupplierComplianceAudit) {
     <strong>備註 / GHI CHÚ:</strong><br>${row.notes ?? ''}
   </div>
 
-  <div class="footer">(附件15) CMS01-05-2A 化學品供應商評鑑資料表（內部稽核）</div>
+  <div class="footer">(附件15) LAB01-05-2A 化學品供應商評鑑資料表（內部稽核）</div>
 </div>`,
   })) message.error('請允許彈出視窗')
 }
@@ -308,7 +308,7 @@ export default function SupplierComplianceAuditPage() {
 
   return (
     <Card
-      title={<Space><SafetyCertificateOutlined />化學品供應商評鑑資料表 (CMS01-05-2A)</Space>}
+      title={<Space><SafetyCertificateOutlined />化學品供應商評鑑資料表 (LAB01-05-2A)</Space>}
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增評鑑</Button>}
     >
       <Table

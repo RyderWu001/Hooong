@@ -127,7 +127,7 @@ export default function FormulaDetailPage() {
     { key: 'DRAFT',     label: '草稿',   icon: <FileDoneOutlined />,    desc: '配方建立中，尚未提交' },
     { key: 'REVIEWING', label: '審核中', icon: <ClockCircleOutlined />, desc: '等待主管核准' },
     { key: 'PUBLISHED', label: '已發布', icon: <CheckCircleOutlined />, desc: '核准，可用於實驗' },
-    { key: 'ACTIVE',    label: '量產',   icon: <RocketOutlined />,      desc: '已轉為正式量產配方' },
+    { key: 'ACTIVE',    label: '啟用',   icon: <RocketOutlined />,      desc: '已轉為正式啟用配方' },
     { key: 'ARCHIVED',  label: '封存',   icon: <InboxOutlined />,       desc: '已封存，不再使用' },
   ]
   const currentStepIndex = WORKFLOW_STEPS.findIndex(s => s.key === formula.status)
@@ -213,7 +213,7 @@ export default function FormulaDetailPage() {
             showIcon
             message={formula.status === 'DELETED' ? '此配方已刪除' : '此配方已停用'}
             description={formula.status === 'DELETED'
-              ? '配方已被移除，無法再用於實驗或量產。若需重新使用，請以「複製」功能建立新配方。'
+              ? '配方已被移除，無法再用於實驗或啟用。若需重新使用，請以「複製」功能建立新配方。'
               : '配方目前停用中，如需恢復請聯繫管理員。'}
             style={{ marginBottom: 16 }}
           />
@@ -270,7 +270,7 @@ export default function FormulaDetailPage() {
             </>
           )}
 
-          {/* 已發布 → 轉為正式量產（若尚未是正式產品）／封存 */}
+          {/* 已發布 → 轉為正式啟用（若尚未是正式產品）／封存 */}
           {formula.status === 'PUBLISHED' && (
             <>
               {canEdit && formula.formulaType !== '正式產品' && (
@@ -279,7 +279,7 @@ export default function FormulaDetailPage() {
                   description="此操作將建立新版本並標記為正式產品類型"
                   onConfirm={handlePromote}
                 >
-                  <Button icon={<RocketOutlined />}>轉為正式量產</Button>
+                  <Button icon={<RocketOutlined />}>轉為正式啟用</Button>
                 </Popconfirm>
               )}
               {user?.role === 'ADMIN' && (
@@ -290,11 +290,11 @@ export default function FormulaDetailPage() {
             </>
           )}
 
-          {/* 量產 → 唯一可做的是封存，或提示走配方變更流程 */}
+          {/* 啟用 → 唯一可做的是封存，或提示走配方變更流程 */}
           {formula.status === 'ACTIVE' && (
             <>
               <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-                配方已進入量產階段。若需修改，請至「表單管理 → 配方變更核准申請書」提出申請。
+                配方已進入啟用階段。若需修改，請至「表單管理 → 配方變更核准申請書」提出申請。
               </Typography.Text>
               {user?.role === 'ADMIN' && (
                 <Popconfirm title="封存此配方？封存後不可再用於新實驗。" onConfirm={() => handleWorkflow('archive')}>

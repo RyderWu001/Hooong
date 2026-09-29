@@ -35,7 +35,7 @@ export default function LoginPage() {
           <div className={styles.logoIcon}>
             <ExperimentOutlined style={{ color: '#fff' }} />
           </div>
-          <Title className={styles.brandTitle}>泓利廣</Title>
+          <Title className={styles.brandTitle}>LabMS</Title>
           <div className={styles.brandDivider} />
           <Text className={styles.brandSub}>
             {t('auth.systemName')}<br />
@@ -86,7 +86,7 @@ export default function LoginPage() {
           </div>
 
           <div className={styles.copyright}>
-            © 2025 泓利廣有限公司　版權所有
+            © 2025 實驗室資訊管理系統　版權所有
           </div>
         </div>
 

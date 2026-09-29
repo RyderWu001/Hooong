@@ -69,7 +69,7 @@ function printMPA(row: MPA, formulaName?: string) {
   const tds = row.tdsVersions ?? DEFAULT_DOC
 
   if (!openPrintWindow({
-    title: '新配方量產核准紀錄表 CMS03-07-4A',
+    title: '新配方啟用核准紀錄表',
     css: `  body { font-family: 'Microsoft JhengHei','Times New Roman',Arial,sans-serif; font-size: 10px; color: #000; padding: 8mm; }
   .outer { border: 2px solid #000; }
   .header { display: flex; align-items: center; padding: 6px 10px; border-bottom: 2px solid #000; gap: 10px; }
@@ -133,8 +133,8 @@ function printMPA(row: MPA, formulaName?: string) {
       <div class="logo-sub">旺隆責任有限公司<br>CÔNG TY TNHH WANG LONG (VIỆT NAM)</div>
     </div>
     <div class="header-center">
-      <h1>BIỂU MẪU PHÊ DUYỆT ÁP DỤNG CÔNG THỨC MỚI SẢN XUẤT ĐẠI TRÀ</h1>
-      <h2>新配方量產核准紀錄表</h2>
+      <h1>BIỂU MẪU PHÊ DUYỆT ÁP DỤNG CÔNG THỨC MỚI</h1>
+      <h2>新配方啟用核准紀錄表</h2>
     </div>
     <div>
       <div class="header-no">No: ${row.no ?? ''}</div>
@@ -238,17 +238,17 @@ function printMPA(row: MPA, formulaName?: string) {
     </div>
   </div>
 
-  <!-- 量產導入決策 -->
-  <div class="section-title">QUYẾT ĐỊNH TRIỂN KHAI SẢN XUẤT ĐẠI TRÀ 量產導入決策</div>
+  <!-- 啟用導入決策 -->
+  <div class="section-title">QUYẾT ĐỊNH ÁP DỤNG 啟用導入決策</div>
   <div class="decision-section">
     <div class="decision-row">
-      <div class="decision-cell"><span class="cell-label">NGÀY BẮT ĐẦU SX 建議量產起始日</span><div>${row.massProductionDate ? dayjs(row.massProductionDate).format('YYYY-MM-DD') : ''}</div></div>
+      <div class="decision-cell"><span class="cell-label">NGÀY BẮT ĐẦU ÁP DỤNG 建議啟用起始日</span><div>${row.massProductionDate ? dayjs(row.massProductionDate).format('YYYY-MM-DD') : ''}</div></div>
       <div class="decision-cell"><span class="cell-label">KHÁCH HÀNG / SL 應用客戶/數量</span><div>${row.customerQty ?? ''}</div></div>
       <div class="decision-cell"><span class="cell-label">MÃ TP CHÍNH THỨC 正式成品編碼</span><div>${row.officialProductCode ?? ''}</div></div>
       <div class="decision-cell"><span class="cell-label">TÊN TP CHÍNH THỨC (CN) 正式成品中文名</span><div>${row.officialProductName ?? ''}</div></div>
     </div>
     <div class="risk-row">
-      <span class="cell-label">LƯU Ý SX (RỦI RO) 量產注意事項（風險說明）</span><br>
+      <span class="cell-label">LƯU Ý ÁP DỤNG (RỦI RO) 啟用注意事項（風險說明）</span><br>
       ${row.productionRisks ?? ''}
     </div>
   </div>
@@ -303,7 +303,7 @@ function printMPA(row: MPA, formulaName?: string) {
     </div>
   </div>
 
-  <div style="text-align:center; font-size:8.5px; color:#555; padding:2px; border-top:1px solid #ccc">CMS03-07-4A｜泓利廣實驗室系統</div>
+  <div style="text-align:center; font-size:8.5px; color:#555; padding:2px; border-top:1px solid #ccc">LAB03-07-4A｜實驗室資訊管理系統</div>
 </div>`,
     printDelayMs: 600,
   })) message.error('請允許彈出視窗')
@@ -457,14 +457,14 @@ export default function MassProductionApprovalPage() {
 
   return (
     <Card
-      title="新配方量產核准紀錄表 (CMS03-07-4A)"
+      title="新配方啟用核准紀錄表 (LAB03-07-4A)"
       extra={<Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>新增記錄</Button>}
     >
       <Table rowKey="id" columns={columns} dataSource={records} loading={loading} scroll={{ x: 1100 }} pagination={{ pageSize: 20 }} />
 
       {/* 建立/編輯 Modal */}
       <Modal
-        title={editing ? '編輯量產核准記錄' : '新增量產核准記錄'}
+        title={editing ? '編輯啟用核准記錄' : '新增啟用核准記錄'}
         open={modalOpen} onOk={handleOk} onCancel={() => setModalOpen(false)}
         width={860} okText="儲存" cancelText="取消"
       >
@@ -598,14 +598,14 @@ export default function MassProductionApprovalPage() {
           </Row>
           <Form.Item label="其他法規/客戶要求說明" name="otherRegulations"><TextArea rows={2} /></Form.Item>
 
-          <Divider>量產導入決策</Divider>
+          <Divider>啟用導入決策</Divider>
           <Row gutter={16}>
-            <Col span={8}><Form.Item label="建議量產起始日" name="massProductionDate"><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
+            <Col span={8}><Form.Item label="建議啟用起始日" name="massProductionDate"><DatePicker style={{ width: '100%' }} /></Form.Item></Col>
             <Col span={8}><Form.Item label="應用客戶/數量" name="customerQty"><Input /></Form.Item></Col>
             <Col span={8}><Form.Item label="正式成品編碼" name="officialProductCode"><Input /></Form.Item></Col>
           </Row>
           <Form.Item label="正式成品中文名" name="officialProductName"><Input /></Form.Item>
-          <Form.Item label="量產注意事項（風險說明）" name="productionRisks"><TextArea rows={3} /></Form.Item>
+          <Form.Item label="啟用注意事項（風險說明）" name="productionRisks"><TextArea rows={3} /></Form.Item>
 
           <Divider>實際處理結果彙總</Divider>
           <Row gutter={16}>
@@ -628,7 +628,7 @@ export default function MassProductionApprovalPage() {
 
       {/* 簽核 Modal */}
       <Modal
-        title={`簽核 - 量產核准 #${sigTarget?.id ?? ''}${sigTarget?.no ? ` (${sigTarget.no})` : ''}`}
+        title={`簽核 - 啟用核准 #${sigTarget?.id ?? ''}${sigTarget?.no ? ` (${sigTarget.no})` : ''}`}
         open={!!sigTarget} onCancel={() => { setSigTarget(null); load() }} footer={null} width={700}
       >
         {sigTarget && (

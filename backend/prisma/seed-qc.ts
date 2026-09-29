@@ -1,6 +1,6 @@
 /**
  * 附件2 QC 模擬資料種子腳本
- * 建立原料、批次，並填入進料品質檢驗（CMS03-07-2B）完整資料
+ * 建立原料、批次，並填入進料品質檢驗（LAB03-07-2B）完整資料
  */
 import 'dotenv/config'
 import { PrismaClient } from '@prisma/client'
