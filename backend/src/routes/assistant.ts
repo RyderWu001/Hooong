@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import OpenAI from 'openai'
-import { requireAuth, type AuthRequest } from '../middleware/auth'
+import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 import { aiLimiter } from '../middleware/rateLimit'
 import {
   askAssistant, describeTools, isAiConfigured,
@@ -9,6 +9,9 @@ import {
 } from '../lib/aiAssistant'
 
 import { askHybrid, cloudReady } from '../lib/aiHybrid'
+
+import { requirePermission, hasPermission } from '../middleware/permission'
+import { generateDraft, confirmDraft, DraftError } from '../lib/experimentDraft'
 
 const router = Router()
 
@@ -21,6 +24,7 @@ router.get('/status', requireAuth, async (req: AuthRequest, res) => {
     success: true,
     data: {
       enabled,
+      draftAllowed: ['ADMIN', 'LAB_STAFF'].includes(req.user!.role) && await hasPermission(req.user!.role, 'experiments', 'create'),
       cloudReady: cloudReady(),
       cloudHost: cloudReady() ? new URL(process.env.AI_CLOUD_BASE_URL!).hostname : null,
       hybridAllowed: req.user!.role === 'ADMIN',
@@ -113,6 +117,30 @@ router.post('/ask', requireAuth, aiLimiter, async (req: AuthRequest, res) => {
       })
       return
     }
+    throw e
+  }
+})
+
+router.post('/experiment-draft', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), requirePermission('experiments', 'create'), aiLimiter, async (req: AuthRequest, res) => {
+  const { question, token } = req.body
+  if (!isAiConfigured()) { res.status(503).json({ success: false, error: { message: 'AI 已停用' } }); return }
+  if (typeof question !== 'string' || !question.trim() || question.length > MAX_QUESTION_LENGTH || (token !== undefined && (typeof token !== 'string' || token.length > 80000))) {
+    res.status(400).json({ success: false, error: { message: '請輸入 1–2000 字的實驗描述' } }); return
+  }
+  try { res.json({ success: true, data: await generateDraft(question.trim(), token, req.user!.id) }) }
+  catch (e) {
+    if (e instanceof DraftError) { res.status(422).json({ success: false, error: { message: e.message } }); return }
+    if (e instanceof OpenAI.APIError) { res.status(503).json({ success: false, error: { message: '本機模型無法回應，請確認 Ollama 已啟動後重試' } }); return }
+    throw e
+  }
+})
+router.post('/experiment-draft/confirm', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), requirePermission('experiments', 'create'), async (req: AuthRequest, res) => {
+  if (req.body.confirmed !== true || typeof req.body.token !== 'string' || req.body.token.length > 80000) {
+    res.status(400).json({ success: false, error: { message: '請先檢查草稿並確認建立' } }); return
+  }
+  try { res.status(201).json({ success: true, data: await confirmDraft(req.body.token, req.user!.id) }) }
+  catch (e) {
+    if (e instanceof DraftError) { res.status(422).json({ success: false, error: { message: e.message } }); return }
     throw e
   }
 })

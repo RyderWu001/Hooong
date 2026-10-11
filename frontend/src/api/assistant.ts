@@ -26,6 +26,7 @@ export interface AssistantReply {
 }
 
 export interface AssistantStatus {
+  draftAllowed?: boolean
   enabled: boolean
   cloudReady?: boolean
   cloudHost?: string | null
@@ -52,3 +53,32 @@ export const TOOL_LABEL: Record<string, string> = {
   check_inventory: '查詢庫存與效期',
   search_experiments: '搜尋實驗紀錄',
 }
+
+export interface ExperimentDraftReply {
+  token: string
+  code: string
+  answer: string
+  missing: string[]
+  templateName: string | null
+  fields: { key: string; label: string; unit?: string }[]
+  draft: {
+    title: string
+    templateKey: string | null
+    experimentDate: string | null
+    formulaCode: string | null
+    notes: string
+    groups: { name: string; conditions: Record<string, string | number | string[]>; steps: string[]; repeats: number }[]
+    suggestions: string[]
+  }
+}
+export const prepareExperimentDraft = (question: string, token?: string) =>
+  client.post<{ data: ExperimentDraftReply }>('/assistant/experiment-draft', { question, token }).then(r => {
+    const data = r.data.data
+    if (!data?.draft || !Array.isArray(data.draft.groups) || !Array.isArray(data.missing) || typeof data.token !== 'string') throw new Error('無效的草稿回應')
+    return data
+  })
+export const confirmExperimentDraft = (token: string) =>
+  client.post<{ data: { id: number; code: string } }>('/assistant/experiment-draft/confirm', { token, confirmed: true }).then(r => {
+    if (!Number.isInteger(r.data.data?.id)) throw new Error('未收到實驗建立結果')
+    return r.data.data
+  })

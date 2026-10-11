@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Card, Input, Button, Space, Typography, Alert, Tag, Avatar,
-  Empty, Spin, Tooltip, Popconfirm, Select,
+  Empty, Spin, Tooltip, Popconfirm, Select, message,
 } from 'antd'
 import {
   SendOutlined, RobotOutlined, UserOutlined, ClearOutlined,
   DatabaseOutlined, BulbOutlined,
 } from '@ant-design/icons'
+import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  askAssistant, getAssistantStatus, TOOL_LABEL,
+  askAssistant, getAssistantStatus, TOOL_LABEL, prepareExperimentDraft, confirmExperimentDraft, type ExperimentDraftReply,
   type ChatTurn, type ToolCallRecord, type AssistantStatus, type AssistantMode, type RoutingInfo,
 } from '../../api/assistant'
 import styles from './AssistantPage.module.css'
@@ -32,6 +33,9 @@ export default function AssistantPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [mode, setMode] = useState<AssistantMode>('local')
+  const [task, setTask] = useState<'query' | 'experiment'>('query')
+  const [draft, setDraft] = useState<ExperimentDraftReply | null>(null)
+  const [saved, setSaved] = useState<{ id: number; code: string } | null>(null)
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -41,7 +45,7 @@ export default function AssistantPage() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  }, [messages, loading, draft, saved])
 
   const send = async (text: string) => {
     const question = text.trim()
@@ -56,6 +60,12 @@ export default function AssistantPage() {
     setLoading(true)
 
     try {
+      if (task === 'experiment') {
+        const reply = await prepareExperimentDraft(question, draft?.token)
+        setDraft(reply); setSaved(null)
+        setMessages(prev => [...prev, { role: 'assistant', content: reply.answer }])
+        return
+      }
       const reply = await askAssistant(question, history, mode)
       setMessages((prev) => [...prev, {
         role: 'assistant',
@@ -68,12 +78,24 @@ export default function AssistantPage() {
         ?.response?.data?.error?.code
       setMessages((prev) => [...prev, {
         role: 'assistant',
-        content: code === 'AI_RATE_LIMITED' ? t('assistant.rateLimited') : t('assistant.error'),
+        content: (err as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || (code === 'AI_RATE_LIMITED' ? t('assistant.rateLimited') : t('assistant.error')),
         failed: true,
       }])
     } finally {
       setLoading(false)
     }
+  }
+
+  const reset = () => { setMessages([]); setDraft(null); setSaved(null) }
+  const confirm = async () => {
+    if (!draft || loading || draft.missing.length) return
+    setLoading(true)
+    try {
+      setSaved(await confirmExperimentDraft(draft.token)); setDraft(null)
+      message.success('實驗與所有組別已建立')
+    } catch (e) {
+      message.error((e as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || '建立失敗，請重試')
+    } finally { setLoading(false) }
   }
 
   if (status && !status.enabled) {
@@ -95,7 +117,7 @@ export default function AssistantPage() {
       styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 210px)' } }}
       extra={
         messages.length > 0 && (
-          <Popconfirm title={t('assistant.clear')} onConfirm={() => setMessages([])}>
+          <Popconfirm title={t('assistant.clear')} onConfirm={reset} disabled={loading}>
             <Button size="small" icon={<ClearOutlined />}>{t('assistant.clear')}</Button>
           </Popconfirm>
         )
@@ -103,16 +125,22 @@ export default function AssistantPage() {
     >
       <div style={{ padding: '12px 20px', borderBottom: '1px solid #eee' }}>
         <Space wrap>
+          <Text>操作</Text>
+          <Select aria-label="助理操作" value={task} disabled={loading} style={{ width: 190 }}
+            onChange={value => { setTask(value); reset() }} options={[
+              { value: 'query', label: '查詢與分析資料' },
+              { value: 'experiment', label: '建立實驗與補全', disabled: !status?.draftAllowed },
+            ]} />
           <Text>處理模式</Text>
-          <Select aria-label="AI 處理模式" value={mode} disabled={loading} style={{ width: 225 }}
-            onChange={(value) => { setMode(value); setMessages([]) }} options={[
+          <Select aria-label="AI 處理模式" value={task === 'experiment' ? 'local' : mode} disabled={loading || task === 'experiment'} style={{ width: 225 }}
+            onChange={(value) => { setMode(value); reset() }} options={[
               { value: 'local', label: '本地模型' },
               { value: 'preview', label: '遮蔽預覽（不傳送）', disabled: !status?.hybridAllowed },
               { value: 'hybrid', label: '自動分流（本地＋雲端）', disabled: !status?.cloudReady || !status?.hybridAllowed },
             ]} />
         </Space>
         <div style={{ marginTop: 8 }}>
-          <Text type="secondary">{mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '先在本機辨識需求並查詢，顯示遮蔽後摘要；不會傳送到雲端。' : `送出後，允許的排名、庫存缺口或成本變動百分比將傳至 ${status?.cloudHost}；名稱與配方明細留在本機。多輪與其他需求使用本地模型。`}</Text>
+          <Text type="secondary">{task === 'experiment' ? '描述產品、流程、變因與重複次數，本地模型會整理草稿；可繼續對話補充日期、範本與條件。內容請人工確認，確認建立後才會儲存。' : mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '先在本機辨識需求並查詢，顯示遮蔽後摘要；不會傳送到雲端。' : `送出後，允許的排名、庫存缺口或成本變動百分比將傳至 ${status?.cloudHost}；名稱與配方明細留在本機。多輪與其他需求使用本地模型。`}</Text>
           {!status?.cloudReady && status?.hybridAllowed && <div><Text type="secondary">雲端尚未啟用，可先使用遮蔽預覽。</Text></div>}
         </div>
       </div>
@@ -121,10 +149,11 @@ export default function AssistantPage() {
           <div className={styles.intro}>
             <Empty
               image={<RobotOutlined style={{ fontSize: 44, color: '#cbd5e1' }} />}
-              description={<Text type="secondary">{t('assistant.intro')}</Text>}
+              description={<Text type="secondary">{task === 'experiment' ? '把實驗想法寫在下方，先整理草稿，再用對話補全。' : t('assistant.intro')}</Text>}
             />
             <div className={styles.examples}>
-              {EXAMPLE_KEYS.map((k) => (
+              {task === 'experiment' && <Button icon={<BulbOutlined />} onClick={() => send('建立實驗：使用通用實驗範本，今天比較 25°C、40°C、60°C，各組處理 20 分鐘，重複 3 次，觀察產品外觀。')}>比較三種溫度，各重複三次</Button>}
+              {task === 'query' && EXAMPLE_KEYS.map((k) => (
                 <Button
                   key={k}
                   size="small"
@@ -135,7 +164,7 @@ export default function AssistantPage() {
                 </Button>
               ))}
             </div>
-            {status && status.tools.length > 0 && (
+            {task === 'query' && status && status.tools.length > 0 && (
               <div className={styles.toolList}>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                   {t('assistant.availableTools')}：
@@ -194,10 +223,36 @@ export default function AssistantPage() {
           <div className={styles.rowBot}>
             <Avatar size="small" icon={<RobotOutlined />} style={{ background: '#16a34a', flexShrink: 0 }} />
             <div className={styles.bubbleBot}>
-              <Space><Spin size="small" /><Text type="secondary">{t('assistant.thinking')}</Text></Space>
+              <Space><Spin size="small" /><Text type="secondary">{task === 'experiment' ? '本機模型正在整理實驗草稿…' : t('assistant.thinking')}</Text></Space>
             </div>
           </div>
         )}
+        {draft && <Card size="small" title="實驗草稿・尚未儲存" style={{ margin: '16px 0' }}>
+          <Alert type="warning" showIcon message="請檢查所有條件與步驟。AI 整理內容可能有誤；建議不會自動寫入實驗。" />
+          <Paragraph style={{ marginTop: 12 }}><strong>{draft.draft.title || '尚未填寫名稱'}</strong><br />
+            範本：{draft.templateName || '待補充'}　日期：{draft.draft.experimentDate || '待補充'}<br />
+            配方：{draft.draft.formulaCode || '不綁定配方'}<br />
+            草稿有效期限 30 分鐘，可重新送出描述更新。<br />
+            共 {draft.draft.groups.reduce((n, g) => n + g.repeats, 0)} 組（包含重複）
+          </Paragraph>
+          {draft.draft.notes && <Paragraph style={{ whiteSpace: 'pre-wrap' }}>{draft.draft.notes}</Paragraph>}
+          {draft.draft.groups.map((g, i) => <Card key={i} size="small" title={`${g.name} × ${g.repeats}`} style={{ marginBottom: 8 }}>
+            {Object.entries(g.conditions).map(([key, value]) => {
+              const field = draft.fields.find(f => f.key === key)
+              return <div key={key}>{field?.label || key}：{Array.isArray(value) ? value.join('、') : String(value)} {field?.unit || ''}</div>
+            })}
+            {g.steps.length > 0 && <ol>{g.steps.map((step, j) => <li key={j}>{step}</li>)}</ol>}
+          </Card>)}
+          {draft.draft.suggestions.length > 0 && <Alert type="info" message="待考慮的建議（未加入實驗）" description={draft.draft.suggestions.join('；')} />}
+          {draft.missing.length > 0 && <Alert style={{ marginTop: 8 }} type="warning" message="請繼續輸入補充或修正" description={draft.missing.join('、')} />}
+          <Space style={{ marginTop: 12 }}>
+            <Popconfirm title="確認以上日期、條件與步驟，建立實驗和所有組別？" onConfirm={confirm} disabled={loading || !!draft.missing.length}>
+              <Button type="primary" disabled={loading || !!draft.missing.length}>確認建立實驗</Button>
+            </Popconfirm>
+            <Button disabled={loading} onClick={reset}>捨棄草稿</Button>
+          </Space>
+        </Card>}
+        {saved && <Alert type="success" showIcon message="實驗已建立" description={<Link to={`/experiments/${saved.id}`}>開啟實驗 {saved.code}</Link>} />}
         <div ref={bottomRef} />
       </div>
 
@@ -205,7 +260,7 @@ export default function AssistantPage() {
         <TextArea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={t('assistant.placeholder')}
+          placeholder={task === 'experiment' ? '描述新實驗，或補充／修改草稿，例如：日期改為 2026-10-12，每組增加至 3 次。' : t('assistant.placeholder')}
           autoSize={{ minRows: 1, maxRows: 4 }}
           disabled={loading}
           onPressEnter={(e) => {

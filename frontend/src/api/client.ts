@@ -19,7 +19,7 @@ client.interceptors.response.use(
   (error) => {
     // 後端不存在時回傳 mock 資料。僅限開發模式：正式環境若在此偽造成功回應，
     // 使用者會看到「儲存成功」但資料從未寫入資料庫。
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && !error.config?.url?.startsWith('/assistant/')) {
       const isProxyError =
         error.response?.status === 502 || error.response?.status === 503 || !error.response
 

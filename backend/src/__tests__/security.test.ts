@@ -249,3 +249,19 @@ describe('全域查詢', () => {
     expect(res.status).toBe(401)
   })
 })
+
+
+describe('AI 實驗草稿確認邊界', () => {
+  it('未登入不能產生或確認草稿', async () => {
+    for (const endpoint of ['/assistant/experiment-draft', '/assistant/experiment-draft/confirm']) {
+      const r = await request(app).post(`${API}${endpoint}`).send({ question: 'test', token: 'fake', confirmed: true })
+      expect(r.status).toBe(401)
+    }
+  })
+  it('未確認或偽造的草稿不能儲存', async () => {
+    const a = await request(app).post(`${API}/assistant/experiment-draft/confirm`).set(auth()).send({ token: 'fake' })
+    expect([400, 403]).toContain(a.status)
+    const b = await request(app).post(`${API}/assistant/experiment-draft/confirm`).set(auth()).send({ token: 'fake', confirmed: true })
+    expect([422, 403]).toContain(b.status)
+  })
+})
