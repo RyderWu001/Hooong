@@ -8,6 +8,8 @@ import {
   type ChatTurn,
 } from '../lib/aiAssistant'
 
+import { askHybrid, cloudReady } from '../lib/aiHybrid'
+
 const router = Router()
 
 /**
@@ -19,6 +21,9 @@ router.get('/status', requireAuth, async (req: AuthRequest, res) => {
     success: true,
     data: {
       enabled,
+      cloudReady: cloudReady(),
+      cloudHost: cloudReady() ? new URL(process.env.AI_CLOUD_BASE_URL!).hostname : null,
+      hybridAllowed: req.user!.role === 'ADMIN',
       tools: enabled ? await describeTools(req.user!.role) : [],
     },
   })
@@ -32,9 +37,18 @@ router.get('/status', requireAuth, async (req: AuthRequest, res) => {
  */
 // 限流掛在 requireAuth 之後，keyGenerator 才讀得到 req.user 以登入者計數
 router.post('/ask', requireAuth, aiLimiter, async (req: AuthRequest, res) => {
-  const { question, history } = req.body as { question?: string; history?: ChatTurn[] }
+  const { question, history, mode = 'local' } = req.body as { question?: string; history?: ChatTurn[]; mode?: string }
 
-  if (!question?.trim()) {
+  if (!['local', 'preview', 'hybrid'].includes(mode)) {
+    res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '無效的 AI 模式' } }); return
+  }
+  if (mode !== 'local' && req.user!.role !== 'ADMIN') {
+    res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: '混合測試模式目前僅開放管理員' } }); return
+  }
+  if (!isAiConfigured()) {
+    res.status(503).json({ success: false, error: { code: 'AI_NOT_CONFIGURED', message: 'AI 已停用' } }); return
+  }
+  if (typeof question !== 'string' || !question.trim()) {
     res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '請輸入問題' } })
     return
   }
@@ -54,9 +68,10 @@ router.post('/ask', requireAuth, aiLimiter, async (req: AuthRequest, res) => {
     : []
 
   try {
-    const reply = await askAssistant({
+    const reply = await askHybrid({
       question: question.trim(),
       history: cleanHistory,
+      mode: mode as 'local' | 'preview' | 'hybrid',
       role: req.user!.role,
     })
     res.json({ success: true, data: reply })

@@ -10,7 +10,15 @@ export interface ToolCallRecord {
   input: unknown
 }
 
+export type AssistantMode = 'local' | 'preview' | 'hybrid'
+export interface RoutingInfo {
+  engine: 'local' | 'preview' | 'cloud'
+  reason: string
+  disclosed: string[]
+  payload?: unknown
+}
 export interface AssistantReply {
+  routing?: RoutingInfo
   answer: string
   /** 這次回答查了哪些資料，供使用者驗證來源 */
   toolCalls: ToolCallRecord[]
@@ -19,6 +27,9 @@ export interface AssistantReply {
 
 export interface AssistantStatus {
   enabled: boolean
+  cloudReady?: boolean
+  cloudHost?: string | null
+  hybridAllowed?: boolean
   tools: { name: string; description: string }[]
 }
 
@@ -26,8 +37,8 @@ export const getAssistantStatus = () =>
   client.get<{ success: boolean; data: AssistantStatus }>('/assistant/status')
     .then(r => r.data.data)
 
-export const askAssistant = (question: string, history: ChatTurn[] = []) =>
-  client.post<{ success: boolean; data: AssistantReply }>('/assistant/ask', { question, history })
+export const askAssistant = (question: string, history: ChatTurn[] = [], mode: AssistantMode = 'local') =>
+  client.post<{ success: boolean; data: AssistantReply }>('/assistant/ask', { question, history, mode })
     .then(r => r.data.data)
 
 /** 工具名稱 → 顯示用的中文說明 */

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Card, Input, Button, Space, Typography, Alert, Tag, Avatar,
-  Empty, Spin, Tooltip, Popconfirm,
+  Empty, Spin, Tooltip, Popconfirm, Select,
 } from 'antd'
 import {
   SendOutlined, RobotOutlined, UserOutlined, ClearOutlined,
@@ -10,7 +10,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   askAssistant, getAssistantStatus, TOOL_LABEL,
-  type ChatTurn, type ToolCallRecord, type AssistantStatus,
+  type ChatTurn, type ToolCallRecord, type AssistantStatus, type AssistantMode, type RoutingInfo,
 } from '../../api/assistant'
 import styles from './AssistantPage.module.css'
 
@@ -20,6 +20,7 @@ const { TextArea } = Input
 interface Message extends ChatTurn {
   /** 助理訊息才有：這次回答查了哪些資料 */
   toolCalls?: ToolCallRecord[]
+  routing?: RoutingInfo
   failed?: boolean
 }
 
@@ -30,6 +31,7 @@ export default function AssistantPage() {
   const [status, setStatus] = useState<AssistantStatus | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
+  const [mode, setMode] = useState<AssistantMode>('local')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -54,11 +56,12 @@ export default function AssistantPage() {
     setLoading(true)
 
     try {
-      const reply = await askAssistant(question, history)
+      const reply = await askAssistant(question, history, mode)
       setMessages((prev) => [...prev, {
         role: 'assistant',
         content: reply.answer,
         toolCalls: reply.toolCalls,
+        routing: reply.routing,
       }])
     } catch (err) {
       const code = (err as { response?: { data?: { error?: { code?: string } } } })
@@ -98,6 +101,21 @@ export default function AssistantPage() {
         )
       }
     >
+      <div style={{ padding: '12px 20px', borderBottom: '1px solid #eee' }}>
+        <Space wrap>
+          <Text>處理模式</Text>
+          <Select aria-label="AI 處理模式" value={mode} disabled={loading} style={{ width: 225 }}
+            onChange={(value) => { setMode(value); setMessages([]) }} options={[
+              { value: 'local', label: '本地模型' },
+              { value: 'preview', label: '遮蔽預覽（不傳送）', disabled: !status?.hybridAllowed },
+              { value: 'hybrid', label: '自動分流（本地＋雲端）', disabled: !status?.cloudReady || !status?.hybridAllowed },
+            ]} />
+        </Space>
+        <div style={{ marginTop: 8 }}>
+          <Text type="secondary">{mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '先在本機辨識需求並查詢，顯示遮蔽後摘要；不會傳送到雲端。' : `送出後，允許的排名、庫存缺口或成本變動百分比將傳至 ${status?.cloudHost}；名稱與配方明細留在本機。多輪與其他需求使用本地模型。`}</Text>
+          {!status?.cloudReady && status?.hybridAllowed && <div><Text type="secondary">雲端尚未啟用，可先使用遮蔽預覽。</Text></div>}
+        </div>
+      </div>
       <div className={styles.thread}>
         {messages.length === 0 ? (
           <div className={styles.intro}>
@@ -145,6 +163,12 @@ export default function AssistantPage() {
               />
               <div className={m.role === 'user' ? styles.bubbleUser : styles.bubbleBot}>
                 <Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{m.content}</Paragraph>
+                {m.routing && <div style={{ marginTop: 8 }}>
+                  <Tag color={m.routing.engine === 'cloud' ? 'purple' : 'green'}>{m.routing.engine === 'cloud' ? '雲端摘要' : m.routing.engine === 'preview' ? '遮蔽預覽・未傳送' : '本地處理'}</Tag>
+                  <Text type="secondary">{m.routing.reason}</Text>
+                  {m.routing.disclosed.length > 0 && <div><Text type="secondary">{m.routing.engine === 'preview' ? '預計傳送' : '傳送內容'}：{m.routing.disclosed.join('、')}</Text></div>}
+                  {m.routing.payload !== undefined && <pre style={{ maxHeight: 240, overflow: 'auto', fontSize: 12 }}>{JSON.stringify(m.routing.payload, null, 2)}</pre>}
+                </div>}
                 {m.toolCalls && m.toolCalls.length > 0 && (
                   <div className={styles.sources}>
                     <Text type="secondary" style={{ fontSize: 11 }}>
