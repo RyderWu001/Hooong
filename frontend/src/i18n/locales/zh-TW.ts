@@ -264,4 +264,30 @@ export default {
     tags: '標籤',
     content: '內容',
   },
+
+  // ── AI 助理 ─────────────────────────────────────────
+  assistant: {
+    title: 'AI 資料助理',
+    menu: 'AI 助理',
+    placeholder: '問我配方、原料、庫存或成本…',
+    send: '送出',
+    clear: '清除對話',
+    thinking: '查詢中…',
+    disabled: 'AI 助理尚未啟用',
+    disabledHint: 'AI 助理目前停用，請聯絡系統管理員啟用。',
+    intro: '我可以查詢系統裡的配方、原料、庫存與實驗資料。試試看這些問題：',
+    dataSource: '本次查詢了',
+    availableTools: '可用的查詢功能',
+    disclaimer: 'AI 回答依據系統實際資料，但仍請自行核對關鍵數值。合規判定請勿僅依 AI 結論。',
+    error: '查詢失敗，請稍後再試',
+    rateLimited: '詢問過於頻繁，請稍候再試',
+    examples: {
+      cost: '哪些配方的每公斤成本最高？',
+      priceChange: 'LAS-96 漲價 20%，哪些配方受影響最大？',
+      lowStock: '目前哪些原料庫存不足？',
+      usage: '蛋白酶用在哪些配方裡？',
+      compare: '比較濃縮洗衣精和一般洗衣精的配方差異',
+      expiring: '有哪些批號快到期了？',
+    },
+  },
 } as const

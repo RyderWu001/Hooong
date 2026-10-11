@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import OpenAI from 'openai'
 import prisma from '../db/client'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 import { validateNumericParams } from '../lib/query'
@@ -164,8 +165,7 @@ router.post('/ai-chat', requireAuth, aiLimiter, async (req, res) => {
     }),
   ])
 
-  const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
+  if (process.env.AI_DISABLED === 'yes') {
     const sections: string[] = []
     if (articles.length > 0) {
       sections.push(`**相關知識庫文章：**\n${articles.map((a) => `- **${a.title}**：${a.content.substring(0, 100)}…`).join('\n')}`)
@@ -179,7 +179,7 @@ router.post('/ai-chat', requireAuth, aiLimiter, async (req, res) => {
     res.json({
       success: true,
       data: {
-        answer: `AI 功能尚未啟用（請在後端 .env 設定 ANTHROPIC_API_KEY）。\n\n${sections.length > 0 ? sections.join('\n\n') : '（無相關資料）'}`,
+        answer: `AI 功能已停用（AI_DISABLED=yes）。\n\n${sections.length > 0 ? sections.join('\n\n') : '（無相關資料）'}`,
         aiEnabled: false,
       },
     })
@@ -200,50 +200,46 @@ router.post('/ai-chat', requireAuth, aiLimiter, async (req, res) => {
       : '',
   ].filter(Boolean).join('\n\n')
 
-  const messages = [
-    ...(history as { role: string; content: string }[]).slice(-6),
-    { role: 'user', content: contextText ? `${question}\n\n${contextText}` : question },
-  ]
+  const priorTurns = (Array.isArray(history) ? history : [])
+    .filter((turn: { role?: string; content?: unknown }) =>
+      (turn?.role === 'user' || turn?.role === 'assistant') && typeof turn.content === 'string')
+    .slice(-6)
+    .map((turn: { role: 'user' | 'assistant'; content: string }) => ({
+      role: turn.role, content: turn.content.slice(0, 2000),
+    }))
 
-  // 無 timeout 時，上游若無回應會讓此請求一直懸著並佔用連線
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 30_000)
-
-  let response: Response
+  // 逾時保護：上游若無回應，請求會一直懸著並佔用連線
+  let answer: string
   try {
-    response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages,
-      }),
-      signal: controller.signal,
+    const completion = await new OpenAI({
+      baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1',
+      apiKey: 'ollama',
+      timeout: 30_000,
+    }).chat.completions.create({
+      model: process.env.OLLAMA_MODEL || 'qwen2.5:7b',
+      max_tokens: 1500,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...priorTurns,
+        { role: 'user', content: contextText ? `${question}\n\n${contextText}` : question },
+      ],
     })
+    answer = completion.choices[0]?.message?.content ?? '無回應'
   } catch (e) {
-    const aborted = (e as Error)?.name === 'AbortError'
-    res.status(504).json({
-      success: false,
-      error: { code: 'AI_TIMEOUT', message: aborted ? 'AI 服務逾時，請稍後再試' : 'AI 服務連線失敗' },
-    })
-    return
-  } finally {
-    clearTimeout(timer)
+    if (e instanceof OpenAI.APIConnectionTimeoutError) {
+      res.status(504).json({ success: false, error: { code: 'AI_TIMEOUT', message: 'AI 服務逾時，請稍後再試' } })
+      return
+    }
+    if (e instanceof OpenAI.APIConnectionError) {
+      res.status(504).json({ success: false, error: { code: 'AI_UNREACHABLE', message: 'AI 服務連線失敗' } })
+      return
+    }
+    if (e instanceof OpenAI.APIError) {
+      res.status(502).json({ success: false, error: { code: 'AI_ERROR', message: `AI 服務異常 (${e.status})` } })
+      return
+    }
+    throw e
   }
-
-  if (!response.ok) {
-    res.status(502).json({ success: false, error: { code: 'AI_ERROR', message: `AI 服務異常 (${response.status})` } })
-    return
-  }
-
-  const aiData = await response.json() as { content: { type: string; text: string }[] }
-  const answer = aiData.content.find((c) => c.type === 'text')?.text ?? '無回應'
 
   res.json({
     success: true,

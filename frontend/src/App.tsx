@@ -27,6 +27,8 @@ import ResultListPage from './pages/results/ResultListPage'
 import ResultDetailPage from './pages/results/ResultDetailPage'
 
 import ReportsPage from './pages/reports/ReportsPage'
+import MaterialsPage from './pages/materials/MaterialsPage'
+import RisksPage from './pages/risks/RisksPage'
 import UserManagementPage from './pages/users/UserManagementPage'
 import DropdownManagePage from './pages/dropdowns/DropdownManagePage'
 import ExperimentTemplatesPage from './pages/experiments/ExperimentTemplatesPage'
@@ -43,6 +45,7 @@ import ProductCounterPlanPage from './pages/forms/ProductCounterPlanPage'
 import ChemPreparationPage from './pages/forms/ChemPreparationPage'
 import ProductReworkPage from './pages/forms/ProductReworkPage'
 import DashboardPage from './pages/dashboard/DashboardPage'
+import AssistantPage from './pages/assistant/AssistantPage'
 import SuppliersPage from './pages/suppliers/SuppliersPage'
 import SupplierComplianceAuditPage from './pages/forms/SupplierComplianceAuditPage'
 import FormulaChangePage from './pages/forms/FormulaChangePage'
@@ -168,10 +171,13 @@ export default function App() {
 
             <Route path="results" element={<ResultListPage />} />
             <Route path="samples" element={<SamplesPage />} />
+            <Route path="materials" element={<MaterialsPage />} />
+            <Route path="risks" element={<RisksPage />} />
 
             <Route path="reports" element={<ReportsPage />} />
             <Route path="traceability" element={<TraceabilityPage />} />
             <Route path="knowledge" element={<KnowledgePage />} />
+            <Route path="assistant" element={<AssistantPage />} />
             <Route path="lab-daily-log" element={<LabDailyLogPage />} />
             <Route path="sample-submissions" element={<SampleSubmissionPage />} />
             <Route path="chemical-evaluations" element={<ChemicalEvaluationPage />} />
