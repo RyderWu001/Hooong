@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 const m = vi.hoisted(() => ({ completion: vi.fn(), templates: vi.fn(), template: vi.fn(), formula: vi.fn(), create: vi.fn() }))
 vi.mock('openai', () => ({ default: class { chat = { completions: { create: m.completion } } } }))
 vi.mock('../db/client', () => ({ default: { experimentTemplate: { findMany: m.templates, findUnique: m.template }, formula: { findUnique: m.formula }, experiment: { create: m.create } } }))
-import { draftSchema, generateDraft, confirmDraft, signDraft, readDraft, validDate, validateConditions, inspectDraft, groundDraft } from '../lib/experimentDraft'
+import { draftSchema, generateDraft, confirmDraft, signDraft, readDraft, validDate, validateConditions, inspectDraft, groundDraft, needsReview } from '../lib/experimentDraft'
 const fields = [{ key: 'temperature', label: '溫度', type: 'number' }, { key: 'method', label: '方法', type: 'select', options: ['攪拌'] }]
 const draft = () => draftSchema.parse({ title: '溫度比較', templateKey: 'generic', experimentDate: '2026-10-12', formulaCode: null, notes: '', groups: [{ name: '25°C', conditions: { temperature: 25 }, steps: ['觀察外觀'], repeats: 3 }], suggestions: ['可考慮增加對照組'] })
 beforeEach(() => {
@@ -69,4 +69,35 @@ it('unsupported amounts, steps and dates are withheld from actionable conditions
   const r = groundDraft(d, ['25°C，觀察外觀'], '2026-10-11')
   expect(r.groups[0].conditions).toEqual({ temperature: 25 }); expect(r.groups[0].steps).toEqual(['觀察外觀'])
   expect(r.experimentDate).toBeNull(); expect(r.suggestions.join('')).toContain('100ml')
+})
+
+it('common completion retains new fields and steps with server-assigned provenance', () => {
+  const d = draft(); d.groups[0].conditions = { temperature: 25, method: '攪拌' }; d.groups[0].steps = ['觀察外觀', '準備量測器材']
+  d.plan.equipment = ['量筒']
+  const r = groundDraft(d, ['25°C，觀察外觀'], '2026-10-11', 'common')
+  expect(r.groups[0].conditions).toEqual({ temperature: 25, method: '攪拌' })
+  expect(r.groups[0].inferred.conditions).toEqual(['method']); expect(r.groups[0].inferred.steps).toEqual([1])
+  expect(r.groups[0].inferred.repeats).toBe(true); expect(needsReview(r)).toBe(true)
+})
+it('AI completed fields cannot save until user reviews them; saved records keep provenance', async () => {
+  const d = groundDraft(draft(), ['generic，2026-10-12，25°C'], '2026-10-11', 'common')
+  d.groups[0].conditions.method = '攪拌'; d.groups[0].inferred.conditions = ['method']; d.plan.measurements = ['外觀變化']
+  const token = signDraft(1, d, 'AI-test', [])
+  await expect(confirmDraft(token, 1)).rejects.toThrow('請先核對'); expect(m.create).not.toHaveBeenCalled()
+  await confirmDraft(token, 1, true)
+  const data = m.create.mock.calls[0][0].data
+  expect(data.groups.create[0].notes).toContain('method'); expect(data.notes).toContain('外觀變化')
+  expect(data.groups.create[0].steps.create[0].notes).toContain('AI 建議')
+})
+it('model cannot mark invented fields as user-provided', async () => {
+  const d = draft(); d.groups[0].conditions.method = '攪拌'; d.groups[0].inferred = { conditions: [], steps: [], repeats: false }
+  m.completion.mockResolvedValue({ choices: [{ message: { content: JSON.stringify(d) } }] })
+  const r = await generateDraft('通用 25°C，2026-10-12', undefined, 1, 'common')
+  expect(r.draft.groups[0].inferred.conditions).toContain('method'); expect(r.reviewRequired).toBe(true)
+  expect(m.create).not.toHaveBeenCalled()
+})
+it('faithful mode clears model-proposed plan and fields', () => {
+  const d = draft(); d.plan.equipment = ['量筒']; d.groups[0].conditions.method = '攪拌'
+  const r = groundDraft(d, ['25°C，觀察外觀，3次'], '2026-10-11', 'faithful')
+  expect(r.plan.equipment).toEqual([]); expect(r.groups[0].conditions.method).toBeUndefined(); expect(needsReview(r)).toBe(false)
 })

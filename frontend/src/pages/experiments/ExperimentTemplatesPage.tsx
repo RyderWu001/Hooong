@@ -55,6 +55,7 @@ const fromFormFields = (fields: FieldFormValue[] = []): TemplateField[] =>
 export default function ExperimentTemplatesPage() {
   const [data, setData] = useState<ExperimentTemplate[]>([])
   const [loading, setLoading] = useState(false)
+  const [viewing, setViewing] = useState<ExperimentTemplate | null>(null)
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<ExperimentTemplate | null>(null)
   const [saving, setSaving] = useState(false)
@@ -149,7 +150,7 @@ export default function ExperimentTemplatesPage() {
         message="範本決定各試驗組要記錄哪些實驗條件。不同領域（食品、清潔劑、化工…）可建立各自的範本，不需要修改程式。已被實驗使用的範本請用「停用」取代刪除。"
       />
       <Table<ExperimentTemplate>
-        rowKey="id" loading={loading} dataSource={data} pagination={false}
+        rowKey="id" tableLayout="fixed" scroll={{ x: 950 }} loading={loading} dataSource={data} pagination={false}
         columns={[
           {
             title: '名稱', dataIndex: 'name', width: 280,
@@ -159,11 +160,12 @@ export default function ExperimentTemplatesPage() {
                   <Text strong>{v}</Text>
                   {r.isBuiltin && <Tag>內建</Tag>}
                 </Space>
-                {r.description && <Text type="secondary" style={{ fontSize: 12 }}>{r.description}</Text>}
+                {r.description && <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }} ellipsis={{ rows: 2 }}>{r.description.split('\n')[0].slice(0, 130)}</Typography.Paragraph>}
+                <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setViewing(r)}>查看內容</Button>
               </Space>
             ),
           },
-          { title: '代碼', dataIndex: 'key', width: 130, render: (v: string) => <Text code>{v}</Text> },
+          { title: '代碼', dataIndex: 'key', width: 130, render: (v: string) => <Text ellipsis={{ tooltip: v }} style={{ display: 'block' }}>{v}</Text> },
           { title: '領域', dataIndex: 'domain', width: 120, render: (v: string | null) => v ?? '—' },
           { title: '欄位數', dataIndex: 'fields', width: 80, render: (f: TemplateField[]) => f.length },
           {
@@ -187,6 +189,16 @@ export default function ExperimentTemplatesPage() {
         ]}
       />
 
+      <Modal title={viewing?.name} open={!!viewing} onCancel={() => setViewing(null)} footer={<Button onClick={() => setViewing(null)}>關閉</Button>} width={800}>
+        {viewing && <>
+          <Tag>{viewing.domain || '未分類'}</Tag><Text type="secondary">{viewing.fields.length} 個欄位</Text>
+          <Typography.Paragraph style={{ whiteSpace: 'pre-wrap', marginTop: 12 }}>{viewing.description}</Typography.Paragraph>
+          <Table<TemplateField> rowKey="key" size="small" pagination={false} dataSource={viewing.fields} columns={[
+            { title: '分類', dataIndex: 'section', width: 120 }, { title: '欄位', dataIndex: 'label', width: 160 },
+            { title: '單位', dataIndex: 'unit', width: 80 }, { title: '填寫建議', dataIndex: 'placeholder' },
+          ]} />
+        </>}
+      </Modal>
       <Modal
         title={editing ? `編輯範本：${editing.name}` : '新增範本'}
         open={open} onCancel={() => setOpen(false)} onOk={() => form.submit()}
@@ -209,7 +221,7 @@ export default function ExperimentTemplatesPage() {
             </Form.Item>
           </Space>
           <Form.Item name="description" label="說明">
-            <Input placeholder="這個範本適用的實驗類型" />
+            <Input.TextArea autoSize={{ minRows: 3, maxRows: 8 }} placeholder="這個範本適用的實驗類型" />
           </Form.Item>
 
           <Text strong>條件欄位</Text>

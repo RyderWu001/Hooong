@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Card, Input, Button, Space, Typography, Alert, Tag, Avatar,
-  Empty, Spin, Tooltip, Popconfirm, Select, message,
+  Empty, Spin, Tooltip, Popconfirm, Select, message, Checkbox,
 } from 'antd'
 import {
   SendOutlined, RobotOutlined, UserOutlined, ClearOutlined,
@@ -14,6 +14,7 @@ import {
   type ChatTurn, type ToolCallRecord, type AssistantStatus, type AssistantMode, type RoutingInfo,
 } from '../../api/assistant'
 import styles from './AssistantPage.module.css'
+import TemplateAssistantPanel from './TemplateAssistantPanel'
 
 const { Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -33,7 +34,9 @@ export default function AssistantPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [mode, setMode] = useState<AssistantMode>('local')
-  const [task, setTask] = useState<'query' | 'experiment'>('query')
+  const [task, setTask] = useState<'query' | 'experiment' | 'template'>('query')
+  const [completionLevel, setCompletionLevel] = useState<'faithful' | 'common'>('common')
+  const [reviewedSuggestions, setReviewedSuggestions] = useState(false)
   const [draft, setDraft] = useState<ExperimentDraftReply | null>(null)
   const [saved, setSaved] = useState<{ id: number; code: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -47,7 +50,7 @@ export default function AssistantPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading, draft, saved])
 
-  const send = async (text: string) => {
+  const send = async (text: string, level: 'faithful' | 'common' = completionLevel) => {
     const question = text.trim()
     if (!question || loading) return
 
@@ -61,8 +64,8 @@ export default function AssistantPage() {
 
     try {
       if (task === 'experiment') {
-        const reply = await prepareExperimentDraft(question, draft?.token)
-        setDraft(reply); setSaved(null)
+        const reply = await prepareExperimentDraft(question, draft?.token, level)
+        setReviewedSuggestions(false); setDraft(reply); setSaved(null)
         setMessages(prev => [...prev, { role: 'assistant', content: reply.answer }])
         return
       }
@@ -86,12 +89,12 @@ export default function AssistantPage() {
     }
   }
 
-  const reset = () => { setMessages([]); setDraft(null); setSaved(null) }
+  const reset = () => { setMessages([]); setDraft(null); setSaved(null); setReviewedSuggestions(false) }
   const confirm = async () => {
-    if (!draft || loading || draft.missing.length) return
+    if (!draft || loading || draft.missing.length || (draft.reviewRequired && !reviewedSuggestions)) return
     setLoading(true)
     try {
-      setSaved(await confirmExperimentDraft(draft.token)); setDraft(null)
+      setSaved(await confirmExperimentDraft(draft.token, reviewedSuggestions)); setDraft(null)
       message.success('實驗與所有組別已建立')
     } catch (e) {
       message.error((e as { response?: { data?: { error?: { message?: string } } } })?.response?.data?.error?.message || '建立失敗，請重試')
@@ -129,21 +132,28 @@ export default function AssistantPage() {
           <Select aria-label="助理操作" value={task} disabled={loading} style={{ width: 190 }}
             onChange={value => { setTask(value); reset() }} options={[
               { value: 'query', label: '查詢與分析資料' },
+              { value: 'template', label: '快速建立實驗範本', disabled: !status?.templateAllowed },
               { value: 'experiment', label: '建立實驗與補全', disabled: !status?.draftAllowed },
             ]} />
-          <Text>處理模式</Text>
+          {task === 'experiment' && <Select aria-label="實驗補全方式" value={completionLevel} disabled={loading} style={{ width: 195 }}
+            onChange={setCompletionLevel} options={[
+              { value: 'common', label: '依常識詳細補全' }, { value: 'faithful', label: '只整理已提供內容' },
+            ]} />}
+          {task !== 'template' && <><Text>處理模式</Text>
           <Select aria-label="AI 處理模式" value={task === 'experiment' ? 'local' : mode} disabled={loading || task === 'experiment'} style={{ width: 225 }}
             onChange={(value) => { setMode(value); reset() }} options={[
               { value: 'local', label: '本地模型' },
               { value: 'preview', label: '遮蔽預覽（不傳送）', disabled: !status?.hybridAllowed },
               { value: 'hybrid', label: '自動分流（本地＋雲端）', disabled: !status?.cloudReady || !status?.hybridAllowed },
-            ]} />
+            ]} /></>}
+          {task === 'template' && <Tag color="purple">自動選擇本地／雲端</Tag>}
         </Space>
         <div style={{ marginTop: 8 }}>
-          <Text type="secondary">{task === 'experiment' ? '描述產品、流程、變因與重複次數，本地模型會整理草稿；可繼續對話補充日期、範本與條件。內容請人工確認，確認建立後才會儲存。' : mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '先在本機辨識需求並查詢，顯示遮蔽後摘要；不會傳送到雲端。' : `送出後，允許的排名、庫存缺口或成本變動百分比將傳至 ${status?.cloudHost}；名稱與配方明細留在本機。多輪與其他需求使用本地模型。`}</Text>
+          <Text type="secondary">{task === 'template' ? '先產生可編輯基本範本，再補充量測條件與步驟；雲端僅接收通用主題與目標。確認後才儲存。' : task === 'experiment' ? '描述產品、流程與變因。詳細補全可建議條件、步驟、設備及觀察項目，並標示 AI 建議；可用對話修改。請核對實際可用設備、材料與條件，確認後才會儲存。' : mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '先在本機辨識需求並查詢，顯示遮蔽後摘要；不會傳送到雲端。' : `送出後，允許的排名、庫存缺口或成本變動百分比將傳至 ${status?.cloudHost}；名稱與配方明細留在本機。多輪與其他需求使用本地模型。`}</Text>
           {!status?.cloudReady && status?.hybridAllowed && <div><Text type="secondary">雲端尚未啟用，可先使用遮蔽預覽。</Text></div>}
         </div>
       </div>
+      {task === 'template' ? <TemplateAssistantPanel /> : <>
       <div className={styles.thread}>
         {messages.length === 0 ? (
           <div className={styles.intro}>
@@ -228,26 +238,32 @@ export default function AssistantPage() {
           </div>
         )}
         {draft && <Card size="small" title="實驗草稿・尚未儲存" style={{ margin: '16px 0' }}>
-          <Alert type="warning" showIcon message="請檢查所有條件與步驟。AI 整理內容可能有誤；建議不會自動寫入實驗。" />
+          <Alert type="warning" showIcon message="請核對所有條件與步驟。標示「AI 建議」的內容是試驗起始建議，尚未經實際驗證；確認採用後才會儲存。" />
           <Paragraph style={{ marginTop: 12 }}><strong>{draft.draft.title || '尚未填寫名稱'}</strong><br />
-            範本：{draft.templateName || '待補充'}　日期：{draft.draft.experimentDate || '待補充'}<br />
+            範本：{draft.templateName || '待補充'} {draft.draft.inferredTemplate && <Tag color="orange">AI 建議</Tag>}　日期：{draft.draft.experimentDate || '待補充'}<br />
             配方：{draft.draft.formulaCode || '不綁定配方'}<br />
             草稿有效期限 30 分鐘，可重新送出描述更新。<br />
             共 {draft.draft.groups.reduce((n, g) => n + g.repeats, 0)} 組（包含重複）
           </Paragraph>
           {draft.draft.notes && <Paragraph style={{ whiteSpace: 'pre-wrap' }}>{draft.draft.notes}</Paragraph>}
-          {draft.draft.groups.map((g, i) => <Card key={i} size="small" title={`${g.name} × ${g.repeats}`} style={{ marginBottom: 8 }}>
+          {draft.draft.plan && Object.values(draft.draft.plan).some(v => Array.isArray(v) ? v.length : v) && <Card size="small" title={<Space>實驗計畫<Tag color="orange">AI 建議・待驗證</Tag></Space>} style={{ marginBottom: 12 }}>
+            {draft.draft.plan.objective && <Paragraph>目的：{draft.draft.plan.objective}</Paragraph>}
+            {([['equipment', '設備與工具'], ['measurements', '觀察／量測項目'], ['checks', '操作前檢查／假設']] as const).map(([key, label]) => draft.draft.plan[key].length > 0 && <div key={key}><Text strong>{label}</Text><ul>{draft.draft.plan[key].map((v, i) => <li key={i}>{v}</li>)}</ul></div>)}
+          </Card>}
+          {draft.draft.groups.map((g, i) => <Card key={i} size="small" title={<Space>{g.name} × {g.repeats}{g.inferred?.repeats && <Tag color="orange">重複次數：AI 建議</Tag>}</Space>} style={{ marginBottom: 8 }}>
             {Object.entries(g.conditions).map(([key, value]) => {
               const field = draft.fields.find(f => f.key === key)
-              return <div key={key}>{field?.label || key}：{Array.isArray(value) ? value.join('、') : String(value)} {field?.unit || ''}</div>
+              return <div key={key}>{field?.label || key}：{Array.isArray(value) ? value.join('、') : String(value)} {field?.unit || ''} <Tag color={g.inferred?.conditions.includes(key) ? 'orange' : 'blue'}>{g.inferred?.conditions.includes(key) ? 'AI 建議・待驗證' : '從描述整理'}</Tag></div>
             })}
-            {g.steps.length > 0 && <ol>{g.steps.map((step, j) => <li key={j}>{step}</li>)}</ol>}
+            {g.steps.length > 0 && <ol>{g.steps.map((step, j) => <li key={j}>{step} <Tag color={g.inferred?.steps.includes(j) ? 'orange' : 'blue'}>{g.inferred?.steps.includes(j) ? 'AI 建議・待驗證' : '從描述整理'}</Tag></li>)}</ol>}
           </Card>)}
           {draft.draft.suggestions.length > 0 && <Alert type="info" message="待考慮的建議（未加入實驗）" description={draft.draft.suggestions.join('；')} />}
           {draft.missing.length > 0 && <Alert style={{ marginTop: 8 }} type="warning" message="請繼續輸入補充或修正" description={draft.missing.join('、')} />}
+          {draft.reviewRequired && <div style={{ marginTop: 12 }}><Checkbox checked={reviewedSuggestions} disabled={loading} onChange={e => setReviewedSuggestions(e.target.checked)}>我已核對 AI 建議的條件、步驟及計畫，並確認採用</Checkbox></div>}
           <Space style={{ marginTop: 12 }}>
-            <Popconfirm title="確認以上日期、條件與步驟，建立實驗和所有組別？" onConfirm={confirm} disabled={loading || !!draft.missing.length}>
-              <Button type="primary" disabled={loading || !!draft.missing.length}>確認建立實驗</Button>
+            <Button disabled={loading} onClick={() => { setCompletionLevel('common'); send('請依照基本常識補全缺少的條件、步驟、設備、觀察項目與操作前檢查，保留已指定的條件。', 'common') }}>繼續詳細補全</Button>
+            <Popconfirm title="確認以上日期、條件與步驟，建立實驗和所有組別？" onConfirm={confirm} disabled={loading || !!draft.missing.length || (draft.reviewRequired && !reviewedSuggestions)}>
+              <Button type="primary" disabled={loading || !!draft.missing.length || (draft.reviewRequired && !reviewedSuggestions)}>確認建立實驗</Button>
             </Popconfirm>
             <Button disabled={loading} onClick={reset}>捨棄草稿</Button>
           </Space>
@@ -285,6 +301,7 @@ export default function AssistantPage() {
       <div className={styles.disclaimer}>
         <Text type="secondary" style={{ fontSize: 11 }}>{t('assistant.disclaimer')}</Text>
       </div>
+      </>}
     </Card>
   )
 }

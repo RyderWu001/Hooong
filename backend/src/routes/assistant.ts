@@ -13,6 +13,8 @@ import { askHybrid, cloudReady } from '../lib/aiHybrid'
 import { requirePermission, hasPermission } from '../middleware/permission'
 import { generateDraft, confirmDraft, DraftError } from '../lib/experimentDraft'
 
+import { prepareTemplate, enrichTemplate, saveTemplate, supplementTemplate } from '../lib/templateDraft'
+
 const router = Router()
 
 /**
@@ -24,6 +26,7 @@ router.get('/status', requireAuth, async (req: AuthRequest, res) => {
     success: true,
     data: {
       enabled,
+      templateAllowed: req.user!.role === 'ADMIN',
       draftAllowed: ['ADMIN', 'LAB_STAFF'].includes(req.user!.role) && await hasPermission(req.user!.role, 'experiments', 'create'),
       cloudReady: cloudReady(),
       cloudHost: cloudReady() ? new URL(process.env.AI_CLOUD_BASE_URL!).hostname : null,
@@ -122,12 +125,13 @@ router.post('/ask', requireAuth, aiLimiter, async (req: AuthRequest, res) => {
 })
 
 router.post('/experiment-draft', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), requirePermission('experiments', 'create'), aiLimiter, async (req: AuthRequest, res) => {
-  const { question, token } = req.body
+  const { question, token, completionLevel = 'faithful' } = req.body
+  if (!['faithful', 'common'].includes(completionLevel)) { res.status(400).json({ success: false, error: { message: '無效的補全方式' } }); return }
   if (!isAiConfigured()) { res.status(503).json({ success: false, error: { message: 'AI 已停用' } }); return }
   if (typeof question !== 'string' || !question.trim() || question.length > MAX_QUESTION_LENGTH || (token !== undefined && (typeof token !== 'string' || token.length > 80000))) {
     res.status(400).json({ success: false, error: { message: '請輸入 1–2000 字的實驗描述' } }); return
   }
-  try { res.json({ success: true, data: await generateDraft(question.trim(), token, req.user!.id) }) }
+  try { res.json({ success: true, data: await generateDraft(question.trim(), token, req.user!.id, completionLevel) }) }
   catch (e) {
     if (e instanceof DraftError) { res.status(422).json({ success: false, error: { message: e.message } }); return }
     if (e instanceof OpenAI.APIError) { res.status(503).json({ success: false, error: { message: '本機模型無法回應，請確認 Ollama 已啟動後重試' } }); return }
@@ -138,11 +142,38 @@ router.post('/experiment-draft/confirm', requireAuth, requireRole('ADMIN', 'LAB_
   if (req.body.confirmed !== true || typeof req.body.token !== 'string' || req.body.token.length > 80000) {
     res.status(400).json({ success: false, error: { message: '請先檢查草稿並確認建立' } }); return
   }
-  try { res.status(201).json({ success: true, data: await confirmDraft(req.body.token, req.user!.id) }) }
+  try { res.status(201).json({ success: true, data: await confirmDraft(req.body.token, req.user!.id, req.body.reviewedSuggestions === true) }) }
   catch (e) {
     if (e instanceof DraftError) { res.status(422).json({ success: false, error: { message: e.message } }); return }
     throw e
   }
+})
+
+router.post('/template-draft', requireAuth, requireRole('ADMIN'), aiLimiter, async (req: AuthRequest, res) => {
+  if (!isAiConfigured()) { res.status(503).json({ success: false, error: { message: 'AI 已停用' } }); return }
+  const { question } = req.body
+  if (typeof question !== 'string' || !question.trim() || question.length > 2000) { res.status(400).json({ success: false, error: { message: '請輸入 1–2000 字的範本需求' } }); return }
+  res.json({ success: true, data: prepareTemplate(question.trim(), req.user!.id) })
+})
+router.post('/template-draft/enrich', requireAuth, requireRole('ADMIN'), aiLimiter, async (req: AuthRequest, res) => {
+  if (!isAiConfigured()) { res.status(503).json({ success: false, error: { message: 'AI 已停用' } }); return }
+  if (typeof req.body.token !== 'string' || req.body.token.length > 80000) { res.status(400).json({ success: false, error: { message: '無效的範本草稿' } }); return }
+  const controller = new AbortController()
+  const abort = () => { if (!res.writableEnded) controller.abort() }
+  res.on('close', abort)
+  try { const data = await enrichTemplate(req.body.token, req.user!.id, controller.signal); if (!res.destroyed) res.json({ success: true, data }) }
+  catch (e) { if (e instanceof DraftError) { res.status(422).json({ success: false, error: { message: e.message } }); return } throw e }
+  finally { res.off('close', abort) }
+})
+router.post('/template-draft/supplement', requireAuth, requireRole('ADMIN'), aiLimiter, async (req: AuthRequest, res) => {
+  if (typeof req.body.token !== 'string' || req.body.token.length > 80000) { res.status(400).json({ success: false, error: { message: '無效的範本草稿' } }); return }
+  try { res.json({ success: true, data: supplementTemplate(req.body.token, req.user!.id, req.body.draft) }) }
+  catch (e) { if (e instanceof DraftError) { res.status(422).json({ success: false, error: { message: e.message } }); return } throw e }
+})
+router.post('/template-draft/confirm', requireAuth, requireRole('ADMIN'), async (req: AuthRequest, res) => {
+  if (req.body.confirmed !== true || typeof req.body.token !== 'string' || req.body.token.length > 80000) { res.status(400).json({ success: false, error: { message: '請確認範本內容再建立' } }); return }
+  try { res.status(201).json({ success: true, data: await saveTemplate(req.body.token, req.user!.id, req.body.reviewed === true, req.body.draft) }) }
+  catch (e) { if (e instanceof DraftError) { res.status(422).json({ success: false, error: { message: e.message } }); return } throw e }
 })
 
 export default router
