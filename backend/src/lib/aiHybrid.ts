@@ -2,6 +2,7 @@ import OpenAI from 'openai'
 import { toolsForRole } from './aiTools'
 import { askAssistant, type AssistantReply, type ChatTurn } from './aiAssistant'
 import { isCloudTool, projectCloudData, restoreAliases } from './aiPrivacy'
+import { logCloudDisclosure } from './aiCloudAuditLog'
 
 export type HybridMode = 'local' | 'preview' | 'hybrid'
 export interface RoutingInfo {
@@ -48,7 +49,7 @@ export async function planQuery(question: string, role: string) {
   return { tool: candidate.tool, input: parsed.data, spec }
 }
 
-export async function askHybrid(opts: { question: string; role: string; history?: ChatTurn[]; mode: HybridMode }): Promise<AssistantReply & { routing: RoutingInfo }> {
+export async function askHybrid(opts: { question: string; role: string; userId: number; userEmail: string; history?: ChatTurn[]; mode: HybridMode }): Promise<AssistantReply & { routing: RoutingInfo }> {
   const fallback = async (reason: string) => ({ ...await askAssistant(opts), routing: { engine: 'local' as const, reason, disclosed: [] } })
   if (opts.mode === 'local') return fallback('使用本地模型')
   // Follow-up pronouns/history can alter meaning or combine disclosure; keep them local in v1.
@@ -76,10 +77,12 @@ export async function askHybrid(opts: { question: string; role: string; history?
         { role: 'user', content: JSON.stringify(projection.payload) },
       ],
     })
+    logCloudDisclosure({ userId: opts.userId, userEmail: opts.userEmail, role: opts.role, question: opts.question, tool: plan.tool, disclosed: projection.disclosed, payload: projection.payload, outcome: 'sent' })
     return { answer: restoreAliases(completion.choices[0]?.message.content || '沒有取得回覆', projection.mapping), toolCalls,
       usage: { inputTokens: completion.usage?.prompt_tokens || 0, outputTokens: completion.usage?.completion_tokens || 0 },
       routing: { engine: 'cloud', reason: '雲端只收到後端允許的摘要資料', disclosed: projection.disclosed } }
   } catch {
+    logCloudDisclosure({ userId: opts.userId, userEmail: opts.userEmail, role: opts.role, question: opts.question, tool: plan.tool, disclosed: projection.disclosed, payload: projection.payload, outcome: 'failed' })
     return { answer: '雲端服務未完成回答，請稍後重試或改用本地模式。', toolCalls, usage: { inputTokens: 0, outputTokens: 0 },
       routing: { engine: 'cloud', reason: '已嘗試傳送遮蔽摘要，服務失敗', disclosed: projection.disclosed } }
   }

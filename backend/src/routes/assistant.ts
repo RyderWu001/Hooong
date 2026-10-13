@@ -80,6 +80,8 @@ router.post('/ask', requireAuth, aiLimiter, async (req: AuthRequest, res) => {
       history: cleanHistory,
       mode: mode as 'local' | 'preview' | 'hybrid',
       role: req.user!.role,
+      userId: req.user!.id,
+      userEmail: req.user!.email,
     })
     res.json({ success: true, data: reply })
   } catch (e) {
