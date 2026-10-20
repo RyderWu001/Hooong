@@ -26,6 +26,7 @@ export interface AssistantReply {
 }
 
 export interface AssistantStatus {
+  insightsAllowed?: boolean
   templateAllowed?: boolean
   draftAllowed?: boolean
   enabled: boolean
@@ -102,3 +103,21 @@ export const enrichTemplateDraft = (token: string, signal: AbortSignal) => clien
 export const saveTemplateDraft = (token: string, draft: TemplateDraft) => client.post<{ data: { id: number; name: string } }>('/assistant/template-draft/confirm', { token, draft, reviewed: true, confirmed: true }, { timeout: 20000 }).then(r => r.data.data)
 
 export const supplementTemplateDraft = (token: string, draft: TemplateDraft) => client.post<{ data: TemplateReply }>('/assistant/template-draft/supplement', { token, draft }, { timeout: 10000 }).then(r => r.data.data)
+
+export interface InsightExperiment { id: number; code: string; date: string; templateName: string | null; hasResult: boolean }
+export interface InsightGroup { id: number; name: string; conditions: Record<string, unknown>; steps: string[] }
+export interface HistoryMatch {
+  id: number; code: string; date: string; score: number; reasons: string[]; differences: string[]; suggestions: string[]
+  templateName: string | null; formulaName: string | null; purpose: string
+  fields: { key: string; label: string; unit?: string }[]; groups: InsightGroup[]
+  result: { status: string; description: string; reflection: string; improvement: string; measurements: Record<string, number> } | null
+}
+export interface ResultAnalysis {
+  groupComparisons: { field: string; templateName: string; varies: boolean; values: { code: string; group: string; value: unknown }[] }[]
+  experiments: { id: number; code: string; date: string; templateName: string | null; groups: InsightGroup[]; resultDescription: string; status: string | null }[]
+  metrics: { dimension: string; points: { experimentId: number; code: string; date: string; value: number | null }[]; stats: { n: number; min: number; max: number; mean: number; sampleSd: number | null; dateChange: number | null; outliers: string[] } | null }[]
+  warnings: string[]; summary: string; engine: 'rules' | 'local'; modelNotice?: string
+}
+export const getInsightExperiments = () => client.get<{ data: InsightExperiment[] }>('/assistant/insight-experiments').then(r => r.data.data)
+export const findHistoryExperiments = (question: string, referenceId?: number) => client.post<{ data: { matches: HistoryMatch[]; searched: number; capped: boolean; notice: string } }>('/assistant/history-search', { question, referenceId }).then(r => r.data.data)
+export const analyzeExperimentResults = (experimentIds: number[], comparable: boolean, explain: boolean) => client.post<{ data: ResultAnalysis }>('/assistant/result-analysis', { experimentIds, comparable, explain }, { timeout: 25000 }).then(r => r.data.data)

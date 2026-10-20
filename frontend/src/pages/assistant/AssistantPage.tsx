@@ -15,6 +15,7 @@ import {
 } from '../../api/assistant'
 import styles from './AssistantPage.module.css'
 import TemplateAssistantPanel from './TemplateAssistantPanel'
+import ExperimentInsightsPanel from './ExperimentInsightsPanel'
 
 const { Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -34,7 +35,7 @@ export default function AssistantPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [mode, setMode] = useState<AssistantMode>('local')
-  const [task, setTask] = useState<'query' | 'experiment' | 'template'>('query')
+  const [task, setTask] = useState<'query' | 'experiment' | 'template' | 'history' | 'analysis'>('query')
   const [completionLevel, setCompletionLevel] = useState<'faithful' | 'common'>('common')
   const [reviewedSuggestions, setReviewedSuggestions] = useState(false)
   const [draft, setDraft] = useState<ExperimentDraftReply | null>(null)
@@ -132,6 +133,8 @@ export default function AssistantPage() {
           <Select aria-label="助理操作" value={task} disabled={loading} style={{ width: 190 }}
             onChange={value => { setTask(value); reset() }} options={[
               { value: 'query', label: '查詢與分析資料' },
+              { value: 'history', label: '參考過往實驗', disabled: !status?.insightsAllowed },
+              { value: 'analysis', label: '結果摘要與比較', disabled: !status?.insightsAllowed },
               { value: 'template', label: '快速建立實驗範本', disabled: !status?.templateAllowed },
               { value: 'experiment', label: '建立實驗與補全', disabled: !status?.draftAllowed },
             ]} />
@@ -139,7 +142,7 @@ export default function AssistantPage() {
             onChange={setCompletionLevel} options={[
               { value: 'common', label: '依常識詳細補全' }, { value: 'faithful', label: '只整理已提供內容' },
             ]} />}
-          {task !== 'template' && <><Text>處理模式</Text>
+          {(task === 'query' || task === 'experiment') && <><Text>處理模式</Text>
           <Select aria-label="AI 處理模式" value={task === 'experiment' ? 'local' : mode} disabled={loading || task === 'experiment'} style={{ width: 225 }}
             onChange={(value) => { setMode(value); reset() }} options={[
               { value: 'local', label: '本地模型' },
@@ -149,11 +152,11 @@ export default function AssistantPage() {
           {task === 'template' && <Tag color="purple">自動選擇本地／雲端</Tag>}
         </Space>
         <div style={{ marginTop: 8 }}>
-          <Text type="secondary">{task === 'template' ? '先產生可編輯基本範本，再補充量測條件與步驟；雲端僅接收通用主題與目標。確認後才儲存。' : task === 'experiment' ? '描述產品、流程與變因。詳細補全可建議條件、步驟、設備及觀察項目，並標示 AI 建議；可用對話修改。請核對實際可用設備、材料與條件，確認後才會儲存。' : mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '先在本機辨識需求並查詢，顯示遮蔽後摘要；不會傳送到雲端。' : `送出後，允許的排名、庫存缺口或成本變動百分比將傳至 ${status?.cloudHost}；名稱與配方明細留在本機。多輪與其他需求使用本地模型。`}</Text>
+          <Text type="secondary">{task === 'history' || task === 'analysis' ? '查詢、比對與計算在本機執行；本機 AI 可協助挑選結果重點。原始資料不送至雲端。' : task === 'template' ? '先產生可編輯基本範本，再補充量測條件與步驟；雲端僅接收通用主題與目標。確認後才儲存。' : task === 'experiment' ? '描述產品、流程與變因。詳細補全可建議條件、步驟、設備及觀察項目，並標示 AI 建議；可用對話修改。請核對實際可用設備、材料與條件，確認後才會儲存。' : mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '先在本機辨識需求並查詢，顯示遮蔽後摘要；不會傳送到雲端。' : `送出後，允許的排名、庫存缺口或成本變動百分比將傳至 ${status?.cloudHost}；名稱與配方明細留在本機。多輪與其他需求使用本地模型。`}</Text>
           {!status?.cloudReady && status?.hybridAllowed && <div><Text type="secondary">雲端尚未啟用，可先使用遮蔽預覽。</Text></div>}
         </div>
       </div>
-      {task === 'template' ? <TemplateAssistantPanel /> : <>
+      {task === 'history' || task === 'analysis' ? <ExperimentInsightsPanel key={task} task={task} /> : task === 'template' ? <TemplateAssistantPanel /> : <>
       <div className={styles.thread}>
         {messages.length === 0 ? (
           <div className={styles.intro}>
