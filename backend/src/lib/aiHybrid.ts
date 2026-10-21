@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import { toolsForRole } from './aiTools'
 import { askAssistant, type AssistantReply, type ChatTurn } from './aiAssistant'
-import { isCloudTool, projectCloudData, restoreAliases } from './aiPrivacy'
+import { formatTemplateAnswer, isCloudTool, projectCloudData, restoreAliases } from './aiPrivacy'
 import { logCloudDisclosure } from './aiCloudAuditLog'
 
 export type HybridMode = 'local' | 'preview' | 'hybrid'
@@ -60,8 +60,14 @@ export async function askHybrid(opts: { question: string; role: string; userId: 
   let raw: unknown
   try { raw = await plan.spec.run(plan.input) } catch { return { answer: '資料查詢失敗，請稍後再試。', toolCalls: [], usage: { inputTokens: 0, outputTokens: 0 }, routing: { engine: 'local', reason: '查詢失敗，未傳送資料', disclosed: [] } } }
   if (raw && typeof raw === 'object' && 'error' in raw) return { answer: '查無可分析的資料，請確認查詢條件。', toolCalls: [{ name: plan.tool, input: plan.input }], usage: { inputTokens: 0, outputTokens: 0 }, routing: { engine: 'local', reason: '查詢沒有結果，未傳送資料', disclosed: [] } }
-  const projection = projectCloudData(plan.tool, raw)
   const toolCalls = [{ name: plan.tool, input: plan.input }]
+  // 這幾個工具的結果已經是算好的結構化數字，直接用程式造句即可；不需要任何模型，資料也完全不離開伺服器。
+  const templated = formatTemplateAnswer(plan.tool, raw, plan.input)
+  if (templated !== null) return {
+    answer: templated, toolCalls, usage: { inputTokens: 0, outputTokens: 0 },
+    routing: { engine: 'local', reason: '結構化資料由程式直接產生答案，未呼叫任何模型，資料也未送出', disclosed: [] },
+  }
+  const projection = projectCloudData(plan.tool, raw)
   if (opts.mode === 'preview' || !cloudReady()) return {
     answer: '已在本機完成查詢與遮蔽，尚未送出。下方顯示雲端可接收的資料；原始問題、歷史對話與名稱不會傳送。',
     toolCalls, usage: { inputTokens: 0, outputTokens: 0 },

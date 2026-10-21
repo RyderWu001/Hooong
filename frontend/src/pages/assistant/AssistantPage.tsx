@@ -144,13 +144,12 @@ export default function AssistantPage() {
             onChange={(value) => { setMode(value); reset() }} options={[
               { value: 'local', label: '本地模型' },
               { value: 'preview', label: '遮蔽預覽（不傳送）', disabled: !status?.hybridAllowed },
-              { value: 'hybrid', label: '自動分流（本地＋雲端）', disabled: !status?.cloudReady || !status?.hybridAllowed },
+              { value: 'hybrid', label: '自動分流（本地＋雲端）', disabled: !status?.hybridAllowed },
             ]} /></>}
           {task === 'template' && <Tag color="purple">自動選擇本地／雲端</Tag>}
         </Space>
         <div style={{ marginTop: 8 }}>
-          <Text type="secondary">{task === 'template' ? '先產生可編輯基本範本，再補充量測條件與步驟；雲端僅接收通用主題與目標。確認後才儲存。' : task === 'experiment' ? '描述產品、流程與變因。詳細補全可建議條件、步驟、設備及觀察項目，並標示 AI 建議；可用對話修改。請核對實際可用設備、材料與條件，確認後才會儲存。' : mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '先在本機辨識需求並查詢，顯示遮蔽後摘要；不會傳送到雲端。' : `送出後，允許的排名、庫存缺口或成本變動百分比將傳至 ${status?.cloudHost}；名稱與配方明細留在本機。多輪與其他需求使用本地模型。`}</Text>
-          {!status?.cloudReady && status?.hybridAllowed && <div><Text type="secondary">雲端尚未啟用，可先使用遮蔽預覽。</Text></div>}
+          <Text type="secondary">{task === 'template' ? '先產生可編輯基本範本，再補充量測條件與步驟；雲端僅接收通用主題與目標。確認後才儲存。' : task === 'experiment' ? '描述產品、流程與變因。詳細補全可建議條件、步驟、設備及觀察項目，並標示 AI 建議；可用對話修改。請核對實際可用設備、材料與條件，確認後才會儲存。' : mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '庫存、成本排行、漲跌價試算這類問題會直接由程式算出答案，不呼叫任何模型，也不會傳送到任何地方；其他問題顯示遮蔽後摘要供確認，一樣不會傳送。' : `庫存、成本排行、漲跌價試算這類問題會直接由程式算出答案，不呼叫任何模型，也不會傳送到任何地方；其他問題才會視設定傳送遮蔽後摘要至 ${status?.cloudHost}，或退回本地模型處理。`}</Text>
         </div>
       </div>
       {task === 'template' ? <TemplateAssistantPanel /> : <>

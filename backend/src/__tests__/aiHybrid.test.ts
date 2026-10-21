@@ -1,9 +1,10 @@
 import { beforeEach, expect, it, vi } from 'vitest'
-const m=vi.hoisted(()=>({completion:vi.fn(),local:vi.fn(),tools:vi.fn(),run:vi.fn(),logCloudDisclosure:vi.fn()}))
+const m=vi.hoisted(()=>({completion:vi.fn(),local:vi.fn(),tools:vi.fn(),run:vi.fn(),logCloudDisclosure:vi.fn(),formatTemplateAnswer:vi.fn()}))
 vi.mock('openai',()=>({default:class{chat={completions:{create:m.completion}}}}))
 vi.mock('../lib/aiTools',()=>({toolsForRole:m.tools}))
 vi.mock('../lib/aiAssistant',()=>({askAssistant:m.local}))
 vi.mock('../lib/aiCloudAuditLog',()=>({logCloudDisclosure:m.logCloudDisclosure}))
+vi.mock('../lib/aiPrivacy', async (importOriginal) => ({ ...(await importOriginal<typeof import('../lib/aiPrivacy')>()), formatTemplateAnswer: m.formatTemplateAnswer }))
 import { askHybrid } from '../lib/aiHybrid'
 import { z } from 'zod'
 const user={userId:1,userEmail:'admin@test.com'}
@@ -12,6 +13,9 @@ beforeEach(()=>{
  m.local.mockResolvedValue({answer:'local',toolCalls:[],usage:{inputTokens:0,outputTokens:0}})
  m.run.mockResolvedValue({formulas:[{name:'secret',code:'PRIVATE',costPerKg:123}]})
  m.tools.mockResolvedValue([{name:'rank_formula_cost',inputSchema:z.object({order:z.enum(['asc','desc']),limit:z.number()}),run:m.run}])
+ // 這些既有測試在驗證「真的送雲端那條路徑」本身的行為，用 null 模擬「這個工具還沒有模板」，
+ // 讓它們不受下面新增的範本短路邏輯影響；範本本身的行為另外用專屬測試驗證（見檔案最後）。
+ m.formatTemplateAnswer.mockReturnValue(null)
 })
 it('preview queries locally and makes no cloud request',async()=>{
  const r=await askHybrid({question:'配方成本排行',role:'ADMIN',mode:'preview',...user})
@@ -51,4 +55,21 @@ it('logs a durable audit record when data actually reaches the cloud, success or
 it('preview mode never writes an audit record since nothing was sent',async()=>{
  await askHybrid({question:'配方成本排行',role:'ADMIN',mode:'preview',...user})
  expect(m.logCloudDisclosure).not.toHaveBeenCalled()
+})
+
+// ── 範本短路：結構化工具直接用程式造句，不呼叫任何模型 ──────────────────────
+it('a tool with a template answers locally without ever touching the model or the network',async()=>{
+ const { formatTemplateAnswer } = await vi.importActual<typeof import('../lib/aiPrivacy')>('../lib/aiPrivacy')
+ m.formatTemplateAnswer.mockImplementation(formatTemplateAnswer)
+ vi.stubEnv('AI_CLOUD_ENABLED','yes');vi.stubEnv('AI_CLOUD_BASE_URL','https://example.test/v1');vi.stubEnv('AI_CLOUD_MODEL','test');vi.stubEnv('AI_CLOUD_API_KEY','test')
+ const r=await askHybrid({question:'配方成本排行',role:'ADMIN',mode:'hybrid',...user})
+ expect(r.routing.engine).toBe('local');expect(r.answer).toContain('secret');expect(r.answer).toContain('123')
+ expect(m.completion).not.toHaveBeenCalled();expect(m.logCloudDisclosure).not.toHaveBeenCalled()
+ expect(r.usage).toEqual({inputTokens:0,outputTokens:0})
+})
+it('template short-circuit applies in preview mode too, before the preview/cloud branch runs',async()=>{
+ const { formatTemplateAnswer } = await vi.importActual<typeof import('../lib/aiPrivacy')>('../lib/aiPrivacy')
+ m.formatTemplateAnswer.mockImplementation(formatTemplateAnswer)
+ const r=await askHybrid({question:'配方成本排行',role:'ADMIN',mode:'preview',...user})
+ expect(r.routing.engine).toBe('local')
 })
