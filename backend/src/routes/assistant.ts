@@ -15,7 +15,10 @@ import { generateDraft, confirmDraft, DraftError } from '../lib/experimentDraft'
 
 import { prepareTemplate, enrichTemplate, saveTemplate, supplementTemplate } from '../lib/templateDraft'
 
+import insightsRouter from './assistantInsights'
+
 const router = Router()
+router.use(insightsRouter)
 
 /**
  * GET /assistant/status — 前端用來判斷是否顯示 AI 功能，以及有哪些工具可用
@@ -26,6 +29,7 @@ router.get('/status', requireAuth, async (req: AuthRequest, res) => {
     success: true,
     data: {
       enabled,
+      insightsAllowed: await hasPermission(req.user!.role, 'experiments', 'view') && await hasPermission(req.user!.role, 'results', 'view'),
       templateAllowed: req.user!.role === 'ADMIN',
       draftAllowed: ['ADMIN', 'LAB_STAFF'].includes(req.user!.role) && await hasPermission(req.user!.role, 'experiments', 'create'),
       cloudReady: cloudReady(),
