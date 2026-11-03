@@ -1,3 +1,4 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
@@ -7,7 +8,7 @@ const router = Router()
 validateNumericParams(router)
 
 // GET /traceability/formula/:id — 配方版本溯源
-router.get('/formula/:id', requireAuth, async (req, res) => {
+router.get('/formula/:id', requireAuth, requirePermission('traceability', 'view'), async (req, res) => {
   const id = Number(req.params.id)
   const formula = await prisma.formula.findUnique({
     where: { id },
@@ -55,7 +56,7 @@ router.get('/formula/:id', requireAuth, async (req, res) => {
 })
 
 // GET /traceability/ingredient/:id — 原料全面追溯（1.6.1~1.6.5）
-router.get('/ingredient/:id', requireAuth, async (req, res) => {
+router.get('/ingredient/:id', requireAuth, requirePermission('traceability', 'view'), async (req, res) => {
   const id = Number(req.params.id)
 
   const ingredient = await prisma.ingredient.findUnique({

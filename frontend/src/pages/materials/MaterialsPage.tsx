@@ -1,3 +1,4 @@
+import { usePermissions } from '../../hooks/usePermission'
 import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -30,7 +31,6 @@ import type {
   Ingredient, IngredientDocument, IngredientBatch,
   MaterialInventory, MaterialTransaction, MaterialTraceability, TransactionType,
 } from '../../types'
-import { useAuthStore } from '../../stores/authStore'
 import DropdownSelect from '../../components/DropdownSelect'
 import ApprovalChain from '../../components/ApprovalChain'
 import { getFormSignatures, getFormSignatureCounts } from '../../api/formSignatures'
@@ -716,8 +716,7 @@ function IngredientDetailDrawer({
       render: (_: unknown, row: IngredientDocument) => (
         <Space>
           <Button size="small" icon={<DownloadOutlined />} href={row.fileUrl} target="_blank">下載</Button>
-          {canEdit && (
-            <Popconfirm title="確定刪除此文件？" onConfirm={() => handleDeleteDoc(row.id)}>
+          {canEdit && (<Popconfirm title="確定刪除此文件？" onConfirm={() => handleDeleteDoc(row.id)}>
               <Button size="small" danger icon={<DeleteOutlined />} />
             </Popconfirm>
           )}
@@ -1010,8 +1009,10 @@ function IngredientDetailDrawer({
 // ─── Tab 1：原料資料維護 ───────────────────────────────────────────────────────
 
 function IngredientTab() {
-  const { user } = useAuthStore()
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const { can } = usePermissions()
+  const canEdit = can('materials', 'edit')
+  const canCreate = can('materials', 'create')
+  const canDelete = can('materials', 'delete')
   const [data, setData] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
@@ -1132,11 +1133,10 @@ function IngredientTab() {
           {canEdit && (
             <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>
           )}
-          {canEdit && (
+          {canCreate && (
             <Button size="small" icon={<CopyOutlined />} onClick={() => openCopy(row)}>複製</Button>
           )}
-          {canEdit && (
-            <Popconfirm title="確定刪除？" onConfirm={() => handleDelete(row.id)}>
+          {canDelete && (<Popconfirm title="確定刪除？" onConfirm={() => handleDelete(row.id)}>
               <Button size="small" danger icon={<DeleteOutlined />} />
             </Popconfirm>
           )}
@@ -1148,7 +1148,7 @@ function IngredientTab() {
   return (
     <>
       <Space style={{ marginBottom: 16 }}>
-        {canEdit && (
+        {canCreate && (
           <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增原料</Button>
         )}
         <Input.Search
@@ -1293,8 +1293,10 @@ function IngredientTab() {
 // ─── Tab 2：庫存管理 ──────────────────────────────────────────────────────────
 
 function InventoryTab() {
-  const { user } = useAuthStore()
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const { can } = usePermissions()
+  const canEdit = can('materials', 'edit')
+  const canCreate = can('materials', 'create')
+  const canDelete = can('materials', 'delete')
   const [data, setData] = useState<MaterialInventory[]>([])
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(false)
@@ -1344,7 +1346,9 @@ function InventoryTab() {
       message.success('庫存已調整')
       setAdjustTarget(null)
       load()
-    } catch { message.error('調整失敗') }
+    } catch (error) {
+      message.error((error as { response?: { data?: { error?: { message?: string } } } }).response?.data?.error?.message ?? '調整失敗')
+    }
   }
 
   const openEdit = (row: MaterialInventory) => {
@@ -1371,13 +1375,13 @@ function InventoryTab() {
       title: '最後更新', dataIndex: 'lastUpdated', key: 'lastUpdated', width: 170,
       render: (v: string) => dayjs(v).format('YYYY-MM-DD HH:mm'),
     },
-    ...(canEdit ? [{
+    ...(canEdit || canDelete ? [{
       title: '操作', key: 'action', width: 160,
       render: (_: unknown, row: MaterialInventory) => (
         <Space>
-          <Button size="small" icon={<InboxOutlined />} onClick={() => setAdjustTarget(row)}>調整</Button>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>
-          <Popconfirm title="確定刪除？" onConfirm={async () => {
+          {canEdit && <Button size="small" icon={<InboxOutlined />} onClick={() => setAdjustTarget(row)}>調整</Button>}
+          {canEdit && <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>}
+          {canDelete && <Popconfirm title="確定刪除？" onConfirm={async () => {
             try {
               await deleteInventory(row.id); message.success('已刪除'); load()
             } catch (err: any) {
@@ -1385,7 +1389,7 @@ function InventoryTab() {
             }
           }}>
             <Button size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
+          </Popconfirm>}
         </Space>
       ),
     }] : []),
@@ -1396,7 +1400,7 @@ function InventoryTab() {
 
   return (
     <>
-      {canEdit && (
+      {canCreate && (
         <Button type="primary" icon={<PlusOutlined />} style={{ marginBottom: 16 }} onClick={() => { addForm.resetFields(); setAddOpen(true) }}>
           新增庫存紀錄
         </Button>

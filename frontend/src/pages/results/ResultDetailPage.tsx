@@ -1,3 +1,4 @@
+import { usePermissions } from '../../hooks/usePermission'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
@@ -8,7 +9,6 @@ import {
 import { UploadOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
 import { getResult, createResult, updateResult, uploadResultAttachment, deleteResultAttachment } from '../../api/results'
 import type { ExperimentResult, ResultStatus, Attachment, ScoreItem } from '../../types'
-import { useAuthStore } from '../../stores/authStore'
 import dayjs from 'dayjs'
 
 const { Text } = Typography
@@ -177,7 +177,7 @@ function ScoreEditor({
 
 export default function ResultDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const { user } = useAuthStore()
+  const { can } = usePermissions()
   const expId = Number(id)
   const [result, setResult] = useState<ExperimentResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -187,7 +187,8 @@ export default function ResultDetailPage() {
   const [form] = Form.useForm()
 
 
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const canEdit = can('results', 'edit')
+  const canCreate = can('results', 'create')
 
   const reload = async () => {
     try {
@@ -342,7 +343,7 @@ export default function ResultDetailPage() {
               )}
             </Space>
           </>
-        ) : canEdit ? (
+        ) : canCreate ? (
           <Form form={form} layout="vertical" onFinish={handleSave}>
             <Row gutter={16}>
               <Col span={8}>

@@ -1,7 +1,8 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import OpenAI from 'openai'
 import prisma from '../db/client'
-import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { validateNumericParams } from '../lib/query'
 import { aiLimiter } from '../middleware/rateLimit'
 
@@ -9,7 +10,7 @@ const router = Router()
 validateNumericParams(router)
 
 // GET /knowledge — 列表 + 搜尋
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('knowledge', 'view'), async (req, res) => {
   const { keyword, category, page = '1', limit = '20' } = req.query
   const p = Number(page), l = Number(limit)
 
@@ -42,7 +43,7 @@ router.get('/', requireAuth, async (req, res) => {
 })
 
 // GET /knowledge/categories — 所有分類列表
-router.get('/categories', requireAuth, async (_req, res) => {
+router.get('/categories', requireAuth, requirePermission('knowledge', 'view'), async (_req, res) => {
   const articles = await prisma.knowledgeArticle.findMany({
     select: { category: true },
     distinct: ['category'],
@@ -52,7 +53,7 @@ router.get('/categories', requireAuth, async (_req, res) => {
 })
 
 // GET /knowledge/:id
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, requirePermission('knowledge', 'view'), async (req, res) => {
   const article = await prisma.knowledgeArticle.findUnique({
     where: { id: Number(req.params.id) },
     include: { createdBy: { select: { username: true } } },
@@ -65,7 +66,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 })
 
 // POST /knowledge — 建立文章 (ADMIN / MANAGER)
-router.post('/', requireAuth, requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, res) => {
+router.post('/', requireAuth, requirePermission('knowledge', 'create'), async (req: AuthRequest, res) => {
   const { title, content, category, tags } = req.body
   const article = await prisma.knowledgeArticle.create({
     data: { title, content, category: category ?? '', tags: tags ?? '', createdById: req.user!.id },
@@ -75,7 +76,7 @@ router.post('/', requireAuth, requireRole('ADMIN', 'MANAGER'), async (req: AuthR
 })
 
 // PUT /knowledge/:id
-router.put('/:id', requireAuth, requireRole('ADMIN', 'MANAGER'), async (req, res) => {
+router.put('/:id', requireAuth, requirePermission('knowledge', 'edit'), async (req, res) => {
   const { title, content, category, tags } = req.body
   const article = await prisma.knowledgeArticle.update({
     where: { id: Number(req.params.id) },
@@ -86,13 +87,13 @@ router.put('/:id', requireAuth, requireRole('ADMIN', 'MANAGER'), async (req, res
 })
 
 // DELETE /knowledge/:id
-router.delete('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+router.delete('/:id', requireAuth, requirePermission('knowledge', 'delete'), async (req, res) => {
   await prisma.knowledgeArticle.delete({ where: { id: Number(req.params.id) } })
   res.json({ success: true })
 })
 
 // POST /knowledge/ai-chat — AI 問答（需要 ANTHROPIC_API_KEY）
-router.post('/ai-chat', requireAuth, aiLimiter, async (req, res) => {
+router.post('/ai-chat', requireAuth, requirePermission('knowledge', 'view'), aiLimiter, async (req, res) => {
   const { question, history = [] } = req.body
   if (!question?.trim()) {
     res.status(400).json({ success: false, error: { code: 'BAD_REQUEST', message: '請輸入問題' } })

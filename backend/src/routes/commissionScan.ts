@@ -1,3 +1,4 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import { uploadPdf } from '../middleware/upload'
 import { PDFParse } from 'pdf-parse'
@@ -128,7 +129,7 @@ export function parseCommissionPDF(rawText: string) {
   }
 }
 
-router.post('/', requireAuth, uploadPdf.single('pdf'), async (req, res) => {
+router.post('/', requireAuth, requirePermission('experiments', 'create'), uploadPdf.single('pdf'), async (req, res) => {
   const file = req.file
   if (!file) {
     res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '請上傳 PDF 檔案' } })

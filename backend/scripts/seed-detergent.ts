@@ -401,7 +401,7 @@ const SCENT_VARIANTS = [
   ['嬰兒爽身', '香精 嬰兒爽身 BB-101'], ['森林木質', '香精 森林木質 FW-455'],
 ] as const
 
-const FORMULA_STATUS = ['草稿', '審核中', '已發布', '已發布', '已發布', '已凍結'] as const
+const FORMULA_STATUS = ['DRAFT', 'REVIEWING', 'PUBLISHED', 'PUBLISHED', 'PUBLISHED', 'INACTIVE'] as const
 const FORMULA_TYPES = ['樣品', '實驗', '正式產品', '正式產品'] as const
 
 // ── 移除模式 ──────────────────────────────────────────────
@@ -628,7 +628,7 @@ async function main() {
         productType: line.productType,
         description: `${line.line}系列，${scentName}香型。適用於家用洗衣機與手洗，建議用量 ${rint(20, 60)} mL/次。`,
         status,
-        currentVersion: rint(1, 4),
+        currentVersion: 1,
       },
     })
     formulaIds.push({ id: formula.id, name: formula.name })
@@ -653,6 +653,13 @@ async function main() {
       })
       created++
       fiCount++
+    }
+    if (creator) {
+      const items = await prisma.formulaIngredient.findMany({ where: { formulaId: formula.id }, include: { ingredient: { select: { name: true, unitPrice: true } } } })
+      await prisma.formulaVersion.create({ data: {
+        formulaId: formula.id, version: 1, userId: creator.id, changeNote: '示範配方建立時快照',
+        ingredientsSnapshot: items.map(i => ({ ingredientId: i.ingredientId, ingredientName: i.ingredient.name, ratio: i.ratio, unit: i.unit, unitPrice: i.ingredient.unitPrice })),
+      } })
     }
   }
   console.log(`  ✓ 配方 ${formulaCount} 筆｜配方成分 ${fiCount} 筆`)

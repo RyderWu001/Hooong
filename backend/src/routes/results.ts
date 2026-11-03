@@ -1,3 +1,4 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
@@ -7,7 +8,7 @@ const router = Router()
 validateNumericParams(router)
 
 // GET /results  — 跨實驗的結果列表
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('results', 'view'), async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query, 20)
   const { experimentCode, formulaName, experimenterId, status, dateFrom, dateTo } = req.query
 

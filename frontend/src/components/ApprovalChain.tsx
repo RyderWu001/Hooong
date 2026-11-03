@@ -10,6 +10,7 @@ import {
   type FormSignatureRecord,
 } from '../api/formSignatures'
 import { useAuthStore } from '../stores/authStore'
+import { usePermissions } from '../hooks/usePermission'
 
 const { Text } = Typography
 
@@ -27,6 +28,7 @@ interface Props {
 
 export default function ApprovalChain({ formType, formId, onUpdate }: Props) {
   const { user } = useAuthStore()
+  const { can } = usePermissions()
   const chain = APPROVAL_CHAINS[formType] ?? []
   const [sigs, setSigs] = useState<FormSignatureRecord[]>([])
   const [loading, setLoading] = useState(false)
@@ -152,7 +154,7 @@ export default function ApprovalChain({ formType, formId, onUpdate }: Props) {
                   <div style={{ fontSize: 10, color: '#666' }}>
                     {dayjs(sig.signedAt!).format('YYYY-MM-DD HH:mm')}
                   </div>
-                  {sig.signedById === user?.id && (
+                  {can('forms', 'edit') && (sig.signedById === user?.id || user?.role === 'ADMIN') && (
                     <Popconfirm title="確定撤回此簽核？" onConfirm={() => handleRetract(sig)} okText="撤回" cancelText="取消">
                       <Button type="link" danger size="small" style={{ fontSize: 10, padding: '0 2px', height: 'auto', marginTop: 2 }}>
                         撤回
@@ -166,7 +168,7 @@ export default function ApprovalChain({ formType, formId, onUpdate }: Props) {
                     待簽核
                   </Tag>
                   <br />
-                  {user?.role && slot.roles.includes(user.role) ? (
+                  {can('forms', 'edit') && user?.role && (user.role === 'ADMIN' || slot.roles.includes(user.role)) ? (
                     <Button
                       type="primary"
                       size="small"

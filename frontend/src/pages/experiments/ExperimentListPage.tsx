@@ -1,3 +1,4 @@
+import { usePermissions } from '../../hooks/usePermission'
 import { useEffect, useState } from 'react'
 import { Table, Button, Input, Space, Card, DatePicker, Select, Form, Row, Col, message, Badge, Typography, Tag, Modal, Radio, Divider, Descriptions, Upload, Alert, Spin } from 'antd'
 import { PlusOutlined, SearchOutlined, ClearOutlined, BarChartOutlined, FileExcelOutlined, FilePdfOutlined, FileSyncOutlined, EditOutlined } from '@ant-design/icons'
@@ -12,7 +13,6 @@ import { formatConditionValue, getGroupConditions, resolveTemplate } from '../..
 import { getUsers } from '../../api/auth'
 import { useDropdownOptions } from '../../hooks/useDropdownOptions'
 import type { Experiment, Formula, User } from '../../types'
-import { useAuthStore } from '../../stores/authStore'
 import { exportToExcel } from '../../utils/exportExcel'
 import { exportToPdf } from '../../utils/exportPdf'
 import dayjs from 'dayjs'
@@ -37,7 +37,7 @@ interface Filters {
 
 export default function ExperimentListPage() {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { can } = usePermissions()
   const [form] = Form.useForm()
   const [data, setData] = useState<Experiment[]>([])
   const [loading, setLoading] = useState(false)
@@ -258,7 +258,7 @@ export default function ExperimentListPage() {
     setFilters({ page: 1, limit: 20 })
   }
 
-  const canCreate = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const canCreate = can('experiments', 'create')
 
   const formulaOptions = formulas.map((f) => ({ value: f.id, label: `${f.code} — ${f.name}` }))
   const staffOptions = users

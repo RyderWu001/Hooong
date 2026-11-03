@@ -1,3 +1,4 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
@@ -7,7 +8,7 @@ const router = Router()
 validateNumericParams(router)
 
 // GET /samples — 跨實驗全域樣品列表
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('samples', 'view'), async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query, 20)
   const { category, status, clientName, sampleCode } = req.query
 
@@ -44,7 +45,7 @@ router.get('/', requireAuth, async (req, res) => {
 })
 
 // GET /samples/:id
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, requirePermission('samples', 'view'), async (req, res) => {
   const s = await prisma.sample.findUnique({
     where: { id: Number(req.params.id) },
     include: {

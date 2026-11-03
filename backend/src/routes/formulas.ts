@@ -1,7 +1,9 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
 import { validateNumericParams, parsePagination } from '../lib/query'
+import { normalizeFormulaStatus } from '../lib/formulaIntegrity'
 
 const router = Router()
 validateNumericParams(router)
@@ -13,6 +15,7 @@ const formulaInclude = {
 function formatFormula(f: any) {
   return {
     ...f,
+    status: normalizeFormulaStatus(f.status) ?? f.status,
     ingredients: f.ingredients.map((fi: any) => ({
       ingredientId: fi.ingredientId,
       ingredientName: fi.ingredient.name,
@@ -34,7 +37,7 @@ function buildSnapshot(ingredients: any[]) {
 }
 
 // GET /formulas
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('formulas', 'view'), async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query, 20)
   const status = req.query.status as string | undefined
   const category = req.query.category as string | undefined
@@ -42,7 +45,11 @@ router.get('/', requireAuth, async (req, res) => {
   const name = req.query.name as string | undefined
 
   const where: any = {}
-  if (status) where.status = status
+  if (status) {
+    const normalized = normalizeFormulaStatus(status)
+    if (!normalized) { res.status(400).json({ success: false, error: { code: 'INVALID_STATUS', message: '配方狀態不正確' } }); return }
+    where.status = { in: [normalized, ...Object.entries({ 草稿: 'DRAFT', 審核中: 'REVIEWING', 已發布: 'PUBLISHED', 已凍結: 'INACTIVE' }).filter(([, value]) => value === normalized).map(([key]) => key)] }
+  }
   if (category) where.category = category
   if (formulaType) where.formulaType = formulaType
   if (name) where.name = { contains: name, mode: 'insensitive' }
@@ -55,18 +62,18 @@ router.get('/', requireAuth, async (req, res) => {
 })
 
 // GET /formulas/:id
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, requirePermission('formulas', 'view'), async (req, res) => {
   const f = await prisma.formula.findUnique({ where: { id: Number(req.params.id) }, include: formulaInclude })
   if (!f) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到配方' } }); return }
   res.json({ success: true, data: formatFormula(f) })
 })
 
 // POST /formulas
-router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
+router.post('/', requireAuth, requirePermission('formulas', 'create'), async (req: AuthRequest, res) => {
   const { code, name, category, formulaType, productType, description, ingredients } = req.body
   const f = await prisma.formula.create({
     data: {
-      code, name, category, formulaType, productType, description: description ?? '',
+      code, name, category, formulaType, productType, status: 'DRAFT', description: description ?? '',
       ingredients: {
         create: (ingredients ?? []).map((i: any) => ({
           ingredientId: i.ingredientId, ratio: i.ratio, unit: i.unit,
@@ -80,11 +87,14 @@ router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: Aut
 })
 
 // PUT /formulas/:id
-router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
+router.put('/:id', requireAuth, requirePermission('formulas', 'edit'), async (req: AuthRequest, res) => {
   const id = Number(req.params.id)
   const { name, category, formulaType, productType, description, status, ingredients, changeNote } = req.body
   const existing = await prisma.formula.findUnique({ where: { id } })
   if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到配方' } }); return }
+  if (status !== undefined && normalizeFormulaStatus(status) !== normalizeFormulaStatus(existing.status)) {
+    res.status(400).json({ success: false, error: { code: 'INVALID_STATUS', message: '請使用提交、核准、退回或封存功能變更狀態' } }); return
+  }
 
   const newVersion = existing.currentVersion + 1
   await prisma.formulaIngredient.deleteMany({ where: { formulaId: id } })
@@ -116,13 +126,13 @@ router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: A
 })
 
 // DELETE /formulas/:id  (soft delete)
-router.delete('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+router.delete('/:id', requireAuth, requirePermission('formulas', 'delete'), async (req, res) => {
   await prisma.formula.update({ where: { id: Number(req.params.id) }, data: { status: 'DELETED' } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // POST /formulas/:id/submit — 提交審核 (DRAFT → REVIEWING)
-router.post('/:id/submit', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
+router.post('/:id/submit', requireAuth, requirePermission('formulas', 'edit'), async (req: AuthRequest, res) => {
   const id = Number(req.params.id)
   const f = await prisma.formula.findUnique({ where: { id } })
   if (!f) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到配方' } }); return }
@@ -134,7 +144,7 @@ router.post('/:id/submit', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async
 })
 
 // POST /formulas/:id/approve — 核准 (REVIEWING → PUBLISHED)
-router.post('/:id/approve', requireAuth, requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, res) => {
+router.post('/:id/approve', requireAuth, requirePermission('formulas', 'view'), requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, res) => {
   const id = Number(req.params.id)
   const f = await prisma.formula.findUnique({ where: { id } })
   if (!f) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到配方' } }); return }
@@ -146,7 +156,7 @@ router.post('/:id/approve', requireAuth, requireRole('ADMIN', 'MANAGER'), async 
 })
 
 // POST /formulas/:id/reject — 退回 (REVIEWING → DRAFT)
-router.post('/:id/reject', requireAuth, requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, res) => {
+router.post('/:id/reject', requireAuth, requirePermission('formulas', 'view'), requireRole('ADMIN', 'MANAGER'), async (req: AuthRequest, res) => {
   const id = Number(req.params.id)
   const f = await prisma.formula.findUnique({ where: { id } })
   if (!f) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到配方' } }); return }
@@ -158,7 +168,7 @@ router.post('/:id/reject', requireAuth, requireRole('ADMIN', 'MANAGER'), async (
 })
 
 // POST /formulas/:id/archive — 封存 (PUBLISHED/ACTIVE → ARCHIVED)
-router.post('/:id/archive', requireAuth, requireRole('ADMIN'), async (req: AuthRequest, res) => {
+router.post('/:id/archive', requireAuth, requirePermission('formulas', 'delete'), async (req: AuthRequest, res) => {
   const id = Number(req.params.id)
   const f = await prisma.formula.findUnique({ where: { id } })
   if (!f) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到配方' } }); return }
@@ -170,7 +180,7 @@ router.post('/:id/archive', requireAuth, requireRole('ADMIN'), async (req: AuthR
 })
 
 // POST /formulas/:id/copy — 複製配方
-router.post('/:id/copy', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
+router.post('/:id/copy', requireAuth, requirePermission('formulas', 'create'), async (req: AuthRequest, res) => {
   const id = Number(req.params.id)
   const { newCode, newName } = req.body
 
@@ -207,7 +217,7 @@ router.post('/:id/copy', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (
 })
 
 // POST /formulas/:id/promote — 轉正式配方
-router.post('/:id/promote', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
+router.post('/:id/promote', requireAuth, requirePermission('formulas', 'edit'), async (req: AuthRequest, res) => {
   const id = Number(req.params.id)
   const existing = await prisma.formula.findUnique({ where: { id }, include: formulaInclude })
   if (!existing) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到配方' } }); return }
@@ -241,7 +251,7 @@ router.post('/:id/promote', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), asyn
 })
 
 // POST /formulas/:id/rollback — 回滾到指定版本
-router.post('/:id/rollback', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
+router.post('/:id/rollback', requireAuth, requirePermission('formulas', 'edit'), async (req: AuthRequest, res) => {
   const id = Number(req.params.id)
   const { version, changeNote } = req.body
 
@@ -285,7 +295,7 @@ router.post('/:id/rollback', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), asy
 })
 
 // GET /formulas/:id/versions
-router.get('/:id/versions', requireAuth, async (req, res) => {
+router.get('/:id/versions', requireAuth, requirePermission('formulas', 'view'), async (req, res) => {
   const versions = await prisma.formulaVersion.findMany({
     where: { formulaId: Number(req.params.id) },
     include: { createdBy: { select: { username: true } } },
@@ -295,7 +305,7 @@ router.get('/:id/versions', requireAuth, async (req, res) => {
 })
 
 // GET /formulas/:id/versions/:version
-router.get('/:id/versions/:version', requireAuth, async (req, res) => {
+router.get('/:id/versions/:version', requireAuth, requirePermission('formulas', 'view'), async (req, res) => {
   const v = await prisma.formulaVersion.findFirst({
     where: { formulaId: Number(req.params.id), version: Number(req.params.version) },
     include: { createdBy: { select: { username: true } } },
@@ -305,7 +315,7 @@ router.get('/:id/versions/:version', requireAuth, async (req, res) => {
 })
 
 // GET /formulas/:id/ingredients
-router.get('/:id/ingredients', requireAuth, async (req, res) => {
+router.get('/:id/ingredients', requireAuth, requirePermission('formulas', 'view'), async (req, res) => {
   const items = await prisma.formulaIngredient.findMany({
     where: { formulaId: Number(req.params.id) },
     include: { ingredient: true },

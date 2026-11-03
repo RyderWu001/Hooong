@@ -1,3 +1,4 @@
+import { usePermissions } from '../../hooks/usePermission'
 import { escapeDeep, openPrintWindow } from '../../utils/printDoc'
 import { useEffect, useState, useCallback } from 'react'
 import {
@@ -15,7 +16,6 @@ import {
 } from '../../api/suppliers'
 import { getIngredients } from '../../api/formulas'
 import type { Supplier, SupplierEvaluation, PurchaseRecord, EvaluationLevel, Ingredient, PurchaseStatus } from '../../types'
-import { useAuthStore } from '../../stores/authStore'
 
 const LEVEL_COLOR: Record<EvaluationLevel, string> = { A: 'green', B: 'blue', C: 'orange', D: 'red' }
 const PURCHASE_STATUS_COLOR = { PENDING: 'orange', DELIVERED: 'green', CANCELLED: 'red' }
@@ -141,8 +141,10 @@ const COMPLIANCE_ITEMS = [
 ]
 
 function SupplierTab() {
-  const { user } = useAuthStore()
-  const canEdit = user?.role === 'ADMIN'
+  const { can } = usePermissions()
+  const canEdit = can('suppliers', 'edit')
+  const canCreate = can('suppliers', 'create')
+  const canDelete = can('suppliers', 'delete')
   const [data, setData] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
@@ -223,13 +225,11 @@ function SupplierTab() {
       render: (_: unknown, row: Supplier) => (
         <Space>
           <Button size="small" icon={<FileTextOutlined />} onClick={() => openDetail(row)}>詳細資料</Button>
-          {canEdit && (
-            <>
-              <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>
+          {canEdit && <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>}
+          {canDelete && (
               <Popconfirm title="確定刪除？" onConfirm={async () => { await deleteSupplier(row.id); message.success('已刪除'); load() }}>
                 <Button size="small" danger icon={<DeleteOutlined />} />
               </Popconfirm>
-            </>
           )}
         </Space>
       ),
@@ -238,7 +238,7 @@ function SupplierTab() {
 
   return (
     <>
-      {canEdit && <Button type="primary" icon={<PlusOutlined />} style={{ marginBottom: 16 }} onClick={openAdd}>新增供應商</Button>}
+      {canCreate && <Button type="primary" icon={<PlusOutlined />} style={{ marginBottom: 16 }} onClick={openAdd}>新增供應商</Button>}
       <Table rowKey="id" loading={loading} columns={columns} dataSource={data} pagination={false} />
       <Modal open={modalOpen} title={editing ? '編輯供應商' : '新增供應商'} onCancel={() => setModalOpen(false)} onOk={() => form.submit()} destroyOnClose>
         <Form form={form} layout="vertical" onFinish={handleSave}>
@@ -346,8 +346,8 @@ function SupplierTab() {
 // ─── Tab 2：供應商評鑑 ────────────────────────────────────────────────────────
 
 function EvaluationTab() {
-  const { user } = useAuthStore()
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const { can } = usePermissions()
+  const canCreate = can('suppliers', 'create')
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [data, setData] = useState<SupplierEvaluation[]>([])
   const [loading, setLoading] = useState(false)
@@ -390,7 +390,7 @@ function EvaluationTab() {
   return (
     <>
       <Space style={{ marginBottom: 16 }}>
-        {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalOpen(true) }}>新增評鑑</Button>}
+        {canCreate && <Button type="primary" icon={<PlusOutlined />} onClick={() => { form.resetFields(); setModalOpen(true) }}>新增評鑑</Button>}
         <Select allowClear placeholder="篩選供應商" style={{ width: 200 }}
           options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
           onChange={(v) => setFilterSupplierId(v)} />
@@ -440,8 +440,9 @@ function EvaluationTab() {
 // ─── Tab 3：採購紀錄查詢 ──────────────────────────────────────────────────────
 
 function PurchaseTab() {
-  const { user } = useAuthStore()
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const { can } = usePermissions()
+  const canEdit = can('suppliers', 'edit')
+  const canCreate = can('suppliers', 'create')
   const [data, setData] = useState<PurchaseRecord[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -503,7 +504,7 @@ function PurchaseTab() {
   return (
     <>
       <Space wrap style={{ marginBottom: 16 }}>
-        {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => { addForm.resetFields(); setAddOpen(true) }}>新增採購單</Button>}
+        {canCreate && <Button type="primary" icon={<PlusOutlined />} onClick={() => { addForm.resetFields(); setAddOpen(true) }}>新增採購單</Button>}
         <Select allowClear placeholder="供應商" style={{ width: 180 }}
           options={suppliers.map((s) => ({ value: s.id, label: s.name }))}
           onChange={(v) => setFilters((f) => ({ ...f, supplierId: v, page: 1 }))} />

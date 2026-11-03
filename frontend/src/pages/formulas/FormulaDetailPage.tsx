@@ -1,3 +1,4 @@
+import { usePermissions } from '../../hooks/usePermission'
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -28,6 +29,7 @@ export default function FormulaDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const { can } = usePermissions()
   const [formula, setFormula] = useState<Formula | null>(null)
   const [versions, setVersions] = useState<FormulaVersion[]>([])
   const [loading, setLoading] = useState(true)
@@ -118,7 +120,8 @@ export default function FormulaDetailPage() {
   if (loading) return <Spin style={{ display: 'block', margin: '80px auto' }} />
   if (!formula) return null
 
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const canEdit = can('formulas', 'edit')
+  const canCreate = can('formulas', 'create')
   const isManagerOrAdmin = user?.role === 'ADMIN' || user?.role === 'MANAGER'
   const isTerminated = formula.status === 'DELETED' || formula.status === 'INACTIVE'
 
@@ -176,10 +179,10 @@ export default function FormulaDetailPage() {
       <Card
         title={`配方詳情 — ${formula.name}`}
         extra={
-          canEdit && (
+          (canEdit || canCreate) && (
             <Space>
-              <Button icon={<CopyOutlined />} onClick={() => setCopyOpen(true)}>複製</Button>
-              {formula.status !== 'DELETED' && (
+              {canCreate && <Button icon={<CopyOutlined />} onClick={() => setCopyOpen(true)}>複製</Button>}
+              {canEdit && formula.status !== 'DELETED' && (
                 <Button icon={<EditOutlined />} type="primary" onClick={() => navigate(`/formulas/${id}/edit`)}>編輯</Button>
               )}
             </Space>
