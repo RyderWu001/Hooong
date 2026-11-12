@@ -1,8 +1,10 @@
+import { requireExperimentScope } from '../middleware/experimentScope'
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import { Prisma } from '@prisma/client'
 import prisma from '../db/client'
 import { uploadToStorage } from '../db/storage'
-import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { validateNumericParams, parsePagination } from '../lib/query'
 
 import { upload } from '../middleware/upload'
@@ -41,7 +43,7 @@ function formatExp(e: any) {
 
 // ── Experiments ──────────────────────────────────────────────────────────────
 
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('experiments', 'view'), requireExperimentScope, async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query, 20)
   const { code, formulaId, experimenterId, dateFrom, dateTo, category } = req.query
 
@@ -63,13 +65,13 @@ router.get('/', requireAuth, async (req, res) => {
   res.json({ success: true, data: data.map(formatExp), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })
 })
 
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, requirePermission('experiments', 'view'), requireExperimentScope, async (req, res) => {
   const e = await prisma.experiment.findUnique({ where: { id: Number(req.params.id) }, include: EXP_INCLUDE })
   if (!e) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到實驗' } }); return }
   res.json({ success: true, data: formatExp(e) })
 })
 
-router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
+router.post('/', requireAuth, requirePermission('experiments', 'create'), requireExperimentScope, async (req: AuthRequest, res) => {
   const {
     code, formulaId, templateId, experimenterId, experimentDate, category, temperature, humidity, notes,
     clientCompany, fabricCode, clientContact, commissionType,
@@ -102,7 +104,7 @@ router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: Aut
   res.status(201).json({ success: true, data: formatExp(e) })
 })
 
-router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.put('/:id', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   const {
     templateId, category, temperature, humidity, notes, experimentDate,
     clientCompany, fabricCode, clientContact, commissionType,
@@ -133,7 +135,7 @@ router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, r
   res.json({ success: true, data: formatExp(e) })
 })
 
-router.patch('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.patch('/:id', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   const {
     templateId, category, temperature, humidity, notes, experimentDate,
     clientCompany, fabricCode, clientContact, commissionType,
@@ -164,14 +166,14 @@ router.patch('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req,
   res.json({ success: true, data: formatExp(e) })
 })
 
-router.delete('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+router.delete('/:id', requireAuth, requirePermission('experiments', 'delete'), requireExperimentScope, async (req, res) => {
   await prisma.experiment.delete({ where: { id: Number(req.params.id) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Groups ───────────────────────────────────────────────────────────────────
 
-router.get('/:id/groups', requireAuth, async (req, res) => {
+router.get('/:id/groups', requireAuth, requirePermission('experiments', 'view'), requireExperimentScope, async (req, res) => {
   const groups = await prisma.experimentGroup.findMany({
     where: { experimentId: Number(req.params.id) },
     orderBy: { groupOrder: 'asc' },
@@ -180,7 +182,7 @@ router.get('/:id/groups', requireAuth, async (req, res) => {
   res.json({ success: true, data: groups })
 })
 
-router.post('/:id/groups', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.post('/:id/groups', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   const experimentId = Number(req.params.id)
   const { name, groupOrder, conditions, experimentType, bathRatio, startPH, endPH, acidMethod, tempRate, holdTime,
     burningCondition, washCondition, dyeAuxiliaries,
@@ -223,7 +225,7 @@ router.post('/:id/groups', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async
   res.status(201).json({ success: true, data: g })
 })
 
-router.put('/:id/groups/:gid', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.put('/:id/groups/:gid', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   const { name, conditions, experimentType, bathRatio, startPH, endPH, acidMethod, tempRate, holdTime,
     burningCondition, washCondition, dyeAuxiliaries,
     leveler, fixer, calciumChloride, colorFixative, dyeCombination, dyeAmount,
@@ -265,7 +267,7 @@ router.put('/:id/groups/:gid', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), a
 })
 
 // 標記成功組（exclusive：同一實驗只能有一組成功）
-router.patch('/:id/groups/:gid/success', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.patch('/:id/groups/:gid/success', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   const experimentId = Number(req.params.id)
   const groupId = Number(req.params.gid)
   const { isSuccess } = req.body as { isSuccess: boolean }
@@ -289,14 +291,14 @@ router.patch('/:id/groups/:gid/success', requireAuth, requireRole('ADMIN', 'LAB_
   res.json({ success: true, data: updated ? formatExp(updated) : null })
 })
 
-router.delete('/:id/groups/:gid', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/:id/groups/:gid', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   await prisma.experimentGroup.delete({ where: { id: Number(req.params.gid) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Group Steps ──────────────────────────────────────────────────────────────
 
-router.post('/:id/groups/:gid/steps', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.post('/:id/groups/:gid/steps', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   const groupId = Number(req.params.gid)
   const { description, stepOrder, notes, isHighlight } = req.body
   const count = await prisma.experimentGroupStep.count({ where: { groupId } })
@@ -312,7 +314,7 @@ router.post('/:id/groups/:gid/steps', requireAuth, requireRole('ADMIN', 'LAB_STA
   res.status(201).json({ success: true, data: step })
 })
 
-router.put('/:id/groups/:gid/steps', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.put('/:id/groups/:gid/steps', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   const steps: { id: number; stepOrder: number; description: string; notes?: string; isHighlight?: boolean }[] = req.body.steps
   await prisma.$transaction(steps.map((s) =>
     prisma.experimentGroupStep.update({
@@ -333,14 +335,14 @@ router.put('/:id/groups/:gid/steps', requireAuth, requireRole('ADMIN', 'LAB_STAF
   res.json({ success: true, data: updated })
 })
 
-router.delete('/:id/groups/:gid/steps/:stepId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/:id/groups/:gid/steps/:stepId', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   await prisma.experimentGroupStep.delete({ where: { id: Number(req.params.stepId) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Step Attachments ──────────────────────────────────────────────────────────
 
-router.post('/:id/groups/:gid/steps/:sid/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+router.post('/:id/groups/:gid/steps/:sid/attachments', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, upload.single('file'), async (req, res) => {
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
   const { fileType } = req.body
   const fileUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
@@ -355,14 +357,14 @@ router.post('/:id/groups/:gid/steps/:sid/attachments', requireAuth, requireRole(
   res.status(201).json({ success: true, data: a })
 })
 
-router.delete('/:id/groups/:gid/steps/:sid/attachments/:aid', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/:id/groups/:gid/steps/:sid/attachments/:aid', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   await prisma.attachment.delete({ where: { id: Number(req.params.aid) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Group Attachments ─────────────────────────────────────────────────────────
 
-router.post('/:id/groups/:gid/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+router.post('/:id/groups/:gid/attachments', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, upload.single('file'), async (req, res) => {
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
   const { fileType, imageCategory } = req.body
   const fileUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
@@ -378,25 +380,25 @@ router.post('/:id/groups/:gid/attachments', requireAuth, requireRole('ADMIN', 'L
   res.status(201).json({ success: true, data: a })
 })
 
-router.delete('/:id/groups/:gid/attachments/:attId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/:id/groups/:gid/attachments/:attId', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   await prisma.attachment.delete({ where: { id: Number(req.params.attId) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Samples ───────────────────────────────────────────────────────────────────
 
-router.get('/:id/samples', requireAuth, async (req, res) => {
+router.get('/:id/samples', requireAuth, requirePermission('samples', 'view'), requireExperimentScope, async (req, res) => {
   const samples = await prisma.sample.findMany({ where: { experimentId: Number(req.params.id) } })
   res.json({ success: true, data: samples })
 })
 
-router.get('/:id/samples/:sampleId', requireAuth, async (req, res) => {
+router.get('/:id/samples/:sampleId', requireAuth, requirePermission('samples', 'view'), requireExperimentScope, async (req, res) => {
   const s = await prisma.sample.findUnique({ where: { id: Number(req.params.sampleId) } })
   if (!s) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到樣品' } }); return }
   res.json({ success: true, data: s })
 })
 
-router.post('/:id/samples', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.post('/:id/samples', requireAuth, requirePermission('samples', 'create'), requireExperimentScope, async (req, res) => {
   const { sampleCode, sampleType, clientName, label, targetItem, sampleDate, quantity, notes,
     category, attribute, industry, status, groupId,
     retentionDate, retentionPeriod, retentionLocation, storageCondition } = req.body
@@ -420,7 +422,7 @@ router.post('/:id/samples', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), asyn
   res.status(201).json({ success: true, data: s })
 })
 
-router.patch('/:id/samples/:sampleId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.patch('/:id/samples/:sampleId', requireAuth, requirePermission('samples', 'edit'), requireExperimentScope, async (req, res) => {
   const { sampleType, clientName, label, targetItem, notes, quantity, category, attribute,
     industry, status, groupId, retentionDate, retentionPeriod, retentionLocation, storageCondition } = req.body
   const s = await prisma.sample.update({
@@ -440,24 +442,24 @@ router.patch('/:id/samples/:sampleId', requireAuth, requireRole('ADMIN', 'LAB_ST
   res.json({ success: true, data: s })
 })
 
-router.post('/:id/samples/:sampleId/photo', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+router.post('/:id/samples/:sampleId/photo', requireAuth, requirePermission('samples', 'edit'), requireExperimentScope, upload.single('file'), async (req, res) => {
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
   const photoUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
   const s = await prisma.sample.update({ where: { id: Number(req.params.sampleId) }, data: { photoUrl } })
   res.json({ success: true, data: s })
 })
 
-router.delete('/:id/samples/:sampleId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/:id/samples/:sampleId', requireAuth, requirePermission('samples', 'delete'), requireExperimentScope, async (req, res) => {
   await prisma.sample.delete({ where: { id: Number(req.params.sampleId) } })
   res.json({ success: true, message: '已刪除' })
 })
 
-router.get('/:id/samples/:sampleId/attachments', requireAuth, async (req, res) => {
+router.get('/:id/samples/:sampleId/attachments', requireAuth, requirePermission('samples', 'view'), requireExperimentScope, async (req, res) => {
   const attachments = await prisma.attachment.findMany({ where: { sampleId: Number(req.params.sampleId) } })
   res.json({ success: true, data: attachments })
 })
 
-router.post('/:id/samples/:sampleId/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+router.post('/:id/samples/:sampleId/attachments', requireAuth, requirePermission('samples', 'edit'), requireExperimentScope, upload.single('file'), async (req, res) => {
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
   const { fileType } = req.body
   const fileUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
@@ -471,19 +473,19 @@ router.post('/:id/samples/:sampleId/attachments', requireAuth, requireRole('ADMI
   res.status(201).json({ success: true, data: a })
 })
 
-router.delete('/:id/samples/:sampleId/attachments/:attachmentId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/:id/samples/:sampleId/attachments/:attachmentId', requireAuth, requirePermission('samples', 'edit'), requireExperimentScope, async (req, res) => {
   await prisma.attachment.delete({ where: { id: Number(req.params.attachmentId) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Experiment-level Attachments ──────────────────────────────────────────────
 
-router.get('/:id/attachments', requireAuth, async (req, res) => {
+router.get('/:id/attachments', requireAuth, requirePermission('experiments', 'view'), requireExperimentScope, async (req, res) => {
   const attachments = await prisma.attachment.findMany({ where: { experimentId: Number(req.params.id) } })
   res.json({ success: true, data: attachments })
 })
 
-router.post('/:id/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+router.post('/:id/attachments', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, upload.single('file'), async (req, res) => {
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
   const { fileType, imageCategory } = req.body
   const fileUrl = await uploadToStorage(req.file.buffer, req.file.originalname, req.file.mimetype)
@@ -498,14 +500,14 @@ router.post('/:id/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), 
   res.status(201).json({ success: true, data: a })
 })
 
-router.delete('/:id/attachments/:attachmentId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/:id/attachments/:attachmentId', requireAuth, requirePermission('experiments', 'edit'), requireExperimentScope, async (req, res) => {
   await prisma.attachment.delete({ where: { id: Number(req.params.attachmentId) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Result ────────────────────────────────────────────────────────────────────
 
-router.get('/:id/result', requireAuth, async (req, res) => {
+router.get('/:id/result', requireAuth, requirePermission('results', 'view'), requireExperimentScope, async (req, res) => {
   const r = await prisma.experimentResult.findUnique({
     where: { experimentId: Number(req.params.id) }, include: { attachments: true },
   })
@@ -514,7 +516,7 @@ router.get('/:id/result', requireAuth, async (req, res) => {
   res.json({ success: true, data: { ...r, experimentCode: exp?.code, formulaName: exp?.formula?.name ?? '—', experimenterName: exp?.experimenter.username } })
 })
 
-router.post('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.post('/:id/result', requireAuth, requirePermission('results', 'create'), requireExperimentScope, async (req, res) => {
   const experimentId = Number(req.params.id)
   const { status, score, handFeelScore, colorShadeScore, fastnessScore, moistureScore,
     otherScoreName, otherScore, description, reflection, issueRecord, abnormalReason,
@@ -542,7 +544,7 @@ router.post('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async
   res.status(201).json({ success: true, data: r })
 })
 
-router.put('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.put('/:id/result', requireAuth, requirePermission('results', 'edit'), requireExperimentScope, async (req, res) => {
   const experimentId = Number(req.params.id)
   const { status, score, handFeelScore, colorShadeScore, fastnessScore, moistureScore,
     otherScoreName, otherScore, description, reflection, issueRecord, abnormalReason,
@@ -570,14 +572,14 @@ router.put('/:id/result', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async 
   res.json({ success: true, data: r })
 })
 
-router.get('/:id/result/attachments', requireAuth, async (req, res) => {
+router.get('/:id/result/attachments', requireAuth, requirePermission('results', 'view'), requireExperimentScope, async (req, res) => {
   const result = await prisma.experimentResult.findUnique({ where: { experimentId: Number(req.params.id) } })
   if (!result) { res.json({ success: true, data: [] }); return }
   const attachments = await prisma.attachment.findMany({ where: { resultId: result.id } })
   res.json({ success: true, data: attachments })
 })
 
-router.post('/:id/result/attachments', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req, res) => {
+router.post('/:id/result/attachments', requireAuth, requirePermission('results', 'edit'), requireExperimentScope, upload.single('file'), async (req, res) => {
   const result = await prisma.experimentResult.findUnique({ where: { experimentId: Number(req.params.id) } })
   if (!result) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '尚未建立結果' } }); return }
   if (!req.file) { res.status(400).json({ success: false, error: { code: 'NO_FILE', message: '未上傳檔案' } }); return }
@@ -589,7 +591,7 @@ router.post('/:id/result/attachments', requireAuth, requireRole('ADMIN', 'LAB_ST
   res.status(201).json({ success: true, data: a })
 })
 
-router.delete('/:id/result/attachments/:attachmentId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/:id/result/attachments/:attachmentId', requireAuth, requirePermission('results', 'edit'), requireExperimentScope, async (req, res) => {
   await prisma.attachment.delete({ where: { id: Number(req.params.attachmentId) } })
   res.json({ success: true, message: '已刪除' })
 })

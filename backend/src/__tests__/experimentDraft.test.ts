@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken'
 const m = vi.hoisted(() => ({ completion: vi.fn(), templates: vi.fn(), template: vi.fn(), formula: vi.fn(), create: vi.fn() }))
 vi.mock('openai', () => ({ default: class { chat = { completions: { create: m.completion } } } }))
 vi.mock('../db/client', () => ({ default: { experimentTemplate: { findMany: m.templates, findUnique: m.template }, formula: { findUnique: m.formula }, experiment: { create: m.create } } }))
-import { draftSchema, generateDraft, confirmDraft, signDraft, readDraft, validDate, validateConditions, inspectDraft, groundDraft, needsReview } from '../lib/experimentDraft'
+import { draftSchema, prepareDraft, generateDraft, confirmDraft, signDraft, readDraft, validDate, validateConditions, inspectDraft, groundDraft, needsReview } from '../lib/experimentDraft'
 const fields = [{ key: 'temperature', label: '溫度', type: 'number' }, { key: 'method', label: '方法', type: 'select', options: ['攪拌'] }]
 const draft = () => draftSchema.parse({ title: '溫度比較', templateKey: 'generic', experimentDate: '2026-10-12', formulaCode: null, notes: '', groups: [{ name: '25°C', conditions: { temperature: 25 }, steps: ['觀察外觀'], repeats: 3 }], suggestions: ['可考慮增加對照組'] })
 beforeEach(() => {
@@ -100,4 +100,41 @@ it('faithful mode clears model-proposed plan and fields', () => {
   const d = draft(); d.plan.equipment = ['量筒']; d.groups[0].conditions.method = '攪拌'
   const r = groundDraft(d, ['25°C，觀察外觀，3次'], '2026-10-11', 'faithful')
   expect(r.plan.equipment).toEqual([]); expect(r.groups[0].conditions.method).toBeUndefined(); expect(needsReview(r)).toBe(false)
+})
+
+it('prepares a reviewed starter immediately without a model call or database write', async () => {
+  const r = await prepareDraft('通用實驗，2026-11-03，比較20、25與30度，各重複三次，觀察外觀。', undefined, 1, 'common')
+  expect(r.engine).toBe('rules'); expect(r.draft.groups.map(g => g.conditions.temperature)).toEqual([20, 25, 30])
+  expect(r.draft.groups.map(g => g.repeats)).toEqual([3, 3, 3]); expect(r.missing).toEqual([])
+  expect(m.completion).not.toHaveBeenCalled(); expect(m.create).not.toHaveBeenCalled()
+  await expect(confirmDraft(r.token, 1, false)).rejects.toThrow('請先核對')
+  await confirmDraft(r.token, 1, true); expect(m.create).toHaveBeenCalledTimes(1)
+})
+it('keeps an incomplete starter usable and accepts a later explicit template without losing the description', async () => {
+  const first = await prepareDraft('2026-11-03，25與30度各做一次，觀察外觀。', undefined, 1)
+  expect(first.missing).toContain('有效的實驗範本'); expect(first.missing).toContain('至少一個實驗組')
+  const next = await prepareDraft('使用通用範本', first.token, 1)
+  expect(next.code).toBe(first.code); expect(next.draft.groups).toHaveLength(2); expect(next.draft.experimentDate).toBe('2026-11-03')
+  expect(m.completion).not.toHaveBeenCalled()
+})
+it('does not pick an ambiguous date or guess experimental conditions without a matching field', async () => {
+  const r = await prepareDraft('通用，2026-11-03 或2026-11-04，記錄結果', undefined, 1)
+  expect(r.draft.experimentDate).toBeNull(); expect(r.draft.groups).toEqual([])
+  expect(r.missing).toContain('實驗日期（YYYY-MM-DD）')
+})
+
+it('AI enrichment can add short suggestions but cannot rewrite starter conditions or bypass review', async () => {
+  const first = await prepareDraft('通用，2026-11-03，25與30度各做一次，觀察外觀。', undefined, 1, 'common')
+  m.completion.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ objective: '比較溫度影響', equipment: ['溫度計'], measurements: ['外觀'], checks: ['核對設備狀態'], steps: ['同時點記錄外觀'] }) } }] })
+  const next = await generateDraft('補全觀察與紀錄建議', first.token, 1, 'common')
+  expect(next.draft.groups.map(g => g.conditions.temperature)).toEqual([25, 30])
+  expect(next.draft.groups[0].inferred.steps).toContain(1)
+  expect(next.draft.experimentDate).toBe('2026-11-03'); expect(next.code).toBe(first.code)
+  await expect(confirmDraft(next.token, 1)).rejects.toThrow('請先核對')
+  expect(m.create).not.toHaveBeenCalled()
+  m.completion.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ objective: '比較溫度影響', steps: ['設定999度並觀察'], checks: ['無異常'] }) } }] })
+  const filtered = await generateDraft('補全觀察', first.token, 1, 'common')
+  expect(filtered.draft.groups[0].steps).toEqual(['觀察外觀']); expect(filtered.draft.plan.checks).toEqual([])
+  m.completion.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ objective: 'QA', groups: [{ conditions: { temperature: 999 } }] }) } }] })
+  await expect(generateDraft('補全', first.token, 1, 'common')).rejects.toThrow('格式')
 })

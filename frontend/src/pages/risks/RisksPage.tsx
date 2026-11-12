@@ -1,3 +1,4 @@
+import { usePermissions } from '../../hooks/usePermission'
 import { useEffect, useState, useCallback } from 'react'
 import {
   Card, Tabs, Table, Button, Modal, Form, Input,
@@ -17,7 +18,6 @@ import {
 } from '../../api/risks'
 import { getFormulas, getIngredients, getFormulaIngredients } from '../../api/formulas'
 import type { FormulaRisk, IngredientRisk, AbnormalEvent, RiskLevel, AbnormalEventStatus, Formula, Ingredient, FormulaIngredient } from '../../types'
-import { useAuthStore } from '../../stores/authStore'
 
 const { Text } = Typography
 
@@ -46,8 +46,10 @@ function riskTypeOptions(types: string[]) {
 // ─── Tab 1：配方風險評估 ──────────────────────────────────────────────────────
 
 function FormulaRiskTab() {
-  const { user } = useAuthStore()
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const { can } = usePermissions()
+  const canEdit = can('risks', 'edit')
+  const canCreate = can('risks', 'create')
+  const canDelete = can('risks', 'delete')
   const [data, setData] = useState<FormulaRisk[]>([])
   const [formulas, setFormulas] = useState<Formula[]>([])
   const [loading, setLoading] = useState(false)
@@ -104,14 +106,14 @@ function FormulaRiskTab() {
     { title: '評估人員', dataIndex: 'assessedBy', key: 'assessedBy', width: 100 },
     { title: '下次審查', dataIndex: 'nextReviewAt', key: 'nextReviewAt', width: 110,
       render: (v) => dayjs(v).format('YYYY-MM-DD') },
-    ...(canEdit ? [{
+    ...(canEdit || canDelete ? [{
       title: '操作', key: 'action', width: 120,
       render: (_: unknown, row: FormulaRisk) => (
         <Space>
-          <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>
-          <Popconfirm title="確定刪除？" onConfirm={async () => { await deleteFormulaRisk(row.id); message.success('已刪除'); load() }}>
+          {canEdit && <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>}
+          {canDelete && <Popconfirm title="確定刪除？" onConfirm={async () => { await deleteFormulaRisk(row.id); message.success('已刪除'); load() }}>
             <Button size="small" danger icon={<DeleteOutlined />} />
-          </Popconfirm>
+          </Popconfirm>}
         </Space>
       ),
     }] : []),
@@ -125,7 +127,7 @@ function FormulaRiskTab() {
         message={<><LinkOutlined style={{ marginRight: 6 }} /><Text strong>配方風險評估</Text> — 針對配方整體的穩定性、製程與成分相容性進行風險評估，評估結果可與「原物料風險評估」相互對照。</>}
       />
       <Space style={{ marginBottom: 16 }}>
-        {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增風險評估</Button>}
+        {canCreate && <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>新增風險評估</Button>}
         <Select allowClear placeholder="篩選風險等級" style={{ width: 150 }} options={RISK_OPTIONS}
           onChange={(v) => setFilterLevel(v as RiskLevel)} />
       </Space>
@@ -179,8 +181,10 @@ function FormulaRiskTab() {
 // ─── Tab 2：原物料風險評估 ──────────────────────────────────────────────────────
 
 function IngredientRiskTab() {
-  const { user } = useAuthStore()
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const { can } = usePermissions()
+  const canEdit = can('risks', 'edit')
+  const canCreate = can('risks', 'create')
+  const canDelete = can('risks', 'delete')
   const [data, setData] = useState<IngredientRisk[]>([])
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [formulas, setFormulas] = useState<Formula[]>([])
@@ -247,8 +251,7 @@ function IngredientRiskTab() {
         <Space>
           <Button size="small" onClick={() => setDetail(row)}>詳情</Button>
           {canEdit && <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(row)}>編輯</Button>}
-          {canEdit && (
-            <Popconfirm title="確定刪除？" onConfirm={async () => { await deleteIngredientRisk(row.id); message.success('已刪除'); load() }}>
+          {canDelete && (<Popconfirm title="確定刪除？" onConfirm={async () => { await deleteIngredientRisk(row.id); message.success('已刪除'); load() }}>
               <Button size="small" danger icon={<DeleteOutlined />} />
             </Popconfirm>
           )}
@@ -264,7 +267,7 @@ function IngredientRiskTab() {
         message={<><LinkOutlined style={{ marginRight: 6 }} /><Text strong>原物料風險評估</Text> — 針對原物料本身的化學、生物、物理危害進行評估，評估結果可與「配方風險評估」相互對照，確認原物料風險是否影響配方安全。</>}
       />
       <Space style={{ marginBottom: 16 }}>
-        {canEdit && <Button type="primary" onClick={openAdd} icon={<PlusOutlined />}>新增風險評估</Button>}
+        {canCreate && <Button type="primary" onClick={openAdd} icon={<PlusOutlined />}>新增風險評估</Button>}
         <Select allowClear placeholder="篩選風險等級" style={{ width: 150 }} options={RISK_OPTIONS}
           onChange={(v) => setFilterLevel(v as RiskLevel)} />
       </Space>
@@ -332,8 +335,10 @@ function IngredientRiskTab() {
 // ─── Tab 3：異常事件管理 ──────────────────────────────────────────────────────
 
 function AbnormalEventTab() {
-  const { user } = useAuthStore()
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const { can } = usePermissions()
+  const canEdit = can('risks', 'edit')
+  const canCreate = can('risks', 'create')
+  const canDelete = can('risks', 'delete')
   const [data, setData] = useState<AbnormalEvent[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -390,8 +395,7 @@ function AbnormalEventTab() {
               更新
             </Button>
           )}
-          {canEdit && (
-            <Popconfirm title="確定刪除？" onConfirm={async () => { await deleteAbnormalEvent(row.id); message.success('已刪除'); load() }}>
+          {canDelete && (<Popconfirm title="確定刪除？" onConfirm={async () => { await deleteAbnormalEvent(row.id); message.success('已刪除'); load() }}>
               <Button size="small" danger icon={<DeleteOutlined />} />
             </Popconfirm>
           )}
@@ -402,7 +406,7 @@ function AbnormalEventTab() {
   return (
     <>
       <Space wrap style={{ marginBottom: 16 }}>
-        {canEdit && <Button type="primary" icon={<PlusOutlined />} onClick={() => { addForm.resetFields(); setAddOpen(true) }}>記錄異常事件</Button>}
+        {canCreate && <Button type="primary" icon={<PlusOutlined />} onClick={() => { addForm.resetFields(); setAddOpen(true) }}>記錄異常事件</Button>}
         <Select allowClear placeholder="狀態" style={{ width: 120 }}
           options={Object.entries(EVENT_STATUS_LABEL).map(([v, l]) => ({ value: v, label: l }))}
           onChange={(v) => setFilters((f) => ({ ...f, status: v as AbnormalEventStatus | undefined, page: 1 }))} />

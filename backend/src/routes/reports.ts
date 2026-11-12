@@ -1,3 +1,4 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import prisma from '../db/client'
 import { requireAuth } from '../middleware/auth'
@@ -15,7 +16,7 @@ function dateWhere(dateFrom?: string, dateTo?: string) {
 }
 
 // GET /reports/experiments  — 4.1 實驗紀錄報表
-router.get('/experiments', requireAuth, async (req, res) => {
+router.get('/experiments', requireAuth, requirePermission('reports', 'view'), async (req, res) => {
   const { formulaId, experimenterId, dateFrom, dateTo } = req.query
   const where: any = {}
   if (formulaId) where.formulaId = Number(formulaId)
@@ -36,7 +37,7 @@ router.get('/experiments', requireAuth, async (req, res) => {
 })
 
 // GET /reports/formulas/usage  — 4.2 配方使用報表
-router.get('/formulas/usage', requireAuth, async (req, res) => {
+router.get('/formulas/usage', requireAuth, requirePermission('reports', 'view'), async (req, res) => {
   const { formulaId, productType } = req.query
   const formulaWhere: any = { status: { not: 'DELETED' } }
   if (formulaId) formulaWhere.id = Number(formulaId)
@@ -69,7 +70,7 @@ router.get('/formulas/usage', requireAuth, async (req, res) => {
 })
 
 // GET /reports/results/summary  — 4.3 實驗結果統計
-router.get('/results/summary', requireAuth, async (req, res) => {
+router.get('/results/summary', requireAuth, requirePermission('reports', 'view'), async (req, res) => {
   const { status, formulaName, experimenterId, dateFrom, dateTo } = req.query
   const where: any = {}
   if (status) where.status = status
@@ -112,7 +113,7 @@ router.get('/results/summary', requireAuth, async (req, res) => {
 })
 
 // GET /reports/custom  — 4.4 條件式查詢
-router.get('/custom', requireAuth, async (req, res) => {
+router.get('/custom', requireAuth, requirePermission('reports', 'view'), async (req, res) => {
   const { type, formulaId, experimenterId, status, dateFrom, dateTo } = req.query
 
   if (type === 'formula') {

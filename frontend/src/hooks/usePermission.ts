@@ -3,24 +3,29 @@ import { getMyPermissions } from '../api/permissions'
 import type { RolePermission } from '../types'
 import { useAuthStore } from '../stores/authStore'
 
-let cache: RolePermission[] | null = null
+let cache: { token: string; rows: RolePermission[] } | null = null
 
 export function usePermissions() {
-  const { user } = useAuthStore()
-  const [permissions, setPermissions] = useState<RolePermission[]>(cache ?? [])
-  const [loading, setLoading] = useState(!cache)
+  const { user, token } = useAuthStore()
+  const [loaded, setLoaded] = useState(cache)
+  const permissions = loaded?.token === token ? loaded.rows : []
+  const [loading, setLoading] = useState(!cache || cache.token !== token)
 
   useEffect(() => {
-    if (!user) return
-    if (cache) { setPermissions(cache); setLoading(false); return }
+    if (!user || !token) return
+    let active = true
+    if (cache?.token === token) { setLoaded(cache); setLoading(false); return }
+    setLoading(true)
     getMyPermissions()
       .then((res) => {
-        cache = res.data.data ?? []
-        setPermissions(cache!)
+        if (!active) return
+        cache = { token, rows: res.data.data ?? [] }
+        setLoaded(cache)
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [user?.id])
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [user?.id, token])
 
   const can = (module: string, action: 'view' | 'create' | 'edit' | 'delete') => {
     if (user?.role === 'ADMIN') return true

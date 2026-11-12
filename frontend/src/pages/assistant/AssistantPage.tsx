@@ -51,7 +51,7 @@ export default function AssistantPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading, draft, saved])
 
-  const send = async (text: string, level: 'faithful' | 'common' = completionLevel) => {
+  const send = async (text: string, level: 'faithful' | 'common' = completionLevel, enrich = false) => {
     const question = text.trim()
     if (!question || loading) return
 
@@ -65,7 +65,7 @@ export default function AssistantPage() {
 
     try {
       if (task === 'experiment') {
-        const reply = await prepareExperimentDraft(question, draft?.token, level)
+        const reply = await prepareExperimentDraft(question, draft?.token, level, enrich)
         setReviewedSuggestions(false); setDraft(reply); setSaved(null)
         setMessages(prev => [...prev, { role: 'assistant', content: reply.answer }])
         return
@@ -152,7 +152,7 @@ export default function AssistantPage() {
           {task === 'template' && <Tag color="purple">自動選擇本地／雲端</Tag>}
         </Space>
         <div style={{ marginTop: 8 }}>
-          <Text type="secondary">{task === 'history' || task === 'analysis' ? '查詢、比對與計算在本機執行；本機 AI 可協助挑選結果重點。原始資料不送至雲端。' : task === 'template' ? '先產生可編輯基本範本，再補充量測條件與步驟；雲端僅接收通用主題與目標。確認後才儲存。' : task === 'experiment' ? '描述產品、流程與變因。詳細補全可建議條件、步驟、設備及觀察項目，並標示 AI 建議；可用對話修改。請核對實際可用設備、材料與條件，確認後才會儲存。' : mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '庫存、成本排行、漲跌價試算這類問題會直接由程式算出答案，不呼叫任何模型，也不會傳送到任何地方；其他問題顯示遮蔽後摘要供確認，一樣不會傳送。' : `庫存、成本排行、漲跌價試算這類問題會直接由程式算出答案，不呼叫任何模型，也不會傳送到任何地方；其他問題才會視設定傳送遮蔽後摘要至 ${status?.cloudHost}，或退回本地模型處理。`}</Text>
+          <Text type="secondary">{task === 'history' || task === 'analysis' ? '查詢、比對與計算在本機執行；本機 AI 可協助挑選結果重點。原始資料不送至雲端。' : task === 'template' ? '先產生可編輯基本範本，再補充量測條件與步驟；雲端僅接收通用主題與目標。確認後才儲存。' : task === 'experiment' ? '先依描述整理基本草稿；需要更多設計建議時，可另選本機 AI 補全。請核對實際設備、材料與條件，確認後才會儲存。' : mode === 'local' ? '問題與查詢結果由本機模型處理。' : mode === 'preview' ? '庫存、成本排行、漲跌價試算這類問題會直接由程式算出答案，不呼叫任何模型，也不會傳送到任何地方；其他問題顯示遮蔽後摘要供確認，一樣不會傳送。' : `庫存、成本排行、漲跌價試算這類問題會直接由程式算出答案，不呼叫任何模型，也不會傳送到任何地方；其他問題才會視設定傳送遮蔽後摘要至 ${status?.cloudHost}，或退回本地模型處理。`}</Text>
         </div>
       </div>
       {task === 'history' || task === 'analysis' ? <ExperimentInsightsPanel key={task} task={task} /> : task === 'template' ? <TemplateAssistantPanel /> : <>
@@ -235,12 +235,12 @@ export default function AssistantPage() {
           <div className={styles.rowBot}>
             <Avatar size="small" icon={<RobotOutlined />} style={{ background: '#16a34a', flexShrink: 0 }} />
             <div className={styles.bubbleBot}>
-              <Space><Spin size="small" /><Text type="secondary">{task === 'experiment' ? '本機模型正在整理實驗草稿…' : t('assistant.thinking')}</Text></Space>
+              <Space><Spin size="small" /><Text type="secondary">{task === 'experiment' ? '正在整理實驗草稿…' : t('assistant.thinking')}</Text></Space>
             </div>
           </div>
         )}
         {draft && <Card size="small" title="實驗草稿・尚未儲存" style={{ margin: '16px 0' }}>
-          <Alert type="warning" showIcon message="請核對所有條件與步驟。標示「AI 建議」的內容是試驗起始建議，尚未經實際驗證；確認採用後才會儲存。" />
+          <Alert type="warning" showIcon message={draft.engine === 'rules' ? '這是基本草稿，尚未執行 AI 補全。僅整理明確資料；其他需求保留於描述，請逐項核對。' : '請核對所有條件與步驟。標示「AI 建議」的內容尚未經實際驗證；確認採用後才會儲存。'} />
           <Paragraph style={{ marginTop: 12 }}><strong>{draft.draft.title || '尚未填寫名稱'}</strong><br />
             範本：{draft.templateName || '待補充'} {draft.draft.inferredTemplate && <Tag color="orange">AI 建議</Tag>}　日期：{draft.draft.experimentDate || '待補充'}<br />
             配方：{draft.draft.formulaCode || '不綁定配方'}<br />
@@ -261,9 +261,12 @@ export default function AssistantPage() {
           </Card>)}
           {draft.draft.suggestions.length > 0 && <Alert type="info" message="待考慮的建議（未加入實驗）" description={draft.draft.suggestions.join('；')} />}
           {draft.missing.length > 0 && <Alert style={{ marginTop: 8 }} type="warning" message="請繼續輸入補充或修正" description={draft.missing.join('、')} />}
-          {draft.reviewRequired && <div style={{ marginTop: 12 }}><Checkbox checked={reviewedSuggestions} disabled={loading} onChange={e => setReviewedSuggestions(e.target.checked)}>我已核對 AI 建議的條件、步驟及計畫，並確認採用</Checkbox></div>}
+          {draft.reviewRequired && <div style={{ marginTop: 12 }}><Checkbox checked={reviewedSuggestions} disabled={loading} onChange={e => setReviewedSuggestions(e.target.checked)}>我已核對草稿的條件、步驟及計畫，並確認採用</Checkbox></div>}
           <Space style={{ marginTop: 12 }}>
-            <Button disabled={loading} onClick={() => { setCompletionLevel('common'); send('請依照基本常識補全缺少的條件、步驟、設備、觀察項目與操作前檢查，保留已指定的條件。', 'common') }}>繼續詳細補全</Button>
+            <Button disabled={loading} onClick={() => send('請保留已指定內容，補全這份草稿。', completionLevel, true)}>本機 AI 補全（最多等待 30 秒）</Button>
+            <Link to="/experiments/new">使用完整實驗表單</Link>
+          </Space>
+          <Space style={{ marginTop: 12 }}>
             <Popconfirm title="確認以上日期、條件與步驟，建立實驗和所有組別？" onConfirm={confirm} disabled={loading || !!draft.missing.length || (draft.reviewRequired && !reviewedSuggestions)}>
               <Button type="primary" disabled={loading || !!draft.missing.length || (draft.reviewRequired && !reviewedSuggestions)}>確認建立實驗</Button>
             </Popconfirm>

@@ -1,13 +1,14 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import prisma from '../db/client'
-import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { validateNumericParams } from '../lib/query'
 
 const router = Router()
 validateNumericParams(router)
 
 // ── Formula Risks ──────────────────────────────────────────────
-router.get('/formulas', requireAuth, async (req, res) => {
+router.get('/formulas', requireAuth, requirePermission('risks', 'view'), async (req, res) => {
   const { riskLevel } = req.query
   const where = riskLevel ? { riskLevel: riskLevel as string } : {}
   const data = await prisma.formulaRisk.findMany({
@@ -18,7 +19,7 @@ router.get('/formulas', requireAuth, async (req, res) => {
   res.json({ success: true, data: data.map((r) => ({ ...r, formulaCode: r.formula.code, formulaName: r.formula.name, assessedBy: r.assessedBy.username, formula: undefined })) })
 })
 
-router.post('/formulas', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'MANAGER'), async (req: AuthRequest, res) => {
+router.post('/formulas', requireAuth, requirePermission('risks', 'create'), async (req: AuthRequest, res) => {
   const { formulaId, riskLevel, riskType, description, mitigation, nextReviewAt } = req.body
   const r = await prisma.formulaRisk.create({
     data: { formulaId, riskLevel, riskType, description, mitigation, nextReviewAt: new Date(nextReviewAt), assessedById: req.user!.id },
@@ -27,7 +28,7 @@ router.post('/formulas', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'MANAGER
   res.status(201).json({ success: true, data: { ...r, formulaCode: r.formula.code, formulaName: r.formula.name, assessedBy: r.assessedBy.username, formula: undefined } })
 })
 
-router.put('/formulas/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'MANAGER'), async (req, res) => {
+router.put('/formulas/:id', requireAuth, requirePermission('risks', 'edit'), async (req, res) => {
   const { riskLevel, riskType, description, mitigation, nextReviewAt } = req.body
   const r = await prisma.formulaRisk.update({
     where: { id: Number(req.params.id) },
@@ -37,13 +38,13 @@ router.put('/formulas/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'MANA
   res.json({ success: true, data: { ...r, formulaCode: r.formula.code, formulaName: r.formula.name, assessedBy: r.assessedBy.username, formula: undefined } })
 })
 
-router.delete('/formulas/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+router.delete('/formulas/:id', requireAuth, requirePermission('risks', 'delete'), async (req, res) => {
   await prisma.formulaRisk.delete({ where: { id: Number(req.params.id) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Ingredient Risks ───────────────────────────────────────────
-router.get('/ingredients', requireAuth, async (req, res) => {
+router.get('/ingredients', requireAuth, requirePermission('risks', 'view'), async (req, res) => {
   const { riskLevel } = req.query
   const where = riskLevel ? { riskLevel: riskLevel as string } : {}
   const data = await prisma.ingredientRisk.findMany({
@@ -54,7 +55,7 @@ router.get('/ingredients', requireAuth, async (req, res) => {
   res.json({ success: true, data: data.map((r) => ({ ...r, ingredientName: r.ingredient.name, assessedBy: r.assessedBy.username, ingredient: undefined })) })
 })
 
-router.post('/ingredients', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'MANAGER'), async (req: AuthRequest, res) => {
+router.post('/ingredients', requireAuth, requirePermission('risks', 'create'), async (req: AuthRequest, res) => {
   const { ingredientId, riskLevel, riskType, hazardDescription, safeHandling, storageRequirements } = req.body
   const r = await prisma.ingredientRisk.create({
     data: { ingredientId, riskLevel, riskType, hazardDescription, safeHandling, storageRequirements, assessedById: req.user!.id },
@@ -63,7 +64,7 @@ router.post('/ingredients', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'MANA
   res.status(201).json({ success: true, data: { ...r, ingredientName: r.ingredient.name, assessedBy: r.assessedBy.username, ingredient: undefined } })
 })
 
-router.put('/ingredients/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'MANAGER'), async (req, res) => {
+router.put('/ingredients/:id', requireAuth, requirePermission('risks', 'edit'), async (req, res) => {
   const { riskLevel, riskType, hazardDescription, safeHandling, storageRequirements } = req.body
   const r = await prisma.ingredientRisk.update({
     where: { id: Number(req.params.id) },
@@ -73,13 +74,13 @@ router.put('/ingredients/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'M
   res.json({ success: true, data: { ...r, ingredientName: r.ingredient.name, assessedBy: r.assessedBy.username, ingredient: undefined } })
 })
 
-router.delete('/ingredients/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+router.delete('/ingredients/:id', requireAuth, requirePermission('risks', 'delete'), async (req, res) => {
   await prisma.ingredientRisk.delete({ where: { id: Number(req.params.id) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Abnormal Events ────────────────────────────────────────────
-router.get('/events', requireAuth, async (req, res) => {
+router.get('/events', requireAuth, requirePermission('risks', 'view'), async (req, res) => {
   const { status, severity, eventType } = req.query
   const where: any = {}
   if (status) where.status = status
@@ -109,7 +110,7 @@ router.get('/events', requireAuth, async (req, res) => {
   })
 })
 
-router.post('/events', requireAuth, async (req: AuthRequest, res) => {
+router.post('/events', requireAuth, requirePermission('risks', 'create'), async (req: AuthRequest, res) => {
   const { title, description, eventType, severity, occurredAt, relatedFormulaId, relatedIngredientId } = req.body
   const count = await prisma.abnormalEvent.count()
   const eventCode = `EVT-${String(count + 1).padStart(4, '0')}`
@@ -120,7 +121,7 @@ router.post('/events', requireAuth, async (req: AuthRequest, res) => {
   res.status(201).json({ success: true, data: { ...e, reportedBy: e.reportedBy.username, relatedFormulaName: e.relatedFormula?.name, relatedIngredientName: e.relatedIngredient?.name, relatedFormula: undefined, relatedIngredient: undefined } })
 })
 
-router.put('/events/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'MANAGER'), async (req: AuthRequest, res) => {
+router.put('/events/:id', requireAuth, requirePermission('risks', 'edit'), async (req: AuthRequest, res) => {
   const { status, resolution, resolvedAt } = req.body
   const e = await prisma.abnormalEvent.update({
     where: { id: Number(req.params.id) },
@@ -130,13 +131,13 @@ router.put('/events/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF', 'MANAGE
   res.json({ success: true, data: { ...e, reportedBy: e.reportedBy.username, resolvedBy: e.resolvedBy?.username, relatedFormulaName: e.relatedFormula?.name, relatedIngredientName: e.relatedIngredient?.name, relatedFormula: undefined, relatedIngredient: undefined } })
 })
 
-router.delete('/events/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+router.delete('/events/:id', requireAuth, requirePermission('risks', 'delete'), async (req, res) => {
   await prisma.abnormalEvent.delete({ where: { id: Number(req.params.id) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── Risk Report ────────────────────────────────────────────────
-router.get('/report', requireAuth, async (req, res) => {
+router.get('/report', requireAuth, requirePermission('risks', 'view'), async (req, res) => {
   const LEVELS = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
 
   const [formulaRisks, ingredientRisks, eventCounts, eventTotal, recentEvents] = await Promise.all([

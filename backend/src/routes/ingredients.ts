@@ -1,7 +1,8 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import prisma from '../db/client'
 import { uploadToStorage } from '../db/storage'
-import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { validateNumericParams, parsePagination } from '../lib/query'
 
 import { upload } from '../middleware/upload'
@@ -16,7 +17,7 @@ function formatIng(i: any) {
 }
 
 // GET /ingredients
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, requirePermission('materials', 'view'), async (req, res) => {
   const { page, limit, skip } = parsePagination(req.query, 50)
   const name = req.query.name as string | undefined
   const category = req.query.category as string | undefined
@@ -35,7 +36,7 @@ router.get('/', requireAuth, async (req, res) => {
 })
 
 // GET /ingredients/find-by-batch/:batchId（MUST be before /:id）
-router.get('/find-by-batch/:batchId', requireAuth, async (req, res) => {
+router.get('/find-by-batch/:batchId', requireAuth, requirePermission('materials', 'view'), async (req, res) => {
   const batchId = Number(req.params.batchId)
   const batch = await prisma.ingredientBatch.findUnique({
     where: { id: batchId },
@@ -46,7 +47,7 @@ router.get('/find-by-batch/:batchId', requireAuth, async (req, res) => {
 })
 
 // GET /ingredients/batches/expiring（MUST be before /:id）
-router.get('/batches/expiring', requireAuth, async (req, res) => {
+router.get('/batches/expiring', requireAuth, requirePermission('materials', 'view'), async (req, res) => {
   const days = Number(req.query.days ?? 30)
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() + days)
@@ -62,14 +63,14 @@ router.get('/batches/expiring', requireAuth, async (req, res) => {
 })
 
 // GET /ingredients/:id
-router.get('/:id', requireAuth, async (req, res) => {
+router.get('/:id', requireAuth, requirePermission('materials', 'view'), async (req, res) => {
   const item = await prisma.ingredient.findUnique({ where: { id: Number(req.params.id) }, include: ING_INCLUDE })
   if (!item) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到原料' } }); return }
   res.json({ success: true, data: formatIng(item) })
 })
 
 // POST /ingredients
-router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
+router.post('/', requireAuth, requirePermission('materials', 'create'), async (req: AuthRequest, res) => {
   const {
     name, code, casNo, englishName, category, industry, status,
     solidContent, density, appearance, storageCondition, shelfLife,
@@ -94,7 +95,7 @@ router.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: Aut
 })
 
 // PUT /ingredients/:id
-router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.put('/:id', requireAuth, requirePermission('materials', 'edit'), async (req, res) => {
   const {
     name, code, casNo, englishName, category, industry, status,
     solidContent, density, appearance, storageCondition, shelfLife,
@@ -118,14 +119,14 @@ router.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, r
 })
 
 // DELETE /ingredients/:id
-router.delete('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+router.delete('/:id', requireAuth, requirePermission('materials', 'delete'), async (req, res) => {
   await prisma.ingredient.delete({ where: { id: Number(req.params.id) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── 文件管理 ─────────────────────────────────────────────────────────────────
 
-router.get('/:id/documents', requireAuth, async (req, res) => {
+router.get('/:id/documents', requireAuth, requirePermission('materials', 'view'), async (req, res) => {
   const docs = await prisma.ingredientDocument.findMany({
     where: { ingredientId: Number(req.params.id) },
     include: { uploadedBy: { select: { username: true } } },
@@ -134,7 +135,7 @@ router.get('/:id/documents', requireAuth, async (req, res) => {
   res.json({ success: true, data: docs.map((d) => ({ ...d, uploaderName: d.uploadedBy.username, uploadedBy: undefined })) })
 })
 
-router.post('/:id/documents', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.single('file'), async (req: AuthRequest, res) => {
+router.post('/:id/documents', requireAuth, requirePermission('materials', 'edit'), upload.single('file'), async (req: AuthRequest, res) => {
   const ingredientId = Number(req.params.id)
   const { fileType } = req.body
   const file = req.file
@@ -152,14 +153,14 @@ router.post('/:id/documents', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), up
   res.status(201).json({ success: true, data: { ...doc, uploaderName: doc.uploadedBy.username, uploadedBy: undefined } })
 })
 
-router.delete('/documents/:docId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/documents/:docId', requireAuth, requirePermission('materials', 'edit'), async (req, res) => {
   await prisma.ingredientDocument.delete({ where: { id: Number(req.params.docId) } })
   res.json({ success: true, message: '已刪除' })
 })
 
 // ── 批號管理 ─────────────────────────────────────────────────────────────────
 
-router.get('/:id/batches', requireAuth, async (req, res) => {
+router.get('/:id/batches', requireAuth, requirePermission('materials', 'view'), async (req, res) => {
   const batches = await prisma.ingredientBatch.findMany({
     where: { ingredientId: Number(req.params.id) },
     orderBy: { createdAt: 'desc' },
@@ -167,7 +168,7 @@ router.get('/:id/batches', requireAuth, async (req, res) => {
   res.json({ success: true, data: batches })
 })
 
-router.post('/:id/batches', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.fields([
+router.post('/:id/batches', requireAuth, requirePermission('materials', 'edit'), upload.fields([
   { name: 'qcPhotoAppearance', maxCount: 1 },
   { name: 'qcPhotoSolid', maxCount: 1 },
 ]), async (req: AuthRequest, res) => {
@@ -215,7 +216,7 @@ router.post('/:id/batches', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), uplo
   res.status(201).json({ success: true, data: batch })
 })
 
-router.put('/batches/:batchId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), upload.fields([
+router.put('/batches/:batchId', requireAuth, requirePermission('materials', 'edit'), upload.fields([
   { name: 'qcPhotoAppearance', maxCount: 1 },
   { name: 'qcPhotoSolid', maxCount: 1 },
 ]), async (req: AuthRequest, res) => {
@@ -264,7 +265,7 @@ router.put('/batches/:batchId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), 
   res.json({ success: true, data: batch })
 })
 
-router.delete('/batches/:batchId', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.delete('/batches/:batchId', requireAuth, requirePermission('materials', 'edit'), async (req, res) => {
   await prisma.ingredientBatch.delete({ where: { id: Number(req.params.batchId) } })
   res.json({ success: true, message: '已刪除' })
 })

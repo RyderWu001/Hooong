@@ -3,6 +3,7 @@ import prisma from '../db/client'
 import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { requirePermission } from '../middleware/permission'
 import { parseId } from '../lib/query'
+import { APPROVAL_CHAINS } from '../lib/approvalChains'
 
 const router = Router()
 
@@ -53,6 +54,32 @@ router.post('/', requireAuth, requirePermission('forms', 'edit'), async (req: Au
     return
   }
 
+  const chain = APPROVAL_CHAINS[String(formType)]
+  const slot = Array.isArray(chain) ? chain.find(s => s.name === slotName && s.order === order) : undefined
+  if (!slot) {
+    res.status(400).json({ success: false, error: { code: 'INVALID_SLOT', message: '表單類型或簽核關卡不正確' } })
+    return
+  }
+  if (req.user!.role !== 'ADMIN' && !slot.roles.includes(req.user!.role)) {
+    res.status(403).json({ success: false, error: { code: 'FORBIDDEN', message: '您的角色無法簽核此關卡' } })
+    return
+  }
+
+  const models = {
+    SampleSubmission: () => prisma.sampleSubmission.findUnique({ where: { id: fid }, select: { id: true } }),
+    ChemicalEvaluation: () => prisma.chemicalEvaluation.findUnique({ where: { id: fid }, select: { id: true } }),
+    ChemicalRequest: () => prisma.chemicalRequest.findUnique({ where: { id: fid }, select: { id: true } }),
+    QcReport: () => prisma.ingredientBatch.findUnique({ where: { id: fid }, select: { id: true } }),
+    FormulaChange: () => prisma.formulaChangeApplication.findUnique({ where: { id: fid }, select: { id: true } }),
+    MassProduction: () => prisma.massProductionApproval.findUnique({ where: { id: fid }, select: { id: true } }),
+  }
+  const model = models[formType as keyof typeof models]
+  const exists = await model()
+  if (!exists) {
+    res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到要簽核的表單' } })
+    return
+  }
+
   // Enforce sequential: the immediately preceding slot must already be signed
   if (order > 1) {
     const prevSigned = await prisma.formSignature.findFirst({
@@ -75,9 +102,10 @@ router.post('/', requireAuth, requirePermission('forms', 'edit'), async (req: Au
   })
   const signedByName = userRecord?.username ?? null
 
-  const data = await prisma.formSignature.upsert({
-    where: { formType_formId_slotName: { formType, formId: fid, slotName } },
-    create: {
+  // A signed slot is immutable until explicitly retracted; never overwrite another signer.
+  try {
+    const data = await prisma.formSignature.create({
+      data: {
       formType,
       formId: fid,
       slotName,
@@ -86,15 +114,15 @@ router.post('/', requireAuth, requirePermission('forms', 'edit'), async (req: Au
       signedByName,
       signatureImg: signatureImg ?? null,
       signedAt: new Date(),
-    },
-    update: {
-      signedById: req.user!.id,
-      signedByName,
-      signatureImg: signatureImg ?? null,
-      signedAt: new Date(),
-    },
-  })
-  res.status(201).json({ success: true, data })
+      },
+    })
+    res.status(201).json({ success: true, data })
+  } catch (error) {
+    if ((error as { code?: string }).code === 'P2002') {
+      res.status(409).json({ success: false, error: { code: 'ALREADY_SIGNED', message: '此關卡已簽核，請重新載入表單' } }); return
+    }
+    throw error
+  }
 })
 
 // DELETE /form-signatures/:id  – retract a signature

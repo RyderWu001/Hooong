@@ -1,3 +1,4 @@
+import { usePermissions } from '../../hooks/usePermission'
 import { useEffect, useRef, useState } from 'react'
 import {
   Card, List, Button, Input, Select, Modal, Form, Tag, Space, Typography,
@@ -11,7 +12,6 @@ import {
   getArticles, getArticleCategories, createArticle, updateArticle, deleteArticle, aiChat,
 } from '../../api/knowledge'
 import type { KnowledgeArticle } from '../../types'
-import { useAuthStore } from '../../stores/authStore'
 import dayjs from 'dayjs'
 
 const { TextArea } = Input
@@ -23,9 +23,10 @@ interface ChatMessage {
 }
 
 export default function KnowledgePage() {
-  const { user } = useAuthStore()
-  const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER'
-  const canDelete = user?.role === 'ADMIN'
+  const { can } = usePermissions()
+  const canManage = can('knowledge', 'edit')
+  const canCreate = can('knowledge', 'create')
+  const canDelete = can('knowledge', 'delete')
 
   const [articles, setArticles] = useState<KnowledgeArticle[]>([])
   const [categories, setCategories] = useState<string[]>([])
@@ -146,7 +147,7 @@ export default function KnowledgePage() {
             >
               AI 問答
             </Button>
-            {canManage && (
+            {canCreate && (
               <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
                 新增文章
               </Button>

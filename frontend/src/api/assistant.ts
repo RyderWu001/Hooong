@@ -57,6 +57,7 @@ export const TOOL_LABEL: Record<string, string> = {
 }
 
 export interface ExperimentDraftReply {
+  engine?: 'rules' | 'model'
   reviewRequired: boolean
   completionLevel: 'faithful' | 'common'
   token: string
@@ -77,8 +78,8 @@ export interface ExperimentDraftReply {
     suggestions: string[]
   }
 }
-export const prepareExperimentDraft = (question: string, token?: string, completionLevel: 'faithful' | 'common' = 'common') =>
-  client.post<{ data: ExperimentDraftReply }>('/assistant/experiment-draft', { question, token, completionLevel }).then(r => {
+export const prepareExperimentDraft = (question: string, token?: string, completionLevel: 'faithful' | 'common' = 'common', enrich = false) =>
+  client.post<{ data: ExperimentDraftReply }>('/assistant/experiment-draft', { question, token, completionLevel, enrich }).then(r => {
     const data = r.data.data
     if (!data?.draft || !Array.isArray(data.draft.groups) || !Array.isArray(data.missing) || typeof data.token !== 'string') throw new Error('無效的草稿回應')
     return data

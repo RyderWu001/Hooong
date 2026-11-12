@@ -1,13 +1,14 @@
+import { requirePermission } from '../middleware/permission'
 import { Router } from 'express'
 import prisma from '../db/client'
-import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { validateNumericParams } from '../lib/query'
 
 // ── Suppliers (/api/v1/suppliers) ─────────────────────────────
 export const suppliersRouter = Router()
 validateNumericParams(suppliersRouter)
 
-suppliersRouter.get('/', requireAuth, async (req, res) => {
+suppliersRouter.get('/', requireAuth, requirePermission('suppliers', 'view'), async (req, res) => {
   const { name, status } = req.query
   const where: any = {}
   if (name) where.name = { contains: name as string }
@@ -16,19 +17,19 @@ suppliersRouter.get('/', requireAuth, async (req, res) => {
   res.json({ success: true, data, pagination: { page: 1, limit: data.length, total: data.length, totalPages: 1 } })
 })
 
-suppliersRouter.get('/:id', requireAuth, async (req, res) => {
+suppliersRouter.get('/:id', requireAuth, requirePermission('suppliers', 'view'), async (req, res) => {
   const s = await prisma.supplier.findUnique({ where: { id: Number(req.params.id) } })
   if (!s) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到供應商' } }); return }
   res.json({ success: true, data: s })
 })
 
-suppliersRouter.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+suppliersRouter.post('/', requireAuth, requirePermission('suppliers', 'create'), async (req, res) => {
   const { code, name, contactPerson, phone, email, address, supplyItems } = req.body
   const s = await prisma.supplier.create({ data: { code, name, contactPerson: contactPerson ?? '', phone: phone ?? '', email: email ?? '', address: address ?? '', supplyItems: supplyItems ?? '' } })
   res.status(201).json({ success: true, data: s })
 })
 
-suppliersRouter.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+suppliersRouter.put('/:id', requireAuth, requirePermission('suppliers', 'edit'), async (req, res) => {
   const {
     name, contactPerson, phone, email, address, supplyItems, status,
     // 附件14 extended fields
@@ -56,12 +57,12 @@ suppliersRouter.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), asyn
   res.json({ success: true, data: s })
 })
 
-suppliersRouter.delete('/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
+suppliersRouter.delete('/:id', requireAuth, requirePermission('suppliers', 'delete'), async (req, res) => {
   await prisma.supplier.delete({ where: { id: Number(req.params.id) } })
   res.json({ success: true, message: '已刪除' })
 })
 
-suppliersRouter.get('/:id/evaluations', requireAuth, async (req, res) => {
+suppliersRouter.get('/:id/evaluations', requireAuth, requirePermission('suppliers', 'view'), async (req, res) => {
   const evals = await prisma.supplierEvaluation.findMany({
     where: { supplierId: Number(req.params.id) },
     include: { evaluator: { select: { username: true } }, supplier: { select: { name: true } } },
@@ -74,7 +75,7 @@ suppliersRouter.get('/:id/evaluations', requireAuth, async (req, res) => {
 export const evaluationsRouter = Router()
 validateNumericParams(evaluationsRouter)
 
-evaluationsRouter.get('/', requireAuth, async (req, res) => {
+evaluationsRouter.get('/', requireAuth, requirePermission('suppliers', 'view'), async (req, res) => {
   const { supplierId } = req.query
   const where = supplierId ? { supplierId: Number(supplierId) } : {}
   const evals = await prisma.supplierEvaluation.findMany({
@@ -85,7 +86,7 @@ evaluationsRouter.get('/', requireAuth, async (req, res) => {
   res.json({ success: true, data: evals.map((e) => ({ ...e, evaluator: e.evaluator.username, supplierName: e.supplier.name, supplier: undefined })) })
 })
 
-evaluationsRouter.post('/', requireAuth, async (req: AuthRequest, res) => {
+evaluationsRouter.post('/', requireAuth, requirePermission('suppliers', 'create'), async (req: AuthRequest, res) => {
   const { supplierId, evaluationDate, qualityScore, deliveryScore, priceScore, serviceScore, notes } = req.body
   const totalScore = (qualityScore + deliveryScore + priceScore + serviceScore) / 4
   const level = totalScore >= 90 ? 'A' : totalScore >= 75 ? 'B' : totalScore >= 60 ? 'C' : 'D'
@@ -100,7 +101,7 @@ evaluationsRouter.post('/', requireAuth, async (req: AuthRequest, res) => {
 export const purchasesRouter = Router()
 validateNumericParams(purchasesRouter)
 
-purchasesRouter.get('/', requireAuth, async (req, res) => {
+purchasesRouter.get('/', requireAuth, requirePermission('suppliers', 'view'), async (req, res) => {
   const { supplierId, status, ingredientName, dateFrom, dateTo } = req.query
   const where: any = {}
   if (supplierId) where.supplierId = Number(supplierId)
@@ -122,7 +123,7 @@ purchasesRouter.get('/', requireAuth, async (req, res) => {
   })
 })
 
-purchasesRouter.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+purchasesRouter.post('/', requireAuth, requirePermission('suppliers', 'create'), async (req, res) => {
   const { supplierId, ingredientId, quantity, unitPrice, purchaseDate, notes } = req.body
   const totalAmount = quantity * unitPrice
   const p = await prisma.purchaseRecord.create({
@@ -132,7 +133,7 @@ purchasesRouter.post('/', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async 
   res.status(201).json({ success: true, data: { ...p, supplierName: p.supplier.name, ingredientName: p.ingredient.name, unit: p.ingredient.unit, supplier: undefined, ingredient: undefined } })
 })
 
-purchasesRouter.put('/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+purchasesRouter.put('/:id', requireAuth, requirePermission('suppliers', 'edit'), async (req, res) => {
   const { status, deliveryDate, notes } = req.body
   const p = await prisma.purchaseRecord.update({
     where: { id: Number(req.params.id) },

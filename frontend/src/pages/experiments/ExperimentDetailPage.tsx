@@ -1,3 +1,4 @@
+import { usePermissions } from '../../hooks/usePermission'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -583,11 +584,15 @@ function GroupCard({
 // ── 樣品 Tab ─────────────────────────────────────────────────────────────────
 
 function SamplesTab({
-  experimentId, groups, samples, canEdit, onUpdated,
+  experimentId, groups, samples, onUpdated,
 }: {
   experimentId: number; groups: ExperimentGroup[]; samples: Sample[]
-  canEdit: boolean; onUpdated: () => void
+  onUpdated: () => void
 }) {
+  const { can } = usePermissions()
+  const canEdit = can('samples', 'edit')
+  const canCreate = can('samples', 'create')
+  const canDelete = can('samples', 'delete')
   const [modalOpen, setModalOpen] = useState(false)
   const [sampleForm] = Form.useForm()
   const [drawerSample, setDrawerSample] = useState<Sample | null>(null)
@@ -675,7 +680,7 @@ function SamplesTab({
 
   return (
     <>
-      {canEdit && (
+      {canCreate && (
         <Button icon={<PlusOutlined />} type="primary" size="small" style={{ marginBottom: 8 }}
           onClick={() => setModalOpen(true)}>
           新增樣品
@@ -691,7 +696,7 @@ function SamplesTab({
               if ((e.target as HTMLElement).closest('.ant-popconfirm, .ant-btn-dangerous')) return
               openDrawer(s)
             }}
-            actions={canEdit ? [
+            actions={canDelete ? [
               <Popconfirm title="刪除此樣品？"
                 onConfirm={(e) => { e?.stopPropagation(); handleDeleteSample(s.id) }}>
                 <Button size="small" danger icon={<DeleteOutlined />}
@@ -917,6 +922,7 @@ export default function ExperimentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const { can } = usePermissions()
   const [experiment, setExperiment] = useState<Experiment | null>(null)
   const [templates, setTemplates] = useState<ExperimentTemplate[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -928,7 +934,7 @@ export default function ExperimentDetailPage() {
   const [editExpForm] = Form.useForm()
 
   const expId = Number(id)
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
+  const canEdit = can('experiments', 'edit')
   const isAdmin = user?.role === 'ADMIN'
 
   const handleDeleteExperiment = async () => {
@@ -1299,7 +1305,6 @@ export default function ExperimentDetailPage() {
           experimentId={expId}
           groups={groups}
           samples={samples}
-          canEdit={canEdit}
           onUpdated={reload}
         />
       </Card>

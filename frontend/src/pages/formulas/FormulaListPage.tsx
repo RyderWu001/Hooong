@@ -1,3 +1,4 @@
+import { usePermissions } from '../../hooks/usePermission'
 import { useEffect, useState } from 'react'
 import { Table, Button, Input, Select, Space, Tag, Popconfirm, message, Card, Modal, Radio, Divider, Typography, Descriptions, Alert } from 'antd'
 import { PlusOutlined, SearchOutlined, BarChartOutlined, FileExcelOutlined, FilePdfOutlined } from '@ant-design/icons'
@@ -5,7 +6,6 @@ import { useNavigate } from 'react-router-dom'
 import { getFormulas, deleteFormula } from '../../api/formulas'
 import { getFormulaUsageReport } from '../../api/reports'
 import type { Formula, FormulaStatus, FormulaUsageReport } from '../../types'
-import { useAuthStore } from '../../stores/authStore'
 import { useDropdownOptions } from '../../hooks/useDropdownOptions'
 import { exportToExcel } from '../../utils/exportExcel'
 import { exportToPdf } from '../../utils/exportPdf'
@@ -35,7 +35,7 @@ const STATUS_LABEL: Record<FormulaStatus, string> = {
 
 export default function FormulaListPage() {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
+  const { can } = usePermissions()
   const [data, setData] = useState<Formula[]>([])
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState(0)
@@ -123,8 +123,9 @@ export default function FormulaListPage() {
     }
   }
 
-  const canEdit = user?.role === 'ADMIN' || user?.role === 'LAB_STAFF'
-  const canDelete = user?.role === 'ADMIN'
+  const canEdit = can('formulas', 'edit')
+  const canCreate = can('formulas', 'create')
+  const canDelete = can('formulas', 'delete')
 
   const columns = [
     { title: '配方編號', dataIndex: 'code', key: 'code', width: 140 },
@@ -178,7 +179,7 @@ export default function FormulaListPage() {
             產出報表
             {activeFilterCount > 0 && <Tag color="blue" style={{ marginLeft: 4 }}>{activeFilterCount} 篩選</Tag>}
           </Button>
-          {canEdit && (
+          {canCreate && (
             <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/formulas/new')}>
               新增配方
             </Button>

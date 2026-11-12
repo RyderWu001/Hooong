@@ -11,7 +11,7 @@ import {
 import { askHybrid, cloudReady } from '../lib/aiHybrid'
 
 import { requirePermission, hasPermission } from '../middleware/permission'
-import { generateDraft, confirmDraft, DraftError } from '../lib/experimentDraft'
+import { generateDraft, prepareDraft, confirmDraft, DraftError } from '../lib/experimentDraft'
 
 import { prepareTemplate, enrichTemplate, saveTemplate, supplementTemplate } from '../lib/templateDraft'
 
@@ -132,15 +132,17 @@ router.post('/ask', requireAuth, aiLimiter, async (req: AuthRequest, res) => {
 
 router.post('/experiment-draft', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), requirePermission('experiments', 'create'), aiLimiter, async (req: AuthRequest, res) => {
   const { question, token, completionLevel = 'faithful' } = req.body
+  if (req.body.enrich !== undefined && typeof req.body.enrich !== 'boolean') { res.status(400).json({ success: false, error: { message: '補全設定不正確' } }); return }
+  if (req.body.enrich === true && typeof token !== 'string') { res.status(400).json({ success: false, error: { message: '請先整理基本草稿，再執行 AI 補全' } }); return }
   if (!['faithful', 'common'].includes(completionLevel)) { res.status(400).json({ success: false, error: { message: '無效的補全方式' } }); return }
   if (!isAiConfigured()) { res.status(503).json({ success: false, error: { message: 'AI 已停用' } }); return }
   if (typeof question !== 'string' || !question.trim() || question.length > MAX_QUESTION_LENGTH || (token !== undefined && (typeof token !== 'string' || token.length > 80000))) {
     res.status(400).json({ success: false, error: { message: '請輸入 1–2000 字的實驗描述' } }); return
   }
-  try { res.json({ success: true, data: await generateDraft(question.trim(), token, req.user!.id, completionLevel) }) }
+  try { res.json({ success: true, data: await (req.body.enrich === true ? generateDraft : prepareDraft)(question.trim(), token, req.user!.id, completionLevel) }) }
   catch (e) {
     if (e instanceof DraftError) { res.status(422).json({ success: false, error: { message: e.message } }); return }
-    if (e instanceof OpenAI.APIError) { res.status(503).json({ success: false, error: { message: '本機模型無法回應，請確認 Ollama 已啟動後重試' } }); return }
+    if (e instanceof OpenAI.APIError) { res.status(503).json({ success: false, error: { message: '本機 AI 未能完成補全，原有基本草稿仍保留。請檢查後建立，或稍後再試 AI 補全。' } }); return }
     throw e
   }
 })

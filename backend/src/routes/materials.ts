@@ -1,6 +1,7 @@
+import { requirePermission } from '../middleware/permission'
 import { Router, NextFunction, Request, Response } from 'express'
 import prisma from '../db/client'
-import { requireAuth, requireRole, type AuthRequest } from '../middleware/auth'
+import { requireAuth, type AuthRequest } from '../middleware/auth'
 import { validateNumericParams } from '../lib/query'
 
 const router = Router()
@@ -9,6 +10,10 @@ validateNumericParams(router)
 const inventoryInclude = {
   ingredient: { select: { name: true, unit: true } },
 }
+
+const validStock = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0
+const badStock = { success: false, error: { code: 'INVALID_STOCK', message: '庫存數量須為有限的非負數；入庫與出庫數量須大於零' } }
 
 function formatInv(i: any) {
   return {
@@ -20,15 +25,18 @@ function formatInv(i: any) {
 }
 
 // ── Inventory ─────────────────────────────────────────────────
-router.get('/inventory', requireAuth, async (req, res) => {
+router.get('/inventory', requireAuth, requirePermission('materials', 'view'), async (req, res) => {
   const { ingredientId } = req.query
   const where = ingredientId ? { ingredientId: Number(ingredientId) } : {}
   const data = await prisma.materialInventory.findMany({ where, include: inventoryInclude, orderBy: { id: 'asc' } })
   res.json({ success: true, data: data.map(formatInv) })
 })
 
-router.post('/inventory', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.post('/inventory', requireAuth, requirePermission('materials', 'create'), async (req, res) => {
   const { ingredientId, currentStock, safetyStock, supplier, expiryDate } = req.body
+  if (!Number.isInteger(ingredientId) || ingredientId < 1 || !validStock(currentStock === undefined ? 0 : currentStock) || !validStock(safetyStock === undefined ? 0 : safetyStock)) {
+    res.status(400).json(badStock); return
+  }
   const item = await prisma.materialInventory.create({
     data: { ingredientId, currentStock, safetyStock, supplier, expiryDate: expiryDate ? new Date(expiryDate) : undefined },
     include: inventoryInclude,
@@ -36,8 +44,9 @@ router.post('/inventory', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async 
   res.status(201).json({ success: true, data: formatInv(item) })
 })
 
-router.put('/inventory/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req, res) => {
+router.put('/inventory/:id', requireAuth, requirePermission('materials', 'edit'), async (req, res) => {
   const { safetyStock, supplier, expiryDate } = req.body
+  if (safetyStock !== undefined && !validStock(safetyStock)) { res.status(400).json(badStock); return }
   const item = await prisma.materialInventory.update({
     where: { id: Number(req.params.id) },
     data: { safetyStock, supplier, expiryDate: expiryDate ? new Date(expiryDate) : undefined },
@@ -46,7 +55,7 @@ router.put('/inventory/:id', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), asy
   res.json({ success: true, data: formatInv(item) })
 })
 
-router.delete('/inventory/:id', requireAuth, requireRole('ADMIN'), async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/inventory/:id', requireAuth, requirePermission('materials', 'delete'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     await prisma.materialInventory.delete({ where: { id: Number(req.params.id) } })
     res.json({ success: true, message: '已刪除' })
@@ -56,27 +65,31 @@ router.delete('/inventory/:id', requireAuth, requireRole('ADMIN'), async (req: R
 })
 
 // 調整庫存
-router.post('/inventory/:id/adjust', requireAuth, requireRole('ADMIN', 'LAB_STAFF'), async (req: AuthRequest, res) => {
+router.post('/inventory/:id/adjust', requireAuth, requirePermission('materials', 'edit'), async (req: AuthRequest, res) => {
   const { transactionType, quantity, note } = req.body
-  const inv = await prisma.materialInventory.findUnique({ where: { id: Number(req.params.id) }, include: { ingredient: true } })
-  if (!inv) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到庫存紀錄' } }); return }
-
-  let newStock = inv.currentStock
-  if (transactionType === 'IN') newStock += quantity
-  else if (transactionType === 'OUT') newStock = Math.max(0, newStock - quantity)
-  else if (transactionType === 'ADJUST') newStock = quantity
-
-  await prisma.$transaction([
-    prisma.materialInventory.update({ where: { id: inv.id }, data: { currentStock: newStock } }),
-    prisma.materialTransaction.create({
-      data: { inventoryId: inv.id, transactionType, quantity, operatorId: req.user!.id, note },
-    }),
-  ])
-  res.json({ success: true, message: '庫存已調整', data: { newStock } })
+  if (!['IN', 'OUT', 'ADJUST'].includes(transactionType) || !validStock(quantity) || (transactionType !== 'ADJUST' && quantity === 0)) {
+    res.status(400).json(badStock); return
+  }
+  const outcome = await prisma.$transaction(async tx => {
+    const inv = await tx.materialInventory.findUnique({ where: { id: Number(req.params.id) } })
+    if (!inv) return { status: 404, code: 'NOT_FOUND', message: '找不到庫存紀錄' }
+    if (transactionType === 'OUT' && quantity > inv.currentStock) return { status: 409, code: 'INSUFFICIENT_STOCK', message: '出庫數量超過目前庫存' }
+    const newStock = transactionType === 'IN' ? inv.currentStock + quantity : transactionType === 'OUT' ? inv.currentStock - quantity : quantity
+    if (!validStock(newStock)) return { status: 400, code: 'INVALID_STOCK', message: '調整後庫存超出有效數值範圍' }
+    // Compare-and-set prevents a concurrent adjustment from silently overwriting stock.
+    const changed = await tx.materialInventory.updateMany({ where: { id: inv.id, currentStock: inv.currentStock }, data: { currentStock: newStock } })
+    if (changed.count !== 1) return { status: 409, code: 'STOCK_CHANGED', message: '庫存已被其他操作更新，請重新載入後再試' }
+    await tx.materialTransaction.create({ data: { inventoryId: inv.id, transactionType, quantity, operatorId: req.user!.id, note: note ?? '' } })
+    return { status: 200, newStock }
+  })
+  if (outcome.status !== 200) {
+    res.status(outcome.status).json({ success: false, error: { code: outcome.code, message: outcome.message } }); return
+  }
+  res.json({ success: true, message: '庫存已調整', data: { newStock: outcome.newStock } })
 })
 
 // ── Transactions ──────────────────────────────────────────────
-router.get('/transactions', requireAuth, async (req, res) => {
+router.get('/transactions', requireAuth, requirePermission('materials', 'view'), async (req, res) => {
   const { ingredientId } = req.query
   const where = ingredientId
     ? { inventory: { ingredientId: Number(ingredientId) } }
@@ -107,7 +120,7 @@ router.get('/transactions', requireAuth, async (req, res) => {
 })
 
 // ── Traceability ──────────────────────────────────────────────
-router.get('/traceability/:ingredientId', requireAuth, async (req, res) => {
+router.get('/traceability/:ingredientId', requireAuth, requirePermission('traceability', 'view'), async (req, res) => {
   const ingredientId = Number(req.params.ingredientId)
   const ingredient = await prisma.ingredient.findUnique({ where: { id: ingredientId } })
   if (!ingredient) { res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: '找不到原料' } }); return }
